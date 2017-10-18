@@ -43,7 +43,15 @@ def Call_Wavenumbers(Method, min_RMS_gradient, **keyword_parameters):
     New_Crystal_matrix
     Gruneisen_Lat_FracStep
     """
-    if (Method == 'SiQg') or (Method == 'GiQg'):
+    if (Method == 'SiQ') or (Method == 'GiQ') or (Method == 'GaQ') or (Method == 'HA'):
+        # Directly computing the wavenumbers for a specific program, given a coordinate file
+        if keyword_parameters['Program'] == 'Tinker':
+            wavenumbers = Tinker_Wavenumber(keyword_parameters['Coordinate_file'], keyword_parameters['Parameter_file'])
+        elif keyword_parameters['Program'] == 'Test':
+            wavenumbers = Test_Wavenumber(keyword_parameters['Coordinate_file'])
+        return wavenumbers
+
+    elif (Method == 'SiQg') or (Method == 'GiQg'):
         # Methods that use the Gruneisen parameter
         if ('Gruneisen' in keyword_parameters) and ('Wavenumber_Reference' in keyword_parameters) and \
                 ('Volume_Reference' in keyword_parameters) and ('New_Volume' in keyword_parameters):
@@ -81,49 +89,36 @@ def Call_Wavenumbers(Method, min_RMS_gradient, **keyword_parameters):
 
     elif Method == 'GaQg':
         if ('Gruneisen' in keyword_parameters) and ('Wavenumber_Reference' in keyword_parameters) and \
-                ('Crystal_matrix_Reference' in keyword_parameters) and ('New_Crystal_matrix' in keyword_parameters):
-            # Calculating the wavenumbers of the new Isotropically expanded structure
+                ('Applied_strain' in keyword_parameters):
+            # Calculating the wavenumbers of the new anisotropically expanded structure
+            # The Gruniesen parameter and reference wavenumbers have already been calculated
             wavenumbers = Get_Aniso_Gruneisen_Wavenumbers(keyword_parameters['Gruneisen'],
                                                           keyword_parameters['Wavenumber_Reference'],
-                                                          keyword_parameters['Crystal_matrix_Reference'],
-                                                          keyword_parameters['New_Crystal_matrix'])
+                                                          keyword_parameters['Applied_strain'])
             return wavenumbers
 
         else:
             if os.path.isfile(keyword_parameters['Output'] + '_GRUwvn_' + Method + '.npy') and os.path.isfile(
                                             keyword_parameters['Output'] + '_GRU_' + Method + '.npy'):
+                # If the current directory has saved Gruneisen outputs, it will open those and use them
                 print "   ...Using Gruneisen parameters from: " + keyword_parameters['Output'] + '_GRU_' \
                       + Method + '.npy'
                 Gruneisen = np.load(keyword_parameters['Output'] + '_GRU_' + Method + '.npy')
                 Wavenumber_Reference = np.load(keyword_parameters['Output'] + '_GRUwvn_' + Method + '.npy')
-                if keyword_parameters['Program'] == 'Tinker':
-                    Crystal_matrix_Reference = Ex.Lattice_parameters_to_Crystal_matrix(
-                        Pr.Tinker_Lattice_Parameters(keyword_parameters['Coordinate_file']))
-                elif keyword_parameters['Program'] == 'Test':
-                    Crystal_matrix_Reference = Ex.Lattice_parameters_to_Crystal_matrix(
-                        Pr.Test_Lattice_Parameters(keyword_parameters['Coordinate_file']))
-            # If the Gruneisen parameter has yet to be determined, here it will be calculated
-            # It is assumed that the input Coordinate_file is the lattice minimum strucutre
             else:
-                Gruneisen, Wavenumber_Reference, Crystal_matrix_Reference = \
+                # Calculating the Gruneisen parameter and wavenumbers
+                Gruneisen, Wavenumber_Reference = \
                     Setup_Anisotropic_Gruneisen(keyword_parameters['Coordinate_file'], keyword_parameters['Program'],
                                                 keyword_parameters['Gruneisen_Lat_FracStep'],
-                                                keyword_parameters['molecules_in_coord'],
-                                                min_RMS_gradient,
+                                                keyword_parameters['molecules_in_coord'], min_RMS_gradient,
                                                 Parameter_file=keyword_parameters['Parameter_file'])
+
+                # Saving the wavenumbers for future use
                 print "   ... Saving reference wavenumbers and Gruneisen parameters to: " + \
                       keyword_parameters['Output'] + '_GRU_/_GRUwvn' + Method + '.npy'
                 np.save(keyword_parameters['Output'] + '_GRU_' + Method, Gruneisen)
                 np.save(keyword_parameters['Output'] + '_GRUwvn_' + Method, Wavenumber_Reference)
-            return Gruneisen, Wavenumber_Reference, Crystal_matrix_Reference
-
-    elif (Method == 'SiQ') or (Method == 'GiQ') or (Method == 'GaQ') or (Method == 'HA'):
-        # Directly computing the wavenumbers for a specific program, given a coordinate file
-        if keyword_parameters['Program'] == 'Tinker':
-            wavenumbers = Tinker_Wavenumber(keyword_parameters['Coordinate_file'], keyword_parameters['Parameter_file'])
-        elif keyword_parameters['Program'] == 'Test':
-            wavenumbers = Test_Wavenumber(keyword_parameters['Coordinate_file'])
-        return wavenumbers
+            return Gruneisen, Wavenumber_Reference
 
 
 ##########################################
@@ -188,7 +183,7 @@ def Test_Wavenumber(Coordinate_file, function='Test2'):
 
 
 ##########################################
-#               Gruneisen                #
+#     Isotropic Gruneisen Parameter      #
 ##########################################
 def Setup_Isotropic_Gruneisen(Coordinate_file, Program, Gruneisen_Vol_FracStep, molecules_in_coord, min_RMS_gradient,
                               **keyword_parameters):
@@ -260,74 +255,63 @@ def Get_Iso_Gruneisen_Wavenumbers(Gruneisen, Wavenumber_Reference, Volume_Refere
     return wavenumbers
 
 
-def Setup_Anisotropic_Gruneisen(Coordinate_file, Program, Lattice_FracStep, molecules_in_coord, min_RMS_gradient, **keyword_parameters):
-    # Determining the changes in the crystal matrix
-    dcrystal_matrix_hold = Ex.Change_Crystal_Matrix(Lattice_FracStep, Program, Coordinate_file)
-
-    # Setting the order in which the crystal matrix will be pulled from
-    matrix_order = np.matrix([[0, 0], [1, 1], [2, 2], [0, 1], [0, 2], [1, 2]])
-
+##########################################
+# Strain Ansotropic Gruneisen Parameter  #
+##########################################
+def Setup_Anisotropic_Gruneisen(Coordinate_file, Program, strain, molecules_in_coord, min_RMS_gradient,
+                                **keyword_parameters):
+    # Starting by straining the crystal in the six principal directions
     for i in range(6):
-        # Creating 6 expanded strucutures, each in one of the 6 lattice directions
-        dcrystal_matrix = np.zeros((3, 3))
-        dcrystal_matrix[matrix_order[i, 0], matrix_order[i, 1]] = dcrystal_matrix_hold[matrix_order[i, 0],
-                                                                                       matrix_order[i, 1]]
+        # Making expanded structures in th direction of the six principal strains
+        applied_strain = np.zeros(6)
+        applied_strain[i] = strain
+        Ex.Expand_Structure(Coordinate_file, Program, 'strain', molecules_in_coord, 'temp_' + str(i), min_RMS_gradient,
+                            strain=applied_strain, Parameter_file=keyword_parameters['Parameter_file'])
 
-        Ex.Expand_Structure(Coordinate_file, Program, 'crystal_matrix', molecules_in_coord, 'temp_' + str(i), min_RMS_gradient,
-                            dcrystal_matrix=dcrystal_matrix, Parameter_file=keyword_parameters['Parameter_file'])
-        
+    # Setting an array of the names of expanded strucutres
+    expanded_coordinates = ['temp_0.xyz', 'temp_1.xyz', 'temp_2.xyz', 'temp_3.xyz', 'temp_4.xyz', 'temp_5.xyz']
+
     if Program == 'Tinker':
-        Wavenumber_Reference = Tinker_Wavenumber(Coordinate_file, keyword_parameters['Parameter_file'])
-        expanded_coordinates = ['temp_0.xyz','temp_1.xyz','temp_2.xyz','temp_3.xyz','temp_4.xyz','temp_5.xyz']
-        lattice_parameters = Pr.Tinker_Lattice_Parameters(Coordinate_file)
-        Crystal_matrix_Reference = Ex.Lattice_parameters_to_Crystal_matrix(lattice_parameters) 
-        Organized_wavenumbers = Tinker_Gru_organized_wavenumbers('Anisotropic', Coordinate_file, expanded_coordinates, keyword_parameters['Parameter_file'])
+        # Organizing the Tinker wavenumbers
+        Organized_wavenumbers = Tinker_Gru_organized_wavenumbers('Anisotropic', Coordinate_file, expanded_coordinates,
+                                                                 keyword_parameters['Parameter_file'])
+
+        # Setting aside the reference wavenumbers
         Wavenumber_Reference = Organized_wavenumbers[0]
-        Gruneisen = np.zeros((len(Wavenumber_Reference), 3, 3))
-        Wavenumber_expand = Organized_wavenumbers[1:]
+
+        # Setting a blank matrix to save the Gruneisen parameters in
+        Gruneisen = np.zeros((len(Wavenumber_Reference), 6))
+
         for i in range(6):
-            lattice_parameters_expand = Pr.Tinker_Lattice_Parameters(expanded_coordinates[i])
-            Crystal_matrix_Reference_expand = Ex.Lattice_parameters_to_Crystal_matrix(lattice_parameters_expand)
-            eta = (Crystal_matrix_Reference_expand - Crystal_matrix_Reference)[matrix_order[i, 0], matrix_order[i, 1]] \
-                / Crystal_matrix_Reference[matrix_order[i, 0], matrix_order[i, 1]]
-            Gruneisen[3:, matrix_order[i, 0], matrix_order[i, 1]] = -(np.log(Wavenumber_expand[i, 3:]) -
-                                                                      np.log(Wavenumber_Reference[3:])) / eta
+            # Calculating the Gruneisen parameters
+            Gruneisen[3:, i] = -(np.log(Organized_wavenumbers[i + 1, 3:]) - np.log(Wavenumber_Reference[3:])) / strain
             os.system('rm ' + expanded_coordinates[i])
 
     elif Program == 'Test':
-        expanded_coordinates = ['temp_0.npy','temp_1.npy','temp_2.npy','temp_3.npy','temp_4.npy','temp_5.npy']
         Wavenumber_Reference = Test_Wavenumber(Coordinate_file)
-        Gruneisen = np.zeros((len(Wavenumber_Reference), 3, 3))
-        lattice_parameters = Pr.Test_Lattice_Parameters(Coordinate_file)
-        keyword_parameters['Parameter_file'] = ''
-        Crystal_matrix_Reference = Ex.Lattice_parameters_to_Crystal_matrix(lattice_parameters)
+        Gruneisen = np.zeros((len(Wavenumber_Reference), 6))
         for i in range(6):
             Wavenumber_expand = Test_Wavenumber(expanded_coordinates[i])
-            lattice_parameters_expand = Pr.Test_Lattice_Parameters(expanded_coordinates[i])
-            Crystal_matrix_Reference_expand = Ex.Lattice_parameters_to_Crystal_matrix(lattice_parameters_expand)
-            eta = (Crystal_matrix_Reference_expand - Crystal_matrix_Reference)[matrix_order[i, 0], matrix_order[i, 1]] \
-                / Crystal_matrix_Reference[matrix_order[i, 0], matrix_order[i, 1]]
-            Gruneisen[3:, matrix_order[i, 0], matrix_order[i, 1]] = -(np.log(Wavenumber_expand[3:]) -
-                                                                      np.log(Wavenumber_Reference[3:])) / eta
+            Gruneisen[3:, i] = -(np.log(Wavenumber_expand[3:]) - np.log(Wavenumber_Reference[3:])) / strain
             os.system('rm ' + expanded_coordinates[i])
-    return Gruneisen, Wavenumber_Reference, Crystal_matrix_Reference
+    return Gruneisen, Wavenumber_Reference
 
 
-def Get_Aniso_Gruneisen_Wavenumbers(Gruneisen, Wavenumber_Reference, Crystal_matrix_Reference, New_Crystal_matrix):
-    matrix_order = np.matrix([[0, 0], [1, 1], [2, 2], [0, 1], [0, 2], [1, 2]])
-
+def Get_Aniso_Gruneisen_Wavenumbers(Gruneisen, Wavenumber_Reference, Applied_strain):
+    # Setting a blank array for new wavenumbers
     wavenumbers = np.zeros(len(Wavenumber_Reference))
 
     for i in np.arange(3, len(wavenumbers), 1):
+        # Computing the change to each wavenumber due to the curren strain
         hold = 0
         for j in range(6):
-            hold = hold + -1 * (New_Crystal_matrix[matrix_order[j, 0], matrix_order[j, 1]] -
-                                Crystal_matrix_Reference[matrix_order[j, 0], matrix_order[j, 1]]) / \
-                          Crystal_matrix_Reference[matrix_order[j, 0], matrix_order[j, 1]] * \
-                          Gruneisen[i, matrix_order[j, 0], matrix_order[j, 1]]
+            hold = hold + -1 * Applied_strain[j] * Gruneisen[i, j]
         wavenumbers[i] = Wavenumber_Reference[i] * np.exp(hold)
     return wavenumbers
 
+##########################################
+#     Organizing Wavenumbers for Gru     #
+##########################################
 def Tinker_Gru_organized_wavenumbers(Expansion_type, Coordinate_file, Expanded_Coordinate_file, Parameter_file):
     from munkres import Munkres, print_matrix
     m = Munkres()

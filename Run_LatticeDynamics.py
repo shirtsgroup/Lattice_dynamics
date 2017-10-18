@@ -78,7 +78,8 @@ def Lattice_Dynamics(Temperature=[0.0, 25.0, 50.0, 75.0, 100.0], Pressure=1., Me
                                                        Gradient_MaxTemp, Pressure, LocGrd_LatParam_FracStep,
                                                        Statistical_mechanics, NumAnalysis_step,
                                                        NumAnalysis_method, Aniso_LocGrad_Type, Temperature,
-                                                       min_RMS_gradient, Gruneisen_Lat_FracStep=Gruneisen_Lat_FracStep, Parameter_file=Parameter_file)
+                                                       min_RMS_gradient, Gruneisen_Lat_FracStep=Gruneisen_Lat_FracStep, 
+                                                       Parameter_file=Parameter_file)
         print "   Saving user specified properties in indipendent files:"
         Pr.Save_Properties(properties, properties_to_save, Output, Method, Statistical_mechanics)
         print "Gradient Anisotropic Quasi-Harmonic Approximation is complete!"
@@ -306,12 +307,6 @@ if __name__ == '__main__':
     except subprocess.CalledProcessError as grepexc:
         min_RMS_gradient = 0.01
 
-#    try:
-#        Gruneisen_order = subprocess.check_output("less " + str(args.Input_file) + " | grep Gruneisen_order"
-#                                                                                   " | grep = ", shell=True)
-#        Gruneisen_order = Gruneisen_order.split('=')[1].strip()
-#    except subprocess.CalledProcessError as grepexc:
-#        Gruneisen_order = 'First'
     Lattice_Dynamics(Temperature=Temperature,
                      Pressure=Pressure,
                      Method=Method,
@@ -335,4 +330,3 @@ if __name__ == '__main__':
                      Gradient_MaxTemp=Gradient_MaxTemp,
                      Aniso_LocGrad_Type=Aniso_LocGrad_Type,
                      min_RMS_gradient=min_RMS_gradient)
-#                     Gruneisen_order=args.Gruneisen_order)

@@ -58,10 +58,9 @@ def Call_Expansion(Method, Purpose, Program, Coordinate_file, molecules_in_coord
                              Parameter_file=keyword_parameters['Parameter_file'],
                              dlattice_parameters=dlattice_parameters)
         elif (Method == 'GaQ') or (Method == 'GaQg'):
-            Expand_Structure(Coordinate_file, Program, 'crystal_matrix', molecules_in_coord,
-                             keyword_parameters['Output'], min_RMS_gradient,
-                             Parameter_file=keyword_parameters['Parameter_file'],
-                             dcrystal_matrix=keyword_parameters['dcrystal_matrix'])
+            Expand_Structure(Coordinate_file, Program, 'strain', molecules_in_coord, keyword_parameters['Output'],
+                             min_RMS_gradient, Parameter_file=keyword_parameters['Parameter_file'],
+                             strain=keyword_parameters['strain'])
 
     # Fining the local gradient of expansion for inputted strucutre
     elif Purpose == 'local_gradient':
@@ -84,30 +83,19 @@ def Call_Expansion(Method, Purpose, Program, Coordinate_file, molecules_in_coord
                                          Wavenumber_Reference=keyword_parameters['Wavenumber_Reference'],
                                          Volume_Reference=keyword_parameters['Volume_Reference'])
             return isotropic_local_gradient, wavenumbers, volume
-        elif Method == 'GaQ':
-            anisotropic_local_gradient, wavenumbers = \
+
+        elif (Method == 'GaQ') or (Method == 'GaQg'):
+            strain_local_gradient, wavenumbers = \
                 Anisotropic_Local_Gradient(Coordinate_file, Program, keyword_parameters['Temperature'],
                                            keyword_parameters['Pressure'],
-                                           keyword_parameters['matrix_parameters_fraction_change'],
-                                           molecules_in_coord,
-                                           keyword_parameters['Statistical_mechanics'], Method,
-                                           keyword_parameters['Aniso_LocGrad_Type'], min_RMS_gradient,
-                                           Parameter_file=keyword_parameters['Parameter_file'])
-            return anisotropic_local_gradient, wavenumbers
-        elif Method == 'GaQg':
-            anisotropic_local_gradient, wavenumbers = \
-                Anisotropic_Local_Gradient(Coordinate_file, Program, keyword_parameters['Temperature'],
-                                           keyword_parameters['Pressure'],
-                                           keyword_parameters['matrix_parameters_fraction_change'],
-                                           molecules_in_coord,
+                                           keyword_parameters['matrix_parameters_fraction_change'], molecules_in_coord,
                                            keyword_parameters['Statistical_mechanics'], Method,
                                            keyword_parameters['Aniso_LocGrad_Type'], min_RMS_gradient,
                                            Parameter_file=keyword_parameters['Parameter_file'],
                                            Gruneisen=keyword_parameters['Gruneisen'],
                                            Wavenumber_Reference=keyword_parameters['Wavenumber_Reference'],
-                                           Crystal_matrix_Reference=keyword_parameters['Crystal_matrix_Reference'])
-            return anisotropic_local_gradient, wavenumbers
-
+                                           Applied_strain=keyword_parameters['Applied_strain'])
+            return strain_local_gradient, wavenumbers
 
 ##########################################
 #       TINKER MOLECULAR MODELING        #
@@ -141,6 +129,7 @@ def Output_Tinker_New_Coordinate_File(Coordinate_file, Parameter_file, coordinat
     """   
     Ouput_Tinker_Coordinate_File(Coordinate_file, Parameter_file, coordinates, lattice_parameters, Output)
     Tinker_minimization(Parameter_file, Output + '.xyz', Output, min_RMS_gradient)
+
 
 def Ouput_Tinker_Coordinate_File(Coordinate_file, Parameter_file, coordinates, lattice_parameters, Output):
     """
@@ -276,6 +265,31 @@ def Crystal_matrix_to_Lattice_parameters(crystal_matrix):
     return lattice_parameters
 
 
+def Crystal_matrix_to_Lattice_parameters_strain(crystal_matrix):
+    """
+    This function takes any strained crystal lattice matrix and return the lattice parameters
+    
+    **Required Inputs
+    crystal_matrix = crystal lattice matrix ([[Vxx,Vxy,Vxz],
+                                              [Vyx,Vyy,Vyz],
+                                              [Vzx,Vzy,Vzz]])
+    """
+    # Computing lattice parameters
+    a = np.linalg.norm(crystal_matrix[:,0])
+    b = np.linalg.norm(crystal_matrix[:,1])
+    c = np.linalg.norm(crystal_matrix[:,2])
+
+    gamma = np.arccos(np.dot(np.squeeze(np.asarray(crystal_matrix[:, 0])), np.squeeze(np.asarray(crystal_matrix[:, 1])))
+                      / (a * b)) * 180. / np.pi
+    alpha = np.arccos(np.dot(np.squeeze(np.asarray(crystal_matrix[:, 1])), np.squeeze(np.asarray(crystal_matrix[:,2])))
+                      / (b * c)) * 180. / np.pi
+    beta = np.arccos(np.dot(np.squeeze(np.asarray(crystal_matrix[:, 2])), np.squeeze(np.asarray(crystal_matrix[:, 0])))
+                     / (c * a)) * 180. / np.pi
+
+    # Creating an array of lattice parameters
+    lattice_parameters = np.array([a, b, c, alpha, beta, gamma])
+    return lattice_parameters
+
 def Isotropic_Change_Lattice_Parameters(volume_fraction_change, Program, Coordinate_file):
     """
     This function returns the change in lattice parameters for isotropic expansion/compression based off of a given 
@@ -328,15 +342,30 @@ def Change_Crystal_Matrix(matrix_parameters_fraction_change, Program, Coordinate
     # This is for cases where the angles are ~90 degrees, it lets us fully test the gradient due to temperature.
     for i in range(3):
         for j in np.arange(i+1, 3):
-            if dcrystal_matrix[i, j] < matrix_parameters_fraction_change:
-                dcrystal_matrix[i, j] = matrix_parameters_fraction_change
+            if dcrystal_matrix[i, j] < matrix_parameters_fraction_change*5:
+                dcrystal_matrix[i, j] = matrix_parameters_fraction_change*100
     return dcrystal_matrix
     
+def strain_matrix(strain):
+    strain_mat = np.zeros((3, 3))
+    # Principal strains
+    strain_mat[0, 0] = strain[0]
+    strain_mat[1, 1] = strain[1]
+    strain_mat[2, 2] = strain[2]
+    # Shear strains must conserve angular momentum
+    strain_mat[0, 1] = strain[3]
+    strain_mat[1, 0] = strain[3]
+    strain_mat[0, 2] = strain[4]
+    strain_mat[2, 0] = strain[4]
+    strain_mat[1, 2] = strain[5]
+    strain_mat[2, 1] = strain[5]
+    return strain_mat
 
 ##########################################
 #            General Expansion           #
 ##########################################
-def Expand_Structure(Coordinate_file, Program, Expansion_type, molecules_in_coord, Output, min_RMS_gradient, **keyword_parameters):
+def Expand_Structure(Coordinate_file, Program, Expansion_type, molecules_in_coord, Output, min_RMS_gradient,
+                     **keyword_parameters):
     """
     This function expands a coordinate file either based off of an inputted change in lattice vectors or crystal 
         lattice matrix
@@ -363,6 +392,10 @@ def Expand_Structure(Coordinate_file, Program, Expansion_type, molecules_in_coor
             crystal_matrix = Lattice_parameters_to_Crystal_matrix(lattice_parameters)
             crystal_matrix = crystal_matrix + keyword_parameters['dcrystal_matrix']
             lattice_parameters = Crystal_matrix_to_Lattice_parameters(crystal_matrix)
+        elif Expansion_type == 'strain':
+            crystal_matrix = Lattice_parameters_to_Crystal_matrix(lattice_parameters)
+            crystal_matrix = crystal_matrix*(np.identity(3) + strain_matrix(keyword_parameters['strain']))
+            lattice_parameters = Crystal_matrix_to_Lattice_parameters_strain(crystal_matrix)
         Output_Test_New_Coordinate_File(lattice_parameters, Output)
 
     else:
@@ -372,28 +405,31 @@ def Expand_Structure(Coordinate_file, Program, Expansion_type, molecules_in_coor
 
         crystal_matrix = Lattice_parameters_to_Crystal_matrix(lattice_parameters)
 
-        Coordinate_center_of_mass = np.zeros((molecules_in_coord, 3))
+        coordinate_center_of_mass = np.zeros((molecules_in_coord, 3))
         atoms_per_molecule = len(coordinates[:, 0])/molecules_in_coord
 
         for i in range(int(molecules_in_coord)):
-            Coordinate_center_of_mass[i, :] = np.mean(coordinates[i*atoms_per_molecule:(i+1)*atoms_per_molecule],
+            coordinate_center_of_mass[i, :] = np.mean(coordinates[i*atoms_per_molecule:(i+1)*atoms_per_molecule],
                                                       axis=0)
             coordinates[i*atoms_per_molecule:(i+1)*atoms_per_molecule] = \
-                np.subtract(coordinates[i*atoms_per_molecule:(i+1)*atoms_per_molecule], Coordinate_center_of_mass[i, :])
+                np.subtract(coordinates[i*atoms_per_molecule:(i+1)*atoms_per_molecule], coordinate_center_of_mass[i, :])
 
         # Center of mass coordinates converted to fractional coordinates
-        Coordinate_center_of_mass = np.dot(np.linalg.inv(crystal_matrix), Coordinate_center_of_mass.T).T
+        coordinate_center_of_mass = np.dot(np.linalg.inv(crystal_matrix), coordinate_center_of_mass.T).T
         if Expansion_type == 'lattice_parameters':
             lattice_parameters = lattice_parameters + keyword_parameters['dlattice_parameters']
             crystal_matrix = Lattice_parameters_to_Crystal_matrix(lattice_parameters)
         elif Expansion_type == 'crystal_matrix':
             crystal_matrix = crystal_matrix + keyword_parameters['dcrystal_matrix']
             lattice_parameters = Crystal_matrix_to_Lattice_parameters(crystal_matrix)
-        Coordinate_center_of_mass = np.dot(crystal_matrix, Coordinate_center_of_mass.T).T
+        elif Expansion_type == 'strain':
+            crystal_matrix = crystal_matrix*(np.identity(3) + strain_matrix(keyword_parameters['strain']))
+            lattice_parameters = Crystal_matrix_to_Lattice_parameters_strain(crystal_matrix)
+        coordinate_center_of_mass = np.dot(crystal_matrix, coordinate_center_of_mass.T).T
         for i in range(int(molecules_in_coord)):
             coordinates[i*atoms_per_molecule:(i+1)*atoms_per_molecule] = \
                 np.subtract(coordinates[i*atoms_per_molecule:(i+1)*atoms_per_molecule],
-                            -1*Coordinate_center_of_mass[i, :])
+                            -1*coordinate_center_of_mass[i, :])
 
         if Program == 'Tinker':
             Output_Tinker_New_Coordinate_File(Coordinate_file, keyword_parameters['Parameter_file'], coordinates,
@@ -476,11 +512,11 @@ def Isotropic_Local_Gradient(Coordinate_file, Program, Temperature, Pressure, Lo
         Temperature = 0.1
 
     # Checking if wavenumbers are largely negative
-    if any(wavenumbers < -1.) or any(wavenumbers_plus < -1.) or any (wavenumbers_minus < -1.):
-        print "   ... Check wavenumbers:"
-        print "   ...... Wavenumbers:" + str(wavenumbers[:3])
-        print "   ...... Expanded:" + str(wavenumbers_plus[:3])
-        print "   ...... Compressed:" + str(wavenumbers_minus[:3])
+#    if any(wavenumbers < -1.) or any(wavenumbers_plus < -1.) or any (wavenumbers_minus < -1.):
+#        print "   ... Check wavenumbers:"
+#        print "   ...... Wavenumbers:" + str(wavenumbers[:3])
+#        print "   ...... Expanded:" + str(wavenumbers_plus[:3])
+#        print "   ...... Compressed:" + str(wavenumbers_minus[:3])
 
     # Calculating the numerator of the local gradient -dS/dV
     numerator = -(Pr.Vibrational_Entropy(Temperature, wavenumbers_plus, Statistical_mechanics)/molecules_in_coord -
@@ -504,13 +540,11 @@ def Isotropic_Local_Gradient(Coordinate_file, Program, Temperature, Pressure, Lo
     return -numerator/denominator, wavenumbers, volume
 
 
-
-def Anisotropic_Local_Gradient(Coordinate_file, Program, Temperature, Pressure, LocGrd_LatParam_FracStep,
-                               molecules_in_coord, Statistical_mechanics, Method,
-                               Hessian_number, min_RMS_gradient, **keyword_parameters):
+def Anisotropic_Local_Gradient(Coordinate_file, Program, Temperature, Pressure, LocGrd_strain, molecules_in_coord,
+                               Statistical_mechanics, Method, Hessian_number, min_RMS_gradient, **keyword_parameters):
     """
     This function calculates the local gradient of anisotropic expansion for a given coordinate file
-    
+
     :param Coordinate_file: file containing lattice parameters (and coordinates)
     :param Program: 'Tinker' Tinker molecular modeling
                     'Test' Test case
@@ -542,11 +576,12 @@ def Anisotropic_Local_Gradient(Coordinate_file, Program, Temperature, Pressure, 
         file_ending = '.npy'
         keyword_parameters['Parameter_file'] = ''
 
-    # Preparing the matrix with each entry as d**2G/(du*du')
-    dG_U = np.zeros((6, 6))
-    # Preparing the vector with each entry as d*G/du*dT
-    dS_dU = np.zeros(6)
-   
+    # Preparing the matrix with each entry as d**2G/(deta*deta)
+    dG_ddeta = np.zeros((6, 6))
+
+    # Preparing the vector with each entry as d*S/deta
+    dS_deta = np.zeros(6)
+
     # Modified anisotropic Local Gradient
     if Hessian_number == 73:
         diag_limit = 6
@@ -564,12 +599,6 @@ def Anisotropic_Local_Gradient(Coordinate_file, Program, Temperature, Pressure, 
         diag_limit = 3
         off_diag_limit = 0
 
-    # Determining the changes in crystal lattice parameters
-    dcrystal_matrix_hold = Change_Crystal_Matrix(LocGrd_LatParam_FracStep, Program, Coordinate_file)
-
-    # Setting the order of lattice parameter to perform (diagonals first followed by off diagonals)
-    matrix_order = np.matrix([[0, 0], [1, 1], [2, 2], [0, 1], [0, 2], [1, 2]])
-
     # Retrieving the wavenumbers and crystal matrix of the initial structure
     if Method == 'GaQ':
         if Program == 'Tinker':
@@ -577,171 +606,148 @@ def Anisotropic_Local_Gradient(Coordinate_file, Program, Temperature, Pressure, 
         elif Program == 'Test':
             wavenumbers = Wvn.Test_Wavenumber(Coordinate_file)
     elif Method == 'GaQg':
-        if Program == 'Tinker':
-            crystal_matrix = Lattice_parameters_to_Crystal_matrix(Pr.Tinker_Lattice_Parameters(Coordinate_file))
-        elif Program == 'Test':
-            crystal_matrix = Lattice_parameters_to_Crystal_matrix(Pr.Test_Lattice_Parameters(Coordinate_file))
         wavenumbers = Wvn.Call_Wavenumbers(Method, min_RMS_gradient, Gruneisen=keyword_parameters['Gruneisen'],
                                            Wavenumber_Reference=keyword_parameters['Wavenumber_Reference'],
-                                           Crystal_matrix_Reference=keyword_parameters['Crystal_matrix_Reference'],
-                                           New_Crystal_matrix=crystal_matrix)
+                                           Applied_strain=keyword_parameters['Applied_strain'])
 
-    # If temperature is zero, we assume that the local gradient is the same at 0.1K
     if Temperature == 0.:
+        # If temperature is zero, we assume that the local gradient is the same at 0.1K
         Temperature = 0.1
 
-    # Calculating the diagonals of dG_U and the vector dS_dU
     for i in range(diag_limit):
-        dcrystal_matrix = np.zeros((3, 3))
-        lattice_stepsize = dcrystal_matrix_hold[matrix_order[i, 0], matrix_order[i, 1]]
-        # Building the change in the crystal matrix for the lattice parameter at hand
-        dcrystal_matrix[matrix_order[i, 0], matrix_order[i, 1]] = lattice_stepsize
+        # Calculating the diagonals of ddG_ddeta and the vector dS_deta
 
-        # Finding the structures by increasing and decreasing the lattice parameter
-        Expand_Structure(Coordinate_file, Program, 'crystal_matrix', molecules_in_coord, 'p', min_RMS_gradient,
-                         dcrystal_matrix=dcrystal_matrix, Parameter_file=keyword_parameters['Parameter_file'])
-        Expand_Structure(Coordinate_file, Program, 'crystal_matrix', molecules_in_coord, 'm', min_RMS_gradient,
-                         dcrystal_matrix=-1*dcrystal_matrix, Parameter_file=keyword_parameters['Parameter_file'])
+        # Setting the additional strain to the input strucutre for the current diagonal element
+        strain_array = np.zeros(6)
+        strain_array[i] = LocGrd_strain
 
-        # Calculating the wavenumbers for the additional strucutre
+        # Straining the input structure by the current diagonal
+        Expand_Structure(Coordinate_file, Program, 'strain', molecules_in_coord, 'p', min_RMS_gradient,
+                         strain=strain_array, Parameter_file=keyword_parameters['Parameter_file'])
+        Expand_Structure(Coordinate_file, Program, 'strain', molecules_in_coord, 'm', min_RMS_gradient,
+                         strain=-1 * strain_array, Parameter_file=keyword_parameters['Parameter_file'])
+
         if Method == 'GaQ':
-            wavenumbers_plus = Wvn.Call_Wavenumbers(Method, min_RMS_gradient, Coordinate_file='p'+file_ending, Program=Program,
+            # Computing the wavenumbers for the strained strucutres with the mass-weighted Hessian
+            wavenumbers_plus = Wvn.Call_Wavenumbers(Method, min_RMS_gradient, Coordinate_file='p' + file_ending,
+                                                    Program=Program,
                                                     Parameter_file=keyword_parameters['Parameter_file'])
-            wavenumbers_minus = Wvn.Call_Wavenumbers(Method, min_RMS_gradient, Coordinate_file='m'+file_ending, Program=Program,
+            wavenumbers_minus = Wvn.Call_Wavenumbers(Method, min_RMS_gradient, Coordinate_file='m' + file_ending,
+                                                     Program=Program,
                                                      Parameter_file=keyword_parameters['Parameter_file'])
         elif Method == 'GaQg':
+            # Computing the wavenumbers for the strained strucutres with the Gruneisen parameter
             wavenumbers_plus = Wvn.Call_Wavenumbers(Method, min_RMS_gradient, Gruneisen=keyword_parameters['Gruneisen'],
                                                     Wavenumber_Reference=keyword_parameters['Wavenumber_Reference'],
-                                                    Crystal_matrix_Reference=
-                                                    keyword_parameters['Crystal_matrix_Reference'],
-                                                    New_Crystal_matrix=crystal_matrix + dcrystal_matrix)
-            wavenumbers_minus = Wvn.Call_Wavenumbers(Method, min_RMS_gradient, Gruneisen=keyword_parameters['Gruneisen'],
+                                                    Applied_strain=keyword_parameters['Applied_strain'] + strain_array)
+            wavenumbers_minus = Wvn.Call_Wavenumbers(Method, min_RMS_gradient,
+                                                     Gruneisen=keyword_parameters['Gruneisen'],
                                                      Wavenumber_Reference=keyword_parameters['Wavenumber_Reference'],
-                                                     Crystal_matrix_Reference=
-                                                     keyword_parameters['Crystal_matrix_Reference'],
-                                                     New_Crystal_matrix=crystal_matrix - dcrystal_matrix)
+                                                     Applied_strain=keyword_parameters['Applied_strain'] - strain_array)
 
-        dS_dU[i] = (Pr.Vibrational_Entropy(Temperature, wavenumbers_plus, Statistical_mechanics) / molecules_in_coord -
-                     Pr.Vibrational_Entropy(Temperature, wavenumbers_minus, Statistical_mechanics) /
-                     molecules_in_coord) / (2 * lattice_stepsize)
+        # Computing the derivative of entropy as a funciton of strain using a finite difference approach
+        dS_deta[i] = (Pr.Vibrational_Entropy(Temperature, wavenumbers_plus, Statistical_mechanics) / molecules_in_coord -
+                      Pr.Vibrational_Entropy(Temperature, wavenumbers_minus, Statistical_mechanics) /
+                      molecules_in_coord) / (2 * LocGrd_strain)
 
-#        if np.absolute(dS_dU[i]) < 9.e-06:
-#            dS_dU[i] = 0.
+        # Computing the second derivative Gibbs free energy as a funciton of strain using a finite difference approach
+        dG_ddeta[i, i] = (Pr.Gibbs_Free_Energy(Temperature, Pressure, Program, wavenumbers_plus, 'p' + file_ending,
+                                               Statistical_mechanics, molecules_in_coord,
+                                               Parameter_file=keyword_parameters['Parameter_file']) -
+                          2 * Pr.Gibbs_Free_Energy(Temperature, Pressure, Program, wavenumbers, Coordinate_file,
+                                                   Statistical_mechanics, molecules_in_coord,
+                                                   Parameter_file=keyword_parameters['Parameter_file']) +
+                          Pr.Gibbs_Free_Energy(Temperature, Pressure, Program, wavenumbers_minus, 'm' + file_ending,
+                                               Statistical_mechanics, molecules_in_coord,
+                                               Parameter_file=keyword_parameters['Parameter_file'])) / \
+                         (LocGrd_strain ** 2)
 
-#        dG = (Pr.Gibbs_Free_Energy(Temperature, Pressure, Program, wavenumbers_plus, 'p'+file_ending,
-#                                           Statistical_mechanics, molecules_in_coord,
-#                                           Parameter_file=keyword_parameters['Parameter_file']) -
-#                      Pr.Gibbs_Free_Energy(Temperature, Pressure, Program, wavenumbers_minus, 'm'+file_ending,
-#                                           Statistical_mechanics, molecules_in_coord,
-#                                           Parameter_file=keyword_parameters['Parameter_file']))/(2*lattice_stepsize)
-
-#        if np.absolute(dG) > 9.e-06:
-        dG_U[i, i] = (Pr.Gibbs_Free_Energy(Temperature, Pressure, Program, wavenumbers_plus, 'p'+file_ending,
-                                           Statistical_mechanics, molecules_in_coord,
-                                           Parameter_file=keyword_parameters['Parameter_file']) -
-                      2*Pr.Gibbs_Free_Energy(Temperature, Pressure, Program, wavenumbers, Coordinate_file,
-                                             Statistical_mechanics, molecules_in_coord,
-                                             Parameter_file=keyword_parameters['Parameter_file']) +
-                      Pr.Gibbs_Free_Energy(Temperature, Pressure, Program, wavenumbers_minus, 'm'+file_ending,
-                                           Statistical_mechanics, molecules_in_coord,
-                                           Parameter_file=keyword_parameters['Parameter_file']))/(lattice_stepsize**2)
-
-        # Calculating the off-diagonals
         if i < off_diag_limit:
+            # Computing the off diagonals of d**2 G/ (deta*deta)
             for j in np.arange(i + 1, off_diag_limit):
-                dcrystal_matrix_2 = np.zeros((3, 3))
-                lattice_stepsize_2 = dcrystal_matrix_hold[matrix_order[j, 0], matrix_order[j, 1]]
-                dcrystal_matrix_2[matrix_order[j, 0], matrix_order[j, 1]] = lattice_stepsize_2
+                # Setting the strain of the second element for the off diagonal
+                strain_array_2 = np.zeros(6)
+                strain_array_2[j] = LocGrd_strain
 
-                # Expanding the structures along a different crystal matrix parameter
-                Expand_Structure('p'+file_ending, Program, 'crystal_matrix', molecules_in_coord, 'pp', min_RMS_gradient,
-                                 dcrystal_matrix=dcrystal_matrix_2, Parameter_file=keyword_parameters['Parameter_file'])
-                Expand_Structure('p'+file_ending, Program, 'crystal_matrix', molecules_in_coord, 'pm', min_RMS_gradient,
-                                 dcrystal_matrix=-1*dcrystal_matrix_2,
-                                 Parameter_file=keyword_parameters['Parameter_file'])
-                Expand_Structure('m'+file_ending, Program, 'crystal_matrix', molecules_in_coord, 'mm', min_RMS_gradient,
-                                 dcrystal_matrix=-1*dcrystal_matrix_2,
-                                 Parameter_file=keyword_parameters['Parameter_file'])
-                Expand_Structure('m'+file_ending, Program, 'crystal_matrix', molecules_in_coord, 'mp', min_RMS_gradient,
-                                 dcrystal_matrix=dcrystal_matrix_2, Parameter_file=keyword_parameters['Parameter_file'])
+                # Expanding the strucutres for a varying number of strains
+                Expand_Structure('p' + file_ending, Program, 'strain', molecules_in_coord, 'pp', min_RMS_gradient,
+                                 strain=strain_array_2, Parameter_file=keyword_parameters['Parameter_file'])
+                Expand_Structure('p' + file_ending, Program, 'strain', molecules_in_coord, 'pm', min_RMS_gradient,
+                                 strain=-1. * strain_array_2, Parameter_file=keyword_parameters['Parameter_file'])
+                Expand_Structure('m' + file_ending, Program, 'strain', molecules_in_coord, 'mm', min_RMS_gradient,
+                                 strain=-1. * strain_array_2, Parameter_file=keyword_parameters['Parameter_file'])
+                Expand_Structure('m' + file_ending, Program, 'strain', molecules_in_coord, 'mp', min_RMS_gradient,
+                                 strain=strain_array_2, Parameter_file=keyword_parameters['Parameter_file'])
 
-                # Calculating the wavenumbers of the new strucuture
                 if Method == 'GaQ':
-                    wavenumbers_plus_plus = Wvn.Call_Wavenumbers(Method, min_RMS_gradient, Coordinate_file='pp' + file_ending, 
-                                                                 Program=Program, 
+                    # Computing the wavenumbers for the strained strucutres with the mass-weighted Hessian
+                    wavenumbers_plus_plus = Wvn.Call_Wavenumbers(Method, min_RMS_gradient,
+                                                                 Coordinate_file='pp' + file_ending, Program=Program,
                                                                  Parameter_file=keyword_parameters['Parameter_file'])
-                    wavenumbers_plus_minus = Wvn.Call_Wavenumbers(Method, min_RMS_gradient, Coordinate_file='pm' + file_ending,
-                                                                  Program=Program,
+                    wavenumbers_plus_minus = Wvn.Call_Wavenumbers(Method, min_RMS_gradient,
+                                                                  Coordinate_file='pm' + file_ending, Program=Program,
                                                                   Parameter_file=keyword_parameters['Parameter_file'])
-                    wavenumbers_minus_minus = Wvn.Call_Wavenumbers(Method, min_RMS_gradient, Coordinate_file='mm' + file_ending,
-                                                                   Program=Program,
+                    wavenumbers_minus_minus = Wvn.Call_Wavenumbers(Method, min_RMS_gradient,
+                                                                   Coordinate_file='mm' + file_ending, Program=Program,
                                                                    Parameter_file=keyword_parameters['Parameter_file'])
-                    wavenumbers_minus_plus = Wvn.Call_Wavenumbers(Method, min_RMS_gradient, Coordinate_file='mp' + file_ending,
-                                                                  Program=Program,
+                    wavenumbers_minus_plus = Wvn.Call_Wavenumbers(Method, min_RMS_gradient,
+                                                                  Coordinate_file='mp' + file_ending, Program=Program,
                                                                   Parameter_file=keyword_parameters['Parameter_file'])
                 elif Method == 'GaQg':
-                    wavenumbers_plus_plus = Wvn.Call_Wavenumbers(Method, min_RMS_gradient, Gruneisen=keyword_parameters['Gruneisen'],
+                    # Computing the wavenumbers for the strained strucutres with the Gruneisen parameter
+                    wavenumbers_plus_plus = Wvn.Call_Wavenumbers(Method, min_RMS_gradient,
+                                                                 Gruneisen=keyword_parameters['Gruneisen'],
                                                                  Wavenumber_Reference=
                                                                  keyword_parameters['Wavenumber_Reference'],
-                                                                 Crystal_matrix_Reference=
-                                                                 keyword_parameters['Crystal_matrix_Reference'],
-                                                                 New_Crystal_matrix=
-                                                                 crystal_matrix + dcrystal_matrix + dcrystal_matrix_2)
-                    wavenumbers_plus_minus = Wvn.Call_Wavenumbers(Method, min_RMS_gradient, Gruneisen=keyword_parameters['Gruneisen'],
+                                                                 Applied_strain=keyword_parameters['Applied_strain'] +
+                                                                                strain_array + strain_array_2)
+                    wavenumbers_plus_minus = Wvn.Call_Wavenumbers(Method, min_RMS_gradient,
+                                                                  Gruneisen=keyword_parameters['Gruneisen'],
                                                                   Wavenumber_Reference=
                                                                   keyword_parameters['Wavenumber_Reference'],
-                                                                  Crystal_matrix_Reference=
-                                                                  keyword_parameters['Crystal_matrix_Reference'],
-                                                                  New_Crystal_matrix=
-                                                                  crystal_matrix + dcrystal_matrix - dcrystal_matrix_2)
-                    wavenumbers_minus_minus = Wvn.Call_Wavenumbers(Method, min_RMS_gradient, Gruneisen=keyword_parameters['Gruneisen'],
+                                                                  Applied_strain=keyword_parameters['Applied_strain'] +
+                                                                                 strain_array - strain_array_2)
+                    wavenumbers_minus_minus = Wvn.Call_Wavenumbers(Method, min_RMS_gradient,
+                                                                   Gruneisen=keyword_parameters['Gruneisen'],
                                                                    Wavenumber_Reference=
                                                                    keyword_parameters['Wavenumber_Reference'],
-                                                                   Crystal_matrix_Reference=
-                                                                   keyword_parameters['Crystal_matrix_Reference'],
-                                                                   New_Crystal_matrix=
-                                                                   crystal_matrix - dcrystal_matrix - dcrystal_matrix_2)
-                    wavenumbers_minus_plus = Wvn.Call_Wavenumbers(Method, min_RMS_gradient, Gruneisen=keyword_parameters['Gruneisen'],
+                                                                   Applied_strain=keyword_parameters['Applied_strain'] -
+                                                                                  strain_array - strain_array_2)
+                    wavenumbers_minus_plus = Wvn.Call_Wavenumbers(Method, min_RMS_gradient,
+                                                                  Gruneisen=keyword_parameters['Gruneisen'],
                                                                   Wavenumber_Reference=
                                                                   keyword_parameters['Wavenumber_Reference'],
-                                                                  Crystal_matrix_Reference=
-                                                                  keyword_parameters['Crystal_matrix_Reference'],
-                                                                  New_Crystal_matrix=
-                                                                  crystal_matrix - dcrystal_matrix + dcrystal_matrix_2)
+                                                                  Applied_strain=keyword_parameters['Applied_strain'] -
+                                                                                 strain_array + strain_array_2)
 
-                # Calculating the diagonal elements of dG_U
-                dG_U[i, j] = (Pr.Gibbs_Free_Energy(Temperature, Pressure, Program, wavenumbers_plus_plus,
-                                                   'pp'+file_ending, Statistical_mechanics, molecules_in_coord,
-                                                   Parameter_file=keyword_parameters['Parameter_file']) -
-                              Pr.Gibbs_Free_Energy(Temperature, Pressure, Program, wavenumbers_plus_minus, 'pm' +
-                                                   file_ending, Statistical_mechanics, molecules_in_coord,
-                                                   Parameter_file=keyword_parameters['Parameter_file']) -
-                              Pr.Gibbs_Free_Energy(Temperature, Pressure, Program, wavenumbers_minus_plus, 'mp' +
-                                                   file_ending, Statistical_mechanics, molecules_in_coord,
-                                                   Parameter_file=keyword_parameters['Parameter_file']) +
-                              Pr.Gibbs_Free_Energy(Temperature, Pressure, Program, wavenumbers_minus_minus, 'mm' +
-                                                   file_ending, Statistical_mechanics, molecules_in_coord,
-                                                   Parameter_file=keyword_parameters['Parameter_file']
-                                                   ))/(4*lattice_stepsize*lattice_stepsize_2)
-#                if dG_U[i, j] < 9.e-06:
-#                    dG_U[i, j] = 0.
+                # Calculating the diagonal elements of d**2 G/(deta*deta)
+                dG_ddeta[i, j] = (Pr.Gibbs_Free_Energy(Temperature, Pressure, Program, wavenumbers_plus_plus,
+                                                       'pp' + file_ending, Statistical_mechanics, molecules_in_coord,
+                                                       Parameter_file=keyword_parameters['Parameter_file']) -
+                                  Pr.Gibbs_Free_Energy(Temperature, Pressure, Program, wavenumbers_plus_minus, 'pm' +
+                                                       file_ending, Statistical_mechanics, molecules_in_coord,
+                                                       Parameter_file=keyword_parameters['Parameter_file']) -
+                                  Pr.Gibbs_Free_Energy(Temperature, Pressure, Program, wavenumbers_minus_plus, 'mp' +
+                                                       file_ending, Statistical_mechanics, molecules_in_coord,
+                                                       Parameter_file=keyword_parameters['Parameter_file']) +
+                                  Pr.Gibbs_Free_Energy(Temperature, Pressure, Program, wavenumbers_minus_minus, 'mm' +
+                                                       file_ending, Statistical_mechanics, molecules_in_coord,
+                                                       Parameter_file=keyword_parameters['Parameter_file']
+                                                       )) / (4 * LocGrd_strain * LocGrd_strain)
 
-                dG_U[j, i] = dG_U[i, j]
+                # Making d**2 G/(deta*deta) symetric
+                dG_ddeta[j, i] = dG_ddeta[i, j]
+
                 # Removing excess files
                 os.system('rm pm' + file_ending + ' mp' + file_ending + ' pp' + file_ending + ' mm' + file_ending)
+
         # Removing excess files
         os.system('rm p' + file_ending + ' m' + file_ending)
 
-    # Putting together the total matrix for the changes in lattice parameters with temperatures
-#    dCrystal_Matrix = np.linalg.solve(dG_U, dS_dU)
-    dCrystal_Matrix = np.linalg.lstsq(dG_U, dS_dU)[0]
-    for i in range(len(dCrystal_Matrix)):
-        if np.absolute(dCrystal_Matrix[i]) < 9e-05:
-            dCrystal_Matrix[i] = 0.
+    # Calculating deta/dT for all strains
+    dstrain = np.linalg.lstsq(dG_ddeta, dS_deta)[0]
+#    for i in range(len(dstrain)):
+#        if np.absolute(dstrain[i]) < 9e-05:
+#            dstrain[i] = 0.
+    return dstrain, wavenumbers
 
-    dCrystal_Matrix = np.matrix([[dCrystal_Matrix[0], dCrystal_Matrix[3], dCrystal_Matrix[4]],
-                                 [0., dCrystal_Matrix[1], dCrystal_Matrix[5]], 
-                                 [0., 0., dCrystal_Matrix[2]]])
-
-
-    return dCrystal_Matrix, wavenumbers
