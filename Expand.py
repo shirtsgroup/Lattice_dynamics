@@ -128,6 +128,9 @@ def Output_Tinker_New_Coordinate_File(Coordinate_file, Parameter_file, coordinat
     Output = file name of new .xyz file
     """   
     Ouput_Tinker_Coordinate_File(Coordinate_file, Parameter_file, coordinates, lattice_parameters, Output)
+    
+#    subprocess.call(['minimize', Output + '.xyz', '-k', Parameter_file, str(min_RMS_gradient)], stdout=open(os.devnull, 'wb'))
+#    subprocess.call(['mv', Output + '.xyz_2', Output + '.xyz'])
     Tinker_minimization(Parameter_file, Output + '.xyz', Output, min_RMS_gradient)
 
 
@@ -746,6 +749,7 @@ def Anisotropic_Local_Gradient(Coordinate_file, Program, Temperature, Pressure, 
 
     # Calculating deta/dT for all strains
     dstrain = np.linalg.lstsq(dG_ddeta, dS_deta)[0]
+
 #    for i in range(len(dstrain)):
 #        if np.absolute(dstrain[i]) < 9e-05:
 #            dstrain[i] = 0.

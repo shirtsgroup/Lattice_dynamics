@@ -253,10 +253,14 @@ def Spline_Intermediate_Points(Output, Method, Program, properties, Temperature,
                                                         tangent[i + 1, 1, k + 1], h)
 
                 # Expanding the strucutre, from the structure at the last temperature to the next intermediate step
-                Ex.Call_Expansion(Method, 'expand', Program, 'temp' + file_ending, molecules_in_coord, min_RMS_gradient,
-                                  Parameter_file=keyword_parameters['Parameter_file'],
-                                  volume_fraction_change=new_volume / temp_volume, strain=new_strain - temp_strain,
-                                  Output='temp')
+                if os.path.isfile('Cords/' + Output + '_' + Method + 'T' + str(Temperature[j]) + file_ending):
+                    print "   ...Using previous coordinate file"
+                    subprocess.call(['cp', 'Cords/' + Output + '_' + Method + 'T' + str(Temperature[j]) + file_ending, './temp' + file_ending])
+                else:
+                    Ex.Call_Expansion(Method, 'expand', Program, 'temp' + file_ending, molecules_in_coord, min_RMS_gradient,
+                                      Parameter_file=keyword_parameters['Parameter_file'],
+                                      volume_fraction_change=new_volume / temp_volume, strain=new_strain - temp_strain,
+                                      Output='temp')
 
                 # Coppying new intermediate structure to the Cords directory for storage
                 subprocess.call(['cp', 'temp' + file_ending, 'Cords/' + Output + '_' + Method + 'T' +
@@ -691,6 +695,10 @@ def Ansotropic_Gradient_Expansion(Coordinate_file, Program, molecules_in_coord, 
     for i in range(len(temperature) - 1):
         if (any(wavenumbers[i, 4:] != 0.) or (Method == 'GaQg')) and any(strain_gradient[i, 0, 1:] != 0.):
             print "   Using previous data for the local gradient at: " + str(temperature[i]) + " K"
+            if Method == 'GaQg':
+                wavenumbers[i, 1:] = Wvn.Call_Wavenumbers(Method, min_RMS_gradient, Gruneisen=Gruneisen, 
+                                                          Wavenumber_Reference=Wavenumber_Reference, 
+                                                          Applied_strain=Applied_strain)
             pass
 
         else:
@@ -750,6 +758,9 @@ def Ansotropic_Gradient_Expansion(Coordinate_file, Program, molecules_in_coord, 
             # Completing the run for the final structure
             if (any(wavenumbers[i + 1, 4:] != 0.) or (Method == 'GaQg')) and any(strain_gradient[i + 1, 1, 1:] != 0.):
                 print "   Using previous data for the local gradient at: " + str(temperature[i + 1]) + " K"
+                wavenumbers[i + 1, 1:] = Wvn.Call_Wavenumbers(Method, min_RMS_gradient, Gruneisen=Gruneisen,
+                                                          Wavenumber_Reference=Wavenumber_Reference,
+                                                          Applied_strain=Applied_strain)
                 pass
 
             else:
