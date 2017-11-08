@@ -572,6 +572,7 @@ def Anisotropic_Local_Gradient(Coordinate_file, Program, Temperature, Pressure, 
     Wavenumber_reference: reference wavenumbers for the Gruneisen parameter
     Crystal_matrix_Reference
     """
+
     # Determining the file ending of the coordinate files
     if Program == 'Tinker':
         file_ending = '.xyz'
@@ -748,6 +749,9 @@ def Anisotropic_Local_Gradient(Coordinate_file, Program, Temperature, Pressure, 
         os.system('rm p' + file_ending + ' m' + file_ending)
 
     # Calculating deta/dT for all strains
+    if 'dense_output' in keyword_parameters:
+        np.save('ddG_ddeta' + str(Temperature), dG_ddeta)
+        np.save('dS_deta' + str(Temperature), dS_deta)
     dstrain = np.linalg.lstsq(dG_ddeta, dS_deta)[0]
 
 #    for i in range(len(dstrain)):

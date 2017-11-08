@@ -716,7 +716,8 @@ def Ansotropic_Gradient_Expansion(Coordinate_file, Program, molecules_in_coord, 
                                                  Applied_strain=Applied_strain)
             elif NumAnalysis_method == 'Euler':
                 strain_gradient[i, 0, 1:], wavenumbers[i, 1:] = \
-                        Ex.Call_Expansion(Method, 'local_gradient', Program, Coordinate_file, molecules_in_coord,
+                        Ex.Call_Expansion(Method, 'local_gradient', Program, Output + '_' + Method + 'T' + str(temperature[i]) +
+                                          file_ending, molecules_in_coord,
                                           min_RMS_gradient, Temperature=temperature[i], Pressure=Pressure,
                                           matrix_parameters_fraction_change=LocGrd_LatParam_FracStep,
                                           Statistical_mechanics=Statistical_mechanics,
