@@ -614,6 +614,10 @@ def Anisotropic_Local_Gradient(Coordinate_file, Program, Temperature, Pressure, 
                                            Wavenumber_Reference=keyword_parameters['Wavenumber_Reference'],
                                            Applied_strain=keyword_parameters['Applied_strain'])
 
+    if 'dense_output' in keyword_parameters:
+        # Outputing dG_deta if desired for forward, central, and bacwards finite difference
+        dG_deta = np.zeros((6,3))
+
     if Temperature == 0.:
         # If temperature is zero, we assume that the local gradient is the same at 0.1K
         Temperature = 0.1
@@ -665,6 +669,33 @@ def Anisotropic_Local_Gradient(Coordinate_file, Program, Temperature, Pressure, 
                                                Statistical_mechanics, molecules_in_coord,
                                                Parameter_file=keyword_parameters['Parameter_file'])) / \
                          (LocGrd_strain ** 2)
+
+        if 'dense_output' in keyword_parameters:
+            dG_deta[i, 0] = (Pr.Gibbs_Free_Energy(Temperature, Pressure, Program, wavenumbers, Coordinate_file,
+                                                  Statistical_mechanics, molecules_in_coord,
+                                                  Parameter_file=keyword_parameters['Parameter_file']) -
+                             Pr.Gibbs_Free_Energy(Temperature, Pressure, Program, wavenumbers_minus, 'm' + file_ending,
+                                                  Statistical_mechanics, molecules_in_coord,
+                                                  Parameter_file=keyword_parameters['Parameter_file'])) / \
+                            (LocGrd_strain)
+
+            dG_deta[i, 1] = (Pr.Gibbs_Free_Energy(Temperature, Pressure, Program, wavenumbers_plus, 'p' + file_ending,
+                                                  Statistical_mechanics, molecules_in_coord,
+                                                  Parameter_file=keyword_parameters['Parameter_file']) -
+                             Pr.Gibbs_Free_Energy(Temperature, Pressure, Program, wavenumbers_minus, 'm' + file_ending,
+                                                  Statistical_mechanics, molecules_in_coord,
+                                                  Parameter_file=keyword_parameters['Parameter_file'])) / \
+                            (2*LocGrd_strain)
+
+            dG_deta[i, 2] = (Pr.Gibbs_Free_Energy(Temperature, Pressure, Program, wavenumbers_plus, 'p' + file_ending,
+                                                  Statistical_mechanics, molecules_in_coord,
+                                                  Parameter_file=keyword_parameters['Parameter_file']) -
+                             Pr.Gibbs_Free_Energy(Temperature, Pressure, Program, wavenumbers, Coordinate_file,
+                                                  Statistical_mechanics, molecules_in_coord,
+                                                  Parameter_file=keyword_parameters['Parameter_file'])) / \
+                            (LocGrd_strain)
+
+
 
         if i < off_diag_limit:
             # Computing the off diagonals of d**2 G/ (deta*deta)
@@ -752,10 +783,8 @@ def Anisotropic_Local_Gradient(Coordinate_file, Program, Temperature, Pressure, 
     if 'dense_output' in keyword_parameters:
         np.save('ddG_ddeta' + str(Temperature), dG_ddeta)
         np.save('dS_deta' + str(Temperature), dS_deta)
+        np.save('dG_deta' + str(Temperature), dG_deta)
     dstrain = np.linalg.lstsq(dG_ddeta, dS_deta)[0]
 
-#    for i in range(len(dstrain)):
-#        if np.absolute(dstrain[i]) < 9e-05:
-#            dstrain[i] = 0.
     return dstrain, wavenumbers
 
