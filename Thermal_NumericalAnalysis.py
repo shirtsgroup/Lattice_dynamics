@@ -6,6 +6,7 @@ import numpy as np
 import Expand as Ex
 import ThermodynamicProperties as Pr
 import Wavenumbers as Wvn
+import Numerical_Outputs as NO
 
 ##########################################
 #           Numerical Methods            #
@@ -51,6 +52,9 @@ def Runge_Kutta_Fourth_Order(Method, Coordinate_file, Program, Temperature, Pres
         file_ending = '.npy'
         keyword_parameters['Parameter_file'] = ''
 
+    # Output of numerical analysis
+    NO.start_RK(Temperature, RK4_stepsize)
+
     # Final array for weights on slopes
     RK_multiply = np.array([1. / 6., 1. / 3., 1. / 3., 1. / 6.])
 
@@ -83,6 +87,9 @@ def Runge_Kutta_Fourth_Order(Method, Coordinate_file, Program, Temperature, Pres
 
     # Calculating the RK gradients for the overall numerical gradient
     for i in range(4):
+        # Outputting numerical analysis
+        NO.step_RK(i, Temperature + temperature_steps[i], Program, 'RK4' + file_ending)
+
         print "   + Performing Runge-Kutta step " + str(i + 1)
         if (Method == 'GiQ') or (Method == 'GiQg'):
             # Determining the slope at the current RK step
