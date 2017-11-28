@@ -11,7 +11,8 @@ import subprocess
 ##########################################
 #                 Input                  #
 ##########################################
-def Call_Expansion(Method, Purpose, Program, Coordinate_file, molecules_in_coord, min_RMS_gradient, **keyword_parameters):
+def Call_Expansion(Method, Purpose, Program, Coordinate_file, molecules_in_coord, min_RMS_gradient,
+                   **keyword_parameters):
     """
     :param Method: Harmonic approximation ('HA');
                    Stepwise Isotropic QHA ('SiQ');
@@ -33,7 +34,7 @@ def Call_Expansion(Method, Purpose, Program, Coordinate_file, molecules_in_coord
     Optional Parameters
     Parameter_file: program specific file containing force field parameters
     volume_fraction_change: fractional volumetric step size (either for numerical gradient or amount to expand by).
-    matrix_parameters_fraction_change: fraction to change crystal matrix parameter by
+    **matrix_parameters_fraction_change: fraction to change crystal matrix parameter by
     Temperature: in Kelvin
     Pressure: in atm
     Statistical_mechanics: 'Classical' Classical mechanics
@@ -88,8 +89,8 @@ def Call_Expansion(Method, Purpose, Program, Coordinate_file, molecules_in_coord
         elif (Method == 'GaQ') or (Method == 'GaQg'):
             strain_local_gradient, wavenumbers = \
                 Anisotropic_Local_Gradient(Coordinate_file, Program, keyword_parameters['Temperature'],
-                                           keyword_parameters['Pressure'],
-                                           keyword_parameters['matrix_parameters_fraction_change'], molecules_in_coord,
+                                           keyword_parameters['Pressure'], keyword_parameters['LocGrd_NormStrain'],
+                                           keyword_parameters['LocGrd_ShearStrain'], molecules_in_coord,
                                            keyword_parameters['Statistical_mechanics'], Method,
                                            keyword_parameters['Aniso_LocGrad_Type'], min_RMS_gradient,
                                            Parameter_file=keyword_parameters['Parameter_file'],
@@ -256,7 +257,7 @@ def Lattice_parameters_to_Crystal_matrix(lattice_parameters):
     return crystal_matrix
 
 
-def Crystal_matrix_to_Lattice_parameters(crystal_matrix):
+#def Crystal_matrix_to_Lattice_parameters(crystal_matrix):
     """
     This function takes a crystal lattice matrix and return the lattice parameters
 
@@ -266,24 +267,24 @@ def Crystal_matrix_to_Lattice_parameters(crystal_matrix):
                                               [0. ,0. ,Vzz]])
     """
     # Computing lattice parameters
-    a = np.sqrt(crystal_matrix[0, 0]**2)
-    b = np.sqrt(crystal_matrix[0, 1]**2 + crystal_matrix[1, 1]**2)
-    c = np.sqrt(crystal_matrix[0, 2]**2 + crystal_matrix[1, 2]**2 + crystal_matrix[2, 2]**2)
-    gamma = np.degrees(np.arccos(crystal_matrix[0, 1]/b))
-    beta = np.degrees(np.arccos(crystal_matrix[0, 2]/c))
-    alpha = np.degrees(np.arccos(crystal_matrix[1,2]*np.sin(np.radians(gamma))/c + np.cos(np.radians(beta))*np.cos(np.radians(gamma))))
+#    a = np.sqrt(crystal_matrix[0, 0]**2)
+#    b = np.sqrt(crystal_matrix[0, 1]**2 + crystal_matrix[1, 1]**2)
+#    c = np.sqrt(crystal_matrix[0, 2]**2 + crystal_matrix[1, 2]**2 + crystal_matrix[2, 2]**2)
+#    gamma = np.degrees(np.arccos(crystal_matrix[0, 1]/b))
+#    beta = np.degrees(np.arccos(crystal_matrix[0, 2]/c))
+#    alpha = np.degrees(np.arccos(crystal_matrix[1,2]*np.sin(np.radians(gamma))/c + np.cos(np.radians(beta))*np.cos(np.radians(gamma))))
 
     # Assuring that the parameters returned are all positive
-    if alpha < 0.0:
-        alpha = 180. + alpha
-    if beta < 0.0:
-        beta = 180. + beta
-    if gamma < 0.0:
-        gamma = 180. + gamma
+#    if alpha < 0.0:
+#        alpha = 180. + alpha
+#    if beta < 0.0:
+#        beta = 180. + beta
+#    if gamma < 0.0:
+#        gamma = 180. + gamma
 
     # Creating an array of lattice parameters
-    lattice_parameters = np.array([a, b, c, alpha, beta, gamma])
-    return lattice_parameters
+#    lattice_parameters = np.array([a, b, c, alpha, beta, gamma])
+#    return lattice_parameters
 
 
 def Crystal_matrix_to_Lattice_parameters_strain(crystal_matrix):
@@ -336,7 +337,7 @@ def Isotropic_Change_Lattice_Parameters(volume_fraction_change, Program, Coordin
     return dlattice_parameters
 
 
-def Change_Crystal_Matrix(matrix_parameters_fraction_change, Program, Coordinate_file):
+#def Change_Crystal_Matrix(matrix_parameters_fraction_change, Program, Coordinate_file):
     """
     This function returns a matrix of changes in crystal matrix parameters based off of a general fraction
     This function is used for local gradient anisotropic expansion, each change in parameter is tested separately in 
@@ -349,23 +350,23 @@ def Change_Crystal_Matrix(matrix_parameters_fraction_change, Program, Coordinate
     Coordinate_file = file containing lattice parameters of the previous structure
     """
     # Calling the lattice parameters
-    if Program == 'Tinker':
-        lattice_parameters = Pr.Tinker_Lattice_Parameters(Coordinate_file)
-    elif Program == 'Test':
-        lattice_parameters = Pr.Test_Lattice_Parameters(Coordinate_file)
+#    if Program == 'Tinker':
+#        lattice_parameters = Pr.Tinker_Lattice_Parameters(Coordinate_file)
+#    elif Program == 'Test':
+#        lattice_parameters = Pr.Test_Lattice_Parameters(Coordinate_file)
 
     # Computing the crystal matrix of the coordinate file and determining the change in parameters based off of the
     # fractional input
-    dcrystal_matrix = Lattice_parameters_to_Crystal_matrix(lattice_parameters)*matrix_parameters_fraction_change
+#    dcrystal_matrix = Lattice_parameters_to_Crystal_matrix(lattice_parameters)*matrix_parameters_fraction_change
 
     # If lattice parameter is smaller than 5 in the coordinate file than the fractional change is increased as if it
     # was 5.
     # This is for cases where the angles are ~90 degrees, it lets us fully test the gradient due to temperature.
-    for i in range(3):
-        for j in np.arange(i+1, 3):
-            if dcrystal_matrix[i, j] < matrix_parameters_fraction_change*5:
-                dcrystal_matrix[i, j] = matrix_parameters_fraction_change*100
-    return dcrystal_matrix
+#    for i in range(3):
+#        for j in np.arange(i+1, 3):
+#            if dcrystal_matrix[i, j] < matrix_parameters_fraction_change*5:
+#                dcrystal_matrix[i, j] = matrix_parameters_fraction_change*100
+#    return dcrystal_matrix
     
 def strain_matrix(strain):
     strain_mat = np.zeros((3, 3))
@@ -409,10 +410,10 @@ def Expand_Structure(Coordinate_file, Program, Expansion_type, molecules_in_coor
         lattice_parameters = Pr.Test_Lattice_Parameters(Coordinate_file)
         if Expansion_type == 'lattice_parameters':
             lattice_parameters = lattice_parameters + keyword_parameters['dlattice_parameters']
-        elif Expansion_type == 'crystal_matrix':
-            crystal_matrix = Lattice_parameters_to_Crystal_matrix(lattice_parameters)
-            crystal_matrix = crystal_matrix + keyword_parameters['dcrystal_matrix']
-            lattice_parameters = Crystal_matrix_to_Lattice_parameters(crystal_matrix)
+#        elif Expansion_type == 'crystal_matrix':
+#            crystal_matrix = Lattice_parameters_to_Crystal_matrix(lattice_parameters)
+#            crystal_matrix = crystal_matrix + keyword_parameters['dcrystal_matrix']
+#            lattice_parameters = Crystal_matrix_to_Lattice_parameters(crystal_matrix)
         elif Expansion_type == 'strain':
             crystal_matrix = Lattice_parameters_to_Crystal_matrix(lattice_parameters)
             crystal_matrix = crystal_matrix*(np.identity(3) + strain_matrix(keyword_parameters['strain']))
@@ -440,9 +441,9 @@ def Expand_Structure(Coordinate_file, Program, Expansion_type, molecules_in_coor
         if Expansion_type == 'lattice_parameters':
             lattice_parameters = lattice_parameters + keyword_parameters['dlattice_parameters']
             crystal_matrix = Lattice_parameters_to_Crystal_matrix(lattice_parameters)
-        elif Expansion_type == 'crystal_matrix':
-            crystal_matrix = crystal_matrix + keyword_parameters['dcrystal_matrix']
-            lattice_parameters = Crystal_matrix_to_Lattice_parameters(crystal_matrix)
+#        elif Expansion_type == 'crystal_matrix':
+#            crystal_matrix = crystal_matrix + keyword_parameters['dcrystal_matrix']
+#            lattice_parameters = Crystal_matrix_to_Lattice_parameters(crystal_matrix)
         elif Expansion_type == 'strain':
             crystal_matrix = crystal_matrix*(np.identity(3) + strain_matrix(keyword_parameters['strain']))
             lattice_parameters = Crystal_matrix_to_Lattice_parameters_strain(crystal_matrix)
@@ -456,9 +457,9 @@ def Expand_Structure(Coordinate_file, Program, Expansion_type, molecules_in_coor
             Output_Tinker_New_Coordinate_File(Coordinate_file, keyword_parameters['Parameter_file'], coordinates,
                                               lattice_parameters, Output, min_RMS_gradient)
 
-##########################################
-#       Local Gradient of Expansion      #
-##########################################
+###################################################
+#       Local Gradient of Thermal  Expansion      #
+###################################################
 def Isotropic_Local_Gradient(Coordinate_file, Program, Temperature, Pressure, LocGrd_Vol_FracStep,
                              molecules_in_coord, Statistical_mechanics, Method, min_RMS_gradient, **keyword_parameters):
     """
@@ -584,8 +585,9 @@ def Isotropic_Local_Gradient(Coordinate_file, Program, Temperature, Pressure, Lo
     return dS/ddG, wavenumbers, volume
 
 
-def Anisotropic_Local_Gradient(Coordinate_file, Program, Temperature, Pressure, LocGrd_strain, molecules_in_coord,
-                               Statistical_mechanics, Method, Hessian_number, min_RMS_gradient, **keyword_parameters):
+def Anisotropic_Local_Gradient(Coordinate_file, Program, Temperature, Pressure, LocGrd_NormStrain, LocGrd_ShearStrain,
+                               molecules_in_coord, Statistical_mechanics, Method, Hessian_number, min_RMS_gradient,
+                               **keyword_parameters):
     """
     This function calculates the local gradient of anisotropic expansion for a given coordinate file
 
@@ -613,6 +615,10 @@ def Anisotropic_Local_Gradient(Coordinate_file, Program, Temperature, Pressure, 
     Wavenumber_reference: reference wavenumbers for the Gruneisen parameter
     Crystal_matrix_Reference
     """
+    # Setting up strain array
+    LocGrd_strain = np.zeros(6)
+    LocGrd_strain[:3] = LocGrd_NormStrain
+    LocGrd_strain[3:] = LocGrd_ShearStrain
 
     # Determining the file ending of the coordinate files
     if Program == 'Tinker':
@@ -667,7 +673,7 @@ def Anisotropic_Local_Gradient(Coordinate_file, Program, Temperature, Pressure, 
 
         # Setting the additional strain to the input strucutre for the current diagonal element
         strain_array = np.zeros(6)
-        strain_array[i] = LocGrd_strain
+        strain_array[i] = LocGrd_strain[i]
 
         # Straining the input structure by the current diagonal
         Expand_Structure(Coordinate_file, Program, 'strain', molecules_in_coord, 'p', min_RMS_gradient,
@@ -696,7 +702,7 @@ def Anisotropic_Local_Gradient(Coordinate_file, Program, Temperature, Pressure, 
         # Computing the derivative of entropy as a funciton of strain using a finite difference approach
         dS_deta[i] = (Pr.Vibrational_Entropy(Temperature, wavenumbers_plus, Statistical_mechanics) / molecules_in_coord -
                       Pr.Vibrational_Entropy(Temperature, wavenumbers_minus, Statistical_mechanics) /
-                      molecules_in_coord) / (2 * LocGrd_strain)
+                      molecules_in_coord) / (2 * LocGrd_strain[i])
 
         # Computing the second derivative Gibbs free energy as a funciton of strain using a finite difference approach
         dG_ddeta[i, i] = (Pr.Gibbs_Free_Energy(Temperature, Pressure, Program, wavenumbers_plus, 'p' + file_ending,
@@ -708,7 +714,7 @@ def Anisotropic_Local_Gradient(Coordinate_file, Program, Temperature, Pressure, 
                           Pr.Gibbs_Free_Energy(Temperature, Pressure, Program, wavenumbers_minus, 'm' + file_ending,
                                                Statistical_mechanics, molecules_in_coord,
                                                Parameter_file=keyword_parameters['Parameter_file'])) / \
-                         (LocGrd_strain ** 2)
+                         (LocGrd_strain[i] ** 2)
 
         # Calculating the finite difference of dG/deta for forward, central, and backwards
         dG_deta[i, 0] = (Pr.Gibbs_Free_Energy(Temperature, Pressure, Program, wavenumbers, Coordinate_file,
@@ -717,7 +723,7 @@ def Anisotropic_Local_Gradient(Coordinate_file, Program, Temperature, Pressure, 
                          Pr.Gibbs_Free_Energy(Temperature, Pressure, Program, wavenumbers_minus, 'm' + file_ending,
                                               Statistical_mechanics, molecules_in_coord,
                                               Parameter_file=keyword_parameters['Parameter_file'])) / \
-                        (LocGrd_strain)
+                        (LocGrd_strain[i])
 
         dG_deta[i, 1] = (Pr.Gibbs_Free_Energy(Temperature, Pressure, Program, wavenumbers_plus, 'p' + file_ending,
                                               Statistical_mechanics, molecules_in_coord,
@@ -725,7 +731,7 @@ def Anisotropic_Local_Gradient(Coordinate_file, Program, Temperature, Pressure, 
                          Pr.Gibbs_Free_Energy(Temperature, Pressure, Program, wavenumbers_minus, 'm' + file_ending,
                                               Statistical_mechanics, molecules_in_coord,
                                               Parameter_file=keyword_parameters['Parameter_file'])) / \
-                        (2*LocGrd_strain)
+                        (2*LocGrd_strain[i])
 
         dG_deta[i, 2] = (Pr.Gibbs_Free_Energy(Temperature, Pressure, Program, wavenumbers_plus, 'p' + file_ending,
                                               Statistical_mechanics, molecules_in_coord,
@@ -733,7 +739,7 @@ def Anisotropic_Local_Gradient(Coordinate_file, Program, Temperature, Pressure, 
                          Pr.Gibbs_Free_Energy(Temperature, Pressure, Program, wavenumbers, Coordinate_file,
                                               Statistical_mechanics, molecules_in_coord,
                                               Parameter_file=keyword_parameters['Parameter_file'])) / \
-                        (LocGrd_strain)
+                        (LocGrd_strain[i])
 
 
 
@@ -742,7 +748,7 @@ def Anisotropic_Local_Gradient(Coordinate_file, Program, Temperature, Pressure, 
             for j in np.arange(i + 1, off_diag_limit):
                 # Setting the strain of the second element for the off diagonal
                 strain_array_2 = np.zeros(6)
-                strain_array_2[j] = LocGrd_strain
+                strain_array_2[j] = LocGrd_strain[j]
 
                 # Expanding the strucutres for a varying number of strains
                 Expand_Structure('p' + file_ending, Program, 'strain', molecules_in_coord, 'pp', min_RMS_gradient,
@@ -808,7 +814,7 @@ def Anisotropic_Local_Gradient(Coordinate_file, Program, Temperature, Pressure, 
                                   Pr.Gibbs_Free_Energy(Temperature, Pressure, Program, wavenumbers_minus_minus, 'mm' +
                                                        file_ending, Statistical_mechanics, molecules_in_coord,
                                                        Parameter_file=keyword_parameters['Parameter_file']
-                                                       )) / (4 * LocGrd_strain * LocGrd_strain)
+                                                       )) / (4 * LocGrd_strain[i] * LocGrd_strain[j])
 
                 # Making d**2 G/(deta*deta) symetric
                 dG_ddeta[j, i] = dG_ddeta[i, j]
@@ -826,4 +832,112 @@ def Anisotropic_Local_Gradient(Coordinate_file, Program, Temperature, Pressure, 
     NO.aniso_gradient(dG_deta, dG_ddeta, dS_deta, dstrain)
 
     return dstrain, wavenumbers
+
+
+#######################################
+#       Local Pressure Gradient       #
+#######################################
+
+def Isotropic_pressure_gradient(Coordinate_file, Program, Temperature, Pressure, LocGrd_Vol_FracStep,
+                                molecules_in_coord, Statistical_mechanics, Method, min_RMS_gradient, 
+                                **keyword_parameters):
+    """
+    This function calculates the local gradient of isotropic expansion for a given coordinate file due to pressure changes
+
+    :param Coordinate_file: file containing lattice parameters (and coordinates)
+    :param Program: 'Tinker' Tinker molecular modeling
+                    'Test' Test case
+    :param Temperature: in Kelvin
+    :param Pressure: in atm
+    :param LocGrd_Vol_FracStep: fractional volumetric step size for numerical gradient
+    :param molecules_in_coord: number of molecules in Coordinate_file
+    :param Statistical_mechanics: 'Classical' Classical mechanics
+                                  'Quantum' Quantum mechanics
+    :param Method: 'GiQ' Gradient isotropic QHA
+                   'GiQg' Gradient isotropic QHA with Gruneisen Parameter
+    :param keyword_parameters: Parameter_file, Gruneisen, Wavenumber_reference, Volume_reference
+
+    Optional Parameters
+    Parameter_file: program specific file containing force field parameters
+    Gruneisen: isotropic Gruneisen parameter
+    Wavenumber_reference: reference wavenumbers for the Gruneisen parameter
+    Volume_reference: reference volume for the Gruneisen parameter
+    """
+
+    if Program == 'Tinker':
+        coordinate_plus = 'plus.xyz'
+        coordinate_minus = 'minus.xyz'
+    elif Program == 'Test':
+        coordinate_plus = 'plus.npy'
+        coordinate_minus = 'minus.npy'
+        keyword_parameters['Parameter_file'] = ''
+
+    # Determining the change in lattice parameter for isotropic expansion
+    dlattice_parameters = Isotropic_Change_Lattice_Parameters(1 + LocGrd_Vol_FracStep, Program, Coordinate_file)
+
+    # Building the isotropically expanded and compressed strucutres
+    Expand_Structure(Coordinate_file, Program, 'lattice_parameters', molecules_in_coord, 'plus', min_RMS_gradient,
+                     dlattice_parameters=dlattice_parameters, Parameter_file=keyword_parameters['Parameter_file'])
+    Expand_Structure(Coordinate_file, Program, 'lattice_parameters', molecules_in_coord, 'minus', min_RMS_gradient,
+                     dlattice_parameters=-1*dlattice_parameters, Parameter_file=keyword_parameters['Parameter_file'])
+
+    # Determining the volume of Coordinate_file
+    volume = Pr.Volume(Program=Program, Coordinate_file=Coordinate_file)
+    # Calculating wavenumbers coordinate_file, plus.*, and minus.*
+    wavenumbers = Wvn.Call_Wavenumbers(Method, min_RMS_gradient, Coordinate_file=Coordinate_file,
+                                       Parameter_file=keyword_parameters['Parameter_file'],
+                                       Program=Program)
+    wavenumbers_plus = Wvn.Call_Wavenumbers(Method, min_RMS_gradient, Coordinate_file=coordinate_plus,
+                                            Parameter_file=keyword_parameters['Parameter_file'],
+                                            Program=Program)
+    wavenumbers_minus = Wvn.Call_Wavenumbers(Method, min_RMS_gradient, Coordinate_file=coordinate_minus,
+                                             Parameter_file=keyword_parameters['Parameter_file'],
+                                             Program=Program)
+
+    # Calculating the denominator of the local gradient d**2G/dV**2
+    ddG = (Pr.Gibbs_Free_Energy(Temperature, Pressure, Program, wavenumbers_plus, coordinate_plus,
+                                Statistical_mechanics, molecules_in_coord,
+                                Parameter_file=keyword_parameters['Parameter_file']) -
+           2*Pr.Gibbs_Free_Energy(Temperature, Pressure, Program, wavenumbers, Coordinate_file,
+                                  Statistical_mechanics, molecules_in_coord,
+                                  Parameter_file=keyword_parameters['Parameter_file']) +
+           Pr.Gibbs_Free_Energy(Temperature, Pressure, Program, wavenumbers_minus, coordinate_minus,
+                                Statistical_mechanics, molecules_in_coord,
+                                Parameter_file=keyword_parameters['Parameter_file'])) / \
+          ((volume*LocGrd_Vol_FracStep)**2)
+
+    # Computing the backward, central, and forward finite difference of dG/dV
+    dG = np.zeros(3)
+    dG[0] = (Pr.Gibbs_Free_Energy(Temperature, Pressure, Program, wavenumbers, Coordinate_file,
+                                  Statistical_mechanics, molecules_in_coord,
+                                  Parameter_file=keyword_parameters['Parameter_file']) -
+             Pr.Gibbs_Free_Energy(Temperature, Pressure, Program, wavenumbers_minus, coordinate_minus,
+                                  Statistical_mechanics, molecules_in_coord,
+                                  Parameter_file=keyword_parameters['Parameter_file'])) / \
+            (volume*LocGrd_Vol_FracStep)
+
+    dG[1] = (Pr.Gibbs_Free_Energy(Temperature, Pressure, Program, wavenumbers_plus, coordinate_plus,
+                                  Statistical_mechanics, molecules_in_coord,
+                                  Parameter_file=keyword_parameters['Parameter_file']) -
+             Pr.Gibbs_Free_Energy(Temperature, Pressure, Program, wavenumbers_minus, coordinate_minus,
+                                  Statistical_mechanics, molecules_in_coord,
+                                  Parameter_file=keyword_parameters['Parameter_file'])) / \
+            (2*volume*LocGrd_Vol_FracStep)
+
+
+    dG[2] = (Pr.Gibbs_Free_Energy(Temperature, Pressure, Program, wavenumbers_plus, coordinate_plus,
+                                  Statistical_mechanics, molecules_in_coord,
+                                  Parameter_file=keyword_parameters['Parameter_file']) -
+             Pr.Gibbs_Free_Energy(Temperature, Pressure, Program, wavenumbers, Coordinate_file,
+                                  Statistical_mechanics, molecules_in_coord,
+                                  Parameter_file=keyword_parameters['Parameter_file'])) / \
+            (volume*LocGrd_Vol_FracStep)
+
+
+    # Saving numerical outputs
+    NO.iso_pressure_gradient(dG, ddG, -1./ddG)
+
+    # Removing excess files
+    os.system('rm '+coordinate_plus+' '+coordinate_minus)
+    return -1./ddG
 

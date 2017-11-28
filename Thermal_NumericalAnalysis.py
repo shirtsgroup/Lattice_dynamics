@@ -34,7 +34,7 @@ def Runge_Kutta_Fourth_Order(Method, Coordinate_file, Program, Temperature, Pres
     Optional Parameters
     Parameter_file: program specific file containing force field parameters
     LocGrd_Vol_FracStep: isotropic volume fractional stepsize for local gradient
-    LocGrd_LatParam_FracStep: anisotropic crystal matrix fractional stepsize for local gradient
+    ***LocGrd_LatParam_FracStep: anisotropic crystal matrix fractional stepsize for local gradient
     Gruneisen: Gruneisen parameters found with Setup_Isotropic_Gruneisen
     Wavenumber_Reference: Reference wavenumbers for Gruneisen parameter
     Volume_Reference: Reference volume of structure for Wavenumber_Reference
@@ -93,37 +93,28 @@ def Runge_Kutta_Fourth_Order(Method, Coordinate_file, Program, Temperature, Pres
         print "   + Performing Runge-Kutta step " + str(i + 1)
         if (Method == 'GiQ') or (Method == 'GiQg'):
             # Determining the slope at the current RK step
-            RK_grad[i], wavenumbers_hold, volume_hold = Ex.Call_Expansion(Method, 'local_gradient', Program,
-                                                                          'RK4' + file_ending, molecules_in_coord,
-                                                                          min_RMS_gradient,
-                                                                          Temperature=Temperature +
-                                                                                      temperature_steps[i],
-                                                                          Pressure=Pressure,
-                                                                          volume_fraction_change=keyword_parameters[
-                                                                              'LocGrd_Vol_FracStep'],
-                                                                          Statistical_mechanics=Statistical_mechanics,
-                                                                          Parameter_file=
-                                                                          keyword_parameters['Parameter_file'],
-                                                                          Gruneisen=keyword_parameters['Gruneisen'],
-                                                                          Wavenumber_Reference=
-                                                                          keyword_parameters['Wavenumber_Reference'],
-                                                                          Volume_Reference=
-                                                                          keyword_parameters['Volume_Reference'])
+            RK_grad[i], wavenumbers_hold, volume_hold = \
+                Ex.Call_Expansion(Method, 'local_gradient', Program, 'RK4' + file_ending, molecules_in_coord,
+                                  min_RMS_gradient, Temperature=Temperature + temperature_steps[i], Pressure=Pressure,
+                                  volume_fraction_change=keyword_parameters['LocGrd_Vol_FracStep'],
+                                  Statistical_mechanics=Statistical_mechanics,
+                                  Parameter_file=keyword_parameters['Parameter_file'],
+                                  Gruneisen=keyword_parameters['Gruneisen'],
+                                  Wavenumber_Reference=keyword_parameters['Wavenumber_Reference'],
+                                  Volume_Reference=keyword_parameters['Volume_Reference'])
         elif (Method == 'GaQ') or (Method == 'GaQg'):
             # Determining the slope at the current RK step
-            RK_grad[i], wavenumbers_hold = Ex.Call_Expansion(Method, 'local_gradient', Program, 'RK4' + file_ending,
-                                                             molecules_in_coord, min_RMS_gradient,
-                                                             Temperature=Temperature + temperature_steps[i],
-                                                             Pressure=Pressure, matrix_parameters_fraction_change=
-                                                             keyword_parameters['LocGrd_LatParam_FracStep'],
-                                                             Statistical_mechanics=Statistical_mechanics,
-                                                             Parameter_file=keyword_parameters['Parameter_file'],
-                                                             Gruneisen=keyword_parameters['Gruneisen'],
-                                                             Wavenumber_Reference=
-                                                             keyword_parameters['Wavenumber_Reference'],
-                                                             Applied_strain=keyword_parameters['Applied_strain'] + RK_strain,
-                                                             Aniso_LocGrad_Type=
-                                                             keyword_parameters['Aniso_LocGrad_Type'])
+            RK_grad[i], wavenumbers_hold = \
+                Ex.Call_Expansion(Method, 'local_gradient', Program, 'RK4' + file_ending, molecules_in_coord,
+                                  min_RMS_gradient, Temperature=Temperature + temperature_steps[i], Pressure=Pressure,
+                                  LocGrd_NormStrain=keyword_parameters['LocGrd_NormStrain'],
+                                  LocGrd_ShearStrain=keyword_parameters['LocGrd_ShearStrain'],
+                                  Statistical_mechanics=Statistical_mechanics,
+                                  Parameter_file=keyword_parameters['Parameter_file'],
+                                  Gruneisen=keyword_parameters['Gruneisen'],
+                                  Wavenumber_Reference=keyword_parameters['Wavenumber_Reference'],
+                                  Applied_strain=keyword_parameters['Applied_strain'] + RK_strain,
+                                  Aniso_LocGrad_Type=keyword_parameters['Aniso_LocGrad_Type'])
             volume_hold = 0.
         if i == 0:
             # Saving outputs to be passed to the earlier code (local gradient and wavenumbers of initial strucuture)
@@ -605,11 +596,11 @@ def Isotropic_Gradient_Expansion(Coordinate_file, Program, molecules_in_coord, O
     np.save(Output+'_raw', properties)
     return properties
         
-##########################################
+########################################################
 #     Gradient Anisotropic Expansion Due to Strain     #
-##########################################
+########################################################
 def Ansotropic_Gradient_Expansion(Coordinate_file, Program, molecules_in_coord, Output, Method, Gradient_MaxTemp,
-                                  Pressure, LocGrd_LatParam_FracStep, Statistical_mechanics,
+                                  Pressure, LocGrd_NormStrain, LocGrd_ShearStrain, Statistical_mechanics,
                                   NumAnalysis_step, NumAnalysis_method, Aniso_LocGrad_Type, Temperature,
                                   min_RMS_gradient,
                                   **keyword_parameters):
@@ -624,7 +615,7 @@ def Ansotropic_Gradient_Expansion(Coordinate_file, Program, molecules_in_coord, 
                    Gradient Anisotropic QHA w/ Gruneisen Parameter ('GaQg');
     :param Gradient_MaxTemp: Maximum temperature in gradient method
     :param Pressure: in atm
-    :param LocGrd_LatParam_FracStep: anisotropic crystal matrix fractional stepsize for local gradient
+    ***:param LocGrd_LatParam_FracStep: anisotropic crystal matrix fractional stepsize for local gradient
     :param Statistical_mechanics: 'Classical' Classical mechanics
                                   'Quantum' Quantum mechanics
     :param NumAnalysis_step: stepsize for numerical method
@@ -717,7 +708,8 @@ def Ansotropic_Gradient_Expansion(Coordinate_file, Program, molecules_in_coord, 
                                                  file_ending, Program, temperature[i], Pressure,
                                                  molecules_in_coord, Statistical_mechanics, NumAnalysis_step,
                                                  min_RMS_gradient, Parameter_file=keyword_parameters['Parameter_file'],
-                                                 LocGrd_LatParam_FracStep=LocGrd_LatParam_FracStep,
+                                                 LocGrd_NormStrain=LocGrd_NormStrain,
+                                                 LocGrd_ShearStrain=LocGrd_ShearStrain,
                                                  Aniso_LocGrad_Type=Aniso_LocGrad_Type, Gruneisen=Gruneisen,
                                                  Wavenumber_Reference=Wavenumber_Reference,
                                                  Applied_strain=Applied_strain)
@@ -726,11 +718,11 @@ def Ansotropic_Gradient_Expansion(Coordinate_file, Program, molecules_in_coord, 
                         Ex.Call_Expansion(Method, 'local_gradient', Program, Output + '_' + Method + 'T' + str(temperature[i]) +
                                           file_ending, molecules_in_coord,
                                           min_RMS_gradient, Temperature=temperature[i], Pressure=Pressure,
-                                          matrix_parameters_fraction_change=LocGrd_LatParam_FracStep,
+                                          LocGrd_NormStrain=LocGrd_NormStrain, LocGrd_ShearStrain=LocGrd_ShearStrain,
                                           Statistical_mechanics=Statistical_mechanics,
                                           Parameter_file=keyword_parameters['Parameter_file'], Gruneisen=Gruneisen,
                                           Wavenumber_Reference=Wavenumber_Reference, Applied_strain=Applied_strain,
-                                         Aniso_LocGrad_Type=Aniso_LocGrad_Type)
+                                          Aniso_LocGrad_Type=Aniso_LocGrad_Type)
                 # Setting the local gradient equal to the step gradient
                 strain_gradient[i, 1, 1:] = strain_gradient[i, 0, 1:]
 
@@ -779,7 +771,7 @@ def Ansotropic_Gradient_Expansion(Coordinate_file, Program, molecules_in_coord, 
                     Ex.Call_Expansion(Method, 'local_gradient', Program, Output + '_' + Method + 'T' +
                                       str(temperature[i + 1]) + file_ending, molecules_in_coord, min_RMS_gradient,
                                       Temperature=temperature[i + 1], Pressure=Pressure,
-                                      matrix_parameters_fraction_change=LocGrd_LatParam_FracStep,
+                                      LocGrd_NormStrain=LocGrd_NormStrain, LocGrd_ShearStrain=LocGrd_ShearStrain,
                                       Statistical_mechanics=Statistical_mechanics,
                                       Parameter_file=keyword_parameters['Parameter_file'], Gruneisen=Gruneisen,
                                       Wavenumber_Reference=Wavenumber_Reference, Applied_strain=Applied_strain,

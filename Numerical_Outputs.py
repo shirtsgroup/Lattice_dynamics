@@ -133,6 +133,32 @@ def aniso_gradient(dG, ddG, dS, deta):
     write_out('\n')
 
 
+def iso_pressure_gradient(dG, ddG, dV):
+    # Setting output for dG/deta: the current structure should be at a minima. Therefore, dG/deta should be zero
+    warning = False
+    if (dG[0] < dG[1] < dG[2]) and (dG[0] < 0.) and (0. < dG[2]):
+        # There is no issue if the following dG/deta are true for the finite difference rankings:
+        #     backwards < 0 < forwards
+        # Central should be inbetween them
+        pass
+    else:
+        # Raising a flag if a strain is negative
+        warning = True
+
+    write_out('dG/dV [kcal/(mol*Ang.^3)] =  \n')
+    write_out('  Backwards    Central    Forward \n')
+    numpy_write_out(np.matrix(dG))
+    if warning == True:
+        write_out('WARNING: current structure is not the minimum free energy structure at this temperature!\n')
+
+    # Outputting d^2G/deta^2
+    write_out('d^(2)G/dV^(2) [kcal/(mol*Ang.^3)] = \n')
+    numpy_write_out(np.matrix(ddG))
+
+    # Outputting deta/dT
+    write_out('dV/dT [Ang.^3/K] = \n')
+    numpy_write_out_precision(np.matrix(dV))
+    write_out('\n')
 
 
 
