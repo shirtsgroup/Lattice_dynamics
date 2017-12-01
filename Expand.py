@@ -827,7 +827,7 @@ def Anisotropic_Local_Gradient(Coordinate_file, Program, Temperature, Pressure, 
 
     # Calculating deta/dT for all strains
     dstrain = np.linalg.lstsq(dG_ddeta, dS_deta)[0]
-
+    dstrain[3:] = dstrain[3:]*0.5
     # Saving numerical outputs
     NO.aniso_gradient(dG_deta, dG_ddeta, dS_deta, dstrain)
 
