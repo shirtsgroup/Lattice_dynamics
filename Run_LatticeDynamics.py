@@ -7,6 +7,7 @@ import subprocess
 import ThermodynamicProperties as Pr
 import Wavenumbers as Wvn
 import Thermal_NumericalAnalysis as TNA
+import Expand as Ex
 
 def Temperature_Lattice_Dynamics(Temperature=[0.0, 25.0, 50.0, 75.0, 100.0], Pressure=1., Method='HA', Program='Test',
                                  Output='out', Coordinate_file='molecule.xyz', Parameter_file='keyfile.key',
@@ -84,13 +85,14 @@ def Temperature_Lattice_Dynamics(Temperature=[0.0, 25.0, 50.0, 75.0, 100.0], Pre
         Pr.Save_Properties(properties, properties_to_save, Output, Method, Statistical_mechanics)
         print "Gradient Anisotropic Quasi-Harmonic Approximation is complete!"
 
-"""
+
 def Pressure_setup(Temperature=[0.0, 25.0, 50.0, 75.0, 100.0], Pressure=1., Method='HA', Program='Test',
                    Output='out', Coordinate_file='molecule.xyz', Parameter_file='keyfile.key',
                    molecules_in_coord=1, properties_to_save=['G', 'T'], NumAnalysis_method='RK4',
                    NumAnalysis_step=25.0,
                    LocGrd_Vol_FracStep=3e-02,
-                   LocGrd_LatParam_FracStep=5e-05, StepWise_Vol_StepFrac=1.5e-3,
+                   LocGrd_NormStrain=2e-03,
+                   LocGrd_ShearStrain=1e-03, StepWise_Vol_StepFrac=1.5e-3,
                    StepWise_Vol_LowerFrac=0.97, StepWise_Vol_UpperFrac=1.16,
                    Statistical_mechanics='Classical', Gruneisen_Vol_FracStep=1.5e-3,
                    Gruneisen_Lat_FracStep=1.0e-3, Wavenum_Tol=-1., Gradient_MaxTemp=300.0,
@@ -102,13 +104,13 @@ def Pressure_setup(Temperature=[0.0, 25.0, 50.0, 75.0, 100.0], Pressure=1., Meth
         file_ending = '.npy'
 
     # Making a temporary cooradinate file
-    subprocess.call(['cp',Coordinate_file,'pessure_scan' + file_ending])
+    subprocess.call(['cp',Coordinate_file,'pressure_scan' + file_ending])
 
     # Making directories for each pressure
     Pressure = np.insert(Pressure, 0., 0.)
     for i in range(1, len(Pressure)):
         # Making a directory to store everything
-        subprocess.call(['mkdir', Output + '_' + str(Pressure) + 'atm'])
+        subprocess.call(['mkdir', Output + '_' + str(Pressure[i]) + 'atm'])
 
         # Determining the pressure gradient
         dVdP = Ex.Isotropic_pressure_gradient('pressure_scan' + file_ending, Program, 0., Pressure[i - 1], 
@@ -118,13 +120,14 @@ def Pressure_setup(Temperature=[0.0, 25.0, 50.0, 75.0, 100.0], Pressure=1., Meth
 
         # Expanding the new structure
         volume = Pr.Volume(Program=Program, Coordinate_file='pressure_scan' + file_ending) 
-        dlattice_parameters = Isotropic_Change_Lattice_Parameters((volume + dVdP * (Pressure[i] - Pressure[i-1])) / volume, Program, 'pressure_scan' + file_ending)
+        dlattice_parameters = Ex.Isotropic_Change_Lattice_Parameters((volume + dVdP * (Pressure[i] - Pressure[i-1])) / volume, Program, 'pressure_scan' + file_ending)
 
         # Building the isotropically expanded and compressed strucutres
-        Expand_Structure('pressure_scan' + file_ending, Program, 'lattice_parameters', molecules_in_coord, 
-                         'pressure_scan', min_RMS_gradient, dlattice_parameters=dlattice_parameters, 
-                          Parameter_file=keyword_parameters['Parameter_file'])
-"""
+        Ex.Expand_Structure('pressure_scan' + file_ending, Program, 'lattice_parameters', molecules_in_coord, 
+                            'pressure_scan', min_RMS_gradient, dlattice_parameters=dlattice_parameters, 
+                             Parameter_file=Parameter_file)
+        # Copying new structure into the pressure directory
+        subprocess.call(['cp', 'pressure_scan' + file_ending, Output + '_' + str(Pressure[i]) + 'atm/' + Coordinate_file])
 
 
 if __name__ == '__main__':
@@ -385,8 +388,6 @@ if __name__ == '__main__':
                                      min_RMS_gradient=min_RMS_gradient)
     
     else:
-        print "Pressure setup is not prepared"
-"""
         Pressure_setup(Temperature=Temperature,
                        Pressure=Pressure,
                        Method=Method,
@@ -399,7 +400,8 @@ if __name__ == '__main__':
                        NumAnalysis_method=NumAnalysis_method,
                        NumAnalysis_step=NumAnalysis_step,
                        LocGrd_Vol_FracStep=LocGrd_Vol_FracStep,
-                       LocGrd_LatParam_FracStep=LocGrd_LatParam_FracStep,
+                       LocGrd_NormStrain=LocGrd_NormStrain,
+                       LocGrd_ShearStrain=LocGrd_ShearStrain,
                        StepWise_Vol_StepFrac=StepWise_Vol_StepFrac,
                        StepWise_Vol_LowerFrac=StepWise_Vol_LowerFrac,
                        StepWise_Vol_UpperFrac=StepWise_Vol_UpperFrac,
@@ -410,4 +412,4 @@ if __name__ == '__main__':
                        Gradient_MaxTemp=Gradient_MaxTemp,
                        Aniso_LocGrad_Type=Aniso_LocGrad_Type,
                        min_RMS_gradient=min_RMS_gradient)
-"""
+

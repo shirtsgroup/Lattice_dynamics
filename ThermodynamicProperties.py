@@ -408,6 +408,7 @@ def Gibbs_Free_Energy(Temperature, Pressure, Program, wavenumbers, Coordinate_fi
         A = Quantum_Vibrational_A(Temperature, wavenumbers) / molecules_in_coord 
 
     # Gibbs Free energy
+# kcal/mol----    atm    * Ang^3  *   Avagadro's #     *kcal/(L*atm)*  (L/Ang^3)
     G = U + A + Pressure * volume * (6.022 * 10 ** 23) * (0.024201) * (10**(-27)) /molecules_in_coord
     return G
 

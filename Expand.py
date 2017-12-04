@@ -185,10 +185,10 @@ def Tinker_minimization(Parameter_file, Coordinate_file, Output, min_RMS_gradien
 
         # Checking output of minimization
         output = output.split('\n')
-        if count == 1:
-            # Having a standard to prevent minimization into a new well
-            U_hold = float(output[-4].split()[-1])
-        U = float(output[-4].split()[-1])
+#        if count == 1:
+#            # Having a standard to prevent minimization into a new well
+#            U_hold = float(output[-4].split()[-1])
+#        U = float(output[-4].split()[-1])
 
         if output[-6] == ' LBFGS  --  Normal Termination due to SmallGrad':
             run_min = False
@@ -197,10 +197,10 @@ def Tinker_minimization(Parameter_file, Coordinate_file, Output, min_RMS_gradien
             run_min = False
             subprocess.call(['mv', 'Temp_min_10.xyz', Output + '.xyz'])
             print "      Could not minimize strucutre to tolerance after 10 shake cycles"
-        elif np.absolute(U_hold- U) > 0.01:
-            run_min = False
-            subprocess.call(['mv', 'Temp_min_' + str(count - 1) + '.xyz', Output + '.xyz'])
-            print "      Structure minimized into a different well, stopping minimization"
+#        elif np.absolute(U_hold- U) > 0.01:
+#            run_min = False
+#            subprocess.call(['mv', 'Temp_min_' + str(count - 1) + '.xyz', Output + '.xyz'])
+#            print "      Structure minimized into a different well, stopping minimization"
         else:
             if count == 1:
                 print "   ... Structure did not minimze to tolerance, shaking molecule and re-minimizing"
@@ -827,6 +827,7 @@ def Anisotropic_Local_Gradient(Coordinate_file, Program, Temperature, Pressure, 
 
     # Calculating deta/dT for all strains
     dstrain = np.linalg.lstsq(dG_ddeta, dS_deta)[0]
+
     dstrain[3:] = dstrain[3:]*0.5
     # Saving numerical outputs
     NO.aniso_gradient(dG_deta, dG_ddeta, dS_deta, dstrain)
@@ -933,11 +934,14 @@ def Isotropic_pressure_gradient(Coordinate_file, Program, Temperature, Pressure,
                                   Parameter_file=keyword_parameters['Parameter_file'])) / \
             (volume*LocGrd_Vol_FracStep)
 
+    # Converting final answer
+    #Ang^3/atm=(Ang.^6*mol/kcal)*Avogadros#*(kcal/(L*atm))*(L/Ang^3)
+    dV_dP = (-1./ddG) * (6.022 * 10 ** 23) * (0.024201) * (10**(-27))
 
     # Saving numerical outputs
-    NO.iso_pressure_gradient(dG, ddG, -1./ddG)
+    NO.iso_pressure_gradient(dG, ddG, dV_dP)
 
     # Removing excess files
     os.system('rm '+coordinate_plus+' '+coordinate_minus)
-    return -1./ddG
+    return dV_dP
 
