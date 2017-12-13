@@ -18,7 +18,7 @@ def write_out(string):
 
 def numpy_write_out(array):
     with open('numerical_checks.out', 'a') as myfile:
-        np.savetxt(myfile, array, '%10.4f')
+        np.savetxt(myfile, array, '%16.10f')
         myfile.write('\n')
 
 def numpy_write_out_precision(array):
@@ -156,7 +156,7 @@ def iso_pressure_gradient(dG, ddG, dV):
     numpy_write_out(np.matrix(ddG))
 
     # Outputting deta/dT
-    write_out('dV/dT [Ang.^3/K] = \n')
+    write_out('dV/dP [Ang.^3/atm] = \n')
     numpy_write_out_precision(np.matrix(dV))
     write_out('\n')
 

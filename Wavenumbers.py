@@ -48,7 +48,10 @@ def Call_Wavenumbers(Method, min_RMS_gradient, **keyword_parameters):
         if keyword_parameters['Program'] == 'Tinker':
             wavenumbers = Tinker_Wavenumber(keyword_parameters['Coordinate_file'], keyword_parameters['Parameter_file'])
         elif keyword_parameters['Program'] == 'Test':
-            wavenumbers = Test_Wavenumber(keyword_parameters['Coordinate_file'])
+            if Method == 'GaQ':
+                wavenumbers = Test_Wavenumber(keyword_parameters['Coordinate_file'],keyword_parameters['Applied_strain'])
+            else:
+                wavenumbers = Test_Wavenumber(keyword_parameters['Coordinate_file'],0.)
         return wavenumbers
 
     elif (Method == 'SiQg') or (Method == 'GiQg'):
@@ -153,7 +156,7 @@ def Tinker_Wavenumber(Coordinate_file, Parameter_file):
 ##########################################
 #                  Test                  #
 ##########################################
-def Test_Wavenumber(Coordinate_file, function='Test2'):
+def Test_Wavenumber(Coordinate_file, strain, function='Test3'):
     """
     This function takes a set of lattice parameters in a .npy file and returns a set of wavenumbers
     Random functions can be input here to run different tests and implimented new methods efficiently
@@ -161,10 +164,9 @@ def Test_Wavenumber(Coordinate_file, function='Test2'):
     **Required Inputs
     Coordinate_file = File containing lattice parameters and atom coordinates
     """
-
+    lattice_parameters = np.load(Coordinate_file)
     if function == 'Test1':
         wavenumbers = np.array([0., 0., 0., 52., 380., 1570., 3002.])
-        lattice_parameters = np.load(Coordinate_file)
         for i in np.arange(3, len(wavenumbers[3:])+3):  # probably should be 3?
             wavenumbers[i] = wavenumbers[i]*(1/3.)*(((lattice_parameters[0]-16)/6)**2 + ((lattice_parameters[1] -
                                                                                           12)/5)**2 +
@@ -173,12 +175,40 @@ def Test_Wavenumber(Coordinate_file, function='Test2'):
         wavenumbers = np.arange(1, 200)
         wavenumbers = wavenumbers**(5.0/3.0)  # get something in the right range = 400^(4/3) = 2941
         wavenumbers[0:3] = [0, 0, 0]  # zero translation
-        lattice_parameters = np.load(Coordinate_file)
         [refx, refy, refz] = [lattice_parameters[0]/10, lattice_parameters[1]/7, lattice_parameters[2]/12]
 #        [refx,refy,refz] = [lattice_parameters[0]/5,lattice_parameters[1]/6,lattice_parameters[2]/8]
         for i in range(3,len(wavenumbers[3:])+3):
             wavenumbers[i] = wavenumbers[i]*(1.0/15.0)*(2*refx**4.8 + 10*refy**4.2 + 4*np.sin(2*np.pi*refx) +
                                                         3*refz**4.8)
+    elif function == 'Test3':
+        if os.path.isfile('wvn0_test.npy') and os.path.isfile('wvnChange_test.npy'):
+            original_lat_param = np.array([10.,12.,14.,90.,95.,88.])
+            #strain = (lattice_parameters - original_lat_param)/original_lat_param
+            wvn0 = np.load('wvn0_test.npy')
+            change = np.load('wvnChange_test.npy')
+            wavenumbers = np.zeros(len(wvn0))
+            for i in range(3,len(wavenumbers)):
+                wavenumbers[i] = wvn0[i]*np.exp(-1.*np.sum(strain*change[i]))# + strain**2*(change[i]**2)))
+
+        else:
+            # Setting random wavenumbers
+            wavenumbers = np.zeros(303)
+            wavenumbers[3:241] = np.random.uniform(10., 2000., len(wavenumbers[3:241]))
+            wavenumbers[241:] = np.random.uniform(2800., 3300., len(wavenumbers[241:]))
+            wavenumbers = np.sort(wavenumbers)
+            np.save('wvn0_test', wavenumbers)
+
+            # Setting gruneisen parameters
+            change = np.zeros((len(wavenumbers), 6))
+            for i in range(3,len(wavenumbers)):
+                #change[i, :3] = np.random.uniform(-2*np.exp(-wavenumbers[i]/10.) - 0.001, 7*np.exp(-wavenumbers[i]/100.) + 0.01, 3)
+                change[i, :3] = np.random.uniform(0., 7*np.exp(-wavenumbers[i]/500.) + 0.001, 3)
+                for j in range(3,6):
+                    change[j] = np.random.uniform(-0.5*np.absolute(lattice_parameters[j] - 90.)*np.exp(-wavenumbers[i]/100.) - 0.01,
+                                                  0.5*np.absolute(lattice_parameters[j] - 90.)*np.exp(-wavenumbers[i]/100.) + 0.01)
+            np.save('wvnChange_test.npy', change)
+
+
     return wavenumbers
 
 
@@ -330,20 +360,24 @@ def Tinker_Gru_organized_wavenumbers(Expansion_type, Coordinate_file, Expanded_C
         for i in xrange(1,7):
             wavenumbers[i], eigenvectors[i] = Tinker_Wavenumber_and_Vectors(Expanded_Coordinate_file[i-1], Parameter_file)
 
-
     # Weighting the modes matched together
     wavenumbers_out = np.zeros((len(wavenumbers[:, 0]), number_of_modes))
     wavenumbers_out[0] = wavenumbers[0]
     for k in xrange(1, len(wavenumbers[:, 0])):
         weight = np.zeros((number_of_modes - 3, number_of_modes - 3))
         for i in xrange(3, number_of_modes):
-            diff = np.linalg.norm(np.dot(eigenvectors[0, i], eigenvectors[k, i]))/(np.linalg.norm(eigenvectors[0, i])*np.linalg.norm(eigenvectors[k, i]))
-            if diff > 0.95:
+            diff = np.dot(eigenvectors[0, i], eigenvectors[k, i])/(np.linalg.norm(eigenvectors[0, i])*np.linalg.norm(eigenvectors[k, i]))
+            if np.absolute(diff) > 0.95:
                 weight[i - 3] = 10000000.
                 weight[i - 3, i - 3] = 1. - diff
             else:
                 for j in xrange(3, number_of_modes):
-                    weight[i - 3, j - 3] = 1 - np.linalg.norm(np.dot(eigenvectors[0, i], eigenvectors[k, j]))/(np.linalg.norm(eigenvectors[0, i])*np.linalg.norm(eigenvectors[k, j]))
+                    hold_weight = np.zeros(4)
+                    hold_weight[0] = 1 - np.dot(-1*eigenvectors[0, i], eigenvectors[k, j])/(np.linalg.norm(-1*eigenvectors[0, i])*np.linalg.norm(eigenvectors[k, j]))
+                    hold_weight[1] = 1 - np.dot(eigenvectors[0, i], -1*eigenvectors[k, j])/(np.linalg.norm(eigenvectors[0, i])*np.linalg.norm(-1*eigenvectors[k, j]))
+                    hold_weight[2] = 1 - np.dot(eigenvectors[0, i], eigenvectors[k, j])/(np.linalg.norm(eigenvectors[0, i])*np.linalg.norm(eigenvectors[k, j]))
+                    hold_weight[3] = 1 - np.dot(-1*eigenvectors[0, i], -1*eigenvectors[k, j])/(np.linalg.norm(-1*eigenvectors[0, i])*np.linalg.norm(-1*eigenvectors[k, j]))
+                    weight[i - 3, j - 3] = min(hold_weight)
 
         # Using the Hungarian algorithm to match wavenumbers
         Wgt = m.compute(weight)

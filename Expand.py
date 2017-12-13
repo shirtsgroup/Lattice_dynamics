@@ -655,7 +655,7 @@ def Anisotropic_Local_Gradient(Coordinate_file, Program, Temperature, Pressure, 
         if Program == 'Tinker':
             wavenumbers = Wvn.Tinker_Wavenumber(Coordinate_file, Parameter_file=keyword_parameters['Parameter_file'])
         elif Program == 'Test':
-            wavenumbers = Wvn.Test_Wavenumber(Coordinate_file)
+            wavenumbers = Wvn.Test_Wavenumber(Coordinate_file,0.)
     elif Method == 'GaQg':
         wavenumbers = Wvn.Call_Wavenumbers(Method, min_RMS_gradient, Gruneisen=keyword_parameters['Gruneisen'],
                                            Wavenumber_Reference=keyword_parameters['Wavenumber_Reference'],
@@ -684,11 +684,13 @@ def Anisotropic_Local_Gradient(Coordinate_file, Program, Temperature, Pressure, 
         if Method == 'GaQ':
             # Computing the wavenumbers for the strained strucutres with the mass-weighted Hessian
             wavenumbers_plus = Wvn.Call_Wavenumbers(Method, min_RMS_gradient, Coordinate_file='p' + file_ending,
-                                                    Program=Program,
-                                                    Parameter_file=keyword_parameters['Parameter_file'])
+                                                    Program=Program, 
+                                                    Parameter_file=keyword_parameters['Parameter_file'],
+                                                    Applied_strain=keyword_parameters['Applied_strain'] + strain_array)
             wavenumbers_minus = Wvn.Call_Wavenumbers(Method, min_RMS_gradient, Coordinate_file='m' + file_ending,
                                                      Program=Program,
-                                                     Parameter_file=keyword_parameters['Parameter_file'])
+                                                     Parameter_file=keyword_parameters['Parameter_file'],
+                                                     Applied_strain=keyword_parameters['Applied_strain'] - strain_array)
         elif Method == 'GaQg':
             # Computing the wavenumbers for the strained strucutres with the Gruneisen parameter
             wavenumbers_plus = Wvn.Call_Wavenumbers(Method, min_RMS_gradient, Gruneisen=keyword_parameters['Gruneisen'],
@@ -703,6 +705,20 @@ def Anisotropic_Local_Gradient(Coordinate_file, Program, Temperature, Pressure, 
         dS_deta[i] = (Pr.Vibrational_Entropy(Temperature, wavenumbers_plus, Statistical_mechanics) / molecules_in_coord -
                       Pr.Vibrational_Entropy(Temperature, wavenumbers_minus, Statistical_mechanics) /
                       molecules_in_coord) / (2 * LocGrd_strain[i])
+#        dS_deta[i] = -1*(Pr.Gibbs_Free_Energy(Temperature + 0.05, Pressure, Program, wavenumbers_plus,
+#                                           'p' + file_ending, Statistical_mechanics, molecules_in_coord,
+#                                           Parameter_file=keyword_parameters['Parameter_file']) -
+#                      Pr.Gibbs_Free_Energy(Temperature - 0.05, Pressure, Program, wavenumbers_plus, 'p' +
+#                                           file_ending, Statistical_mechanics, molecules_in_coord,
+#                                           Parameter_file=keyword_parameters['Parameter_file']) -
+#                      Pr.Gibbs_Free_Energy(Temperature + 0.05, Pressure, Program, wavenumbers_minus, 'm' +
+#                                           file_ending, Statistical_mechanics, molecules_in_coord,
+#                                           Parameter_file=keyword_parameters['Parameter_file']) +
+#                      Pr.Gibbs_Free_Energy(Temperature - 0.05, Pressure, Program, wavenumbers_minus, 'm' +
+#                                           file_ending, Statistical_mechanics, molecules_in_coord,
+#                                           Parameter_file=keyword_parameters['Parameter_file']
+#                                           )) / (4 * LocGrd_strain[i] * 0.05)
+
 
         # Computing the second derivative Gibbs free energy as a funciton of strain using a finite difference approach
         dG_ddeta[i, i] = (Pr.Gibbs_Free_Energy(Temperature, Pressure, Program, wavenumbers_plus, 'p' + file_ending,
@@ -764,16 +780,24 @@ def Anisotropic_Local_Gradient(Coordinate_file, Program, Temperature, Pressure, 
                     # Computing the wavenumbers for the strained strucutres with the mass-weighted Hessian
                     wavenumbers_plus_plus = Wvn.Call_Wavenumbers(Method, min_RMS_gradient,
                                                                  Coordinate_file='pp' + file_ending, Program=Program,
-                                                                 Parameter_file=keyword_parameters['Parameter_file'])
+                                                                 Parameter_file=keyword_parameters['Parameter_file'],
+                                                                 Applied_strain=keyword_parameters['Applied_strain'] +
+                                                                                strain_array + strain_array_2)
                     wavenumbers_plus_minus = Wvn.Call_Wavenumbers(Method, min_RMS_gradient,
                                                                   Coordinate_file='pm' + file_ending, Program=Program,
-                                                                  Parameter_file=keyword_parameters['Parameter_file'])
+                                                                  Parameter_file=keyword_parameters['Parameter_file'],
+                                                                  Applied_strain=keyword_parameters['Applied_strain'] +
+                                                                                strain_array - strain_array_2)
                     wavenumbers_minus_minus = Wvn.Call_Wavenumbers(Method, min_RMS_gradient,
                                                                    Coordinate_file='mm' + file_ending, Program=Program,
-                                                                   Parameter_file=keyword_parameters['Parameter_file'])
+                                                                   Parameter_file=keyword_parameters['Parameter_file'],
+                                                                   Applied_strain=keyword_parameters['Applied_strain'] -
+                                                                                strain_array - strain_array_2)
                     wavenumbers_minus_plus = Wvn.Call_Wavenumbers(Method, min_RMS_gradient,
                                                                   Coordinate_file='mp' + file_ending, Program=Program,
-                                                                  Parameter_file=keyword_parameters['Parameter_file'])
+                                                                  Parameter_file=keyword_parameters['Parameter_file'],
+                                                                  Applied_strain=keyword_parameters['Applied_strain'] -
+                                                                                strain_array + strain_array_2)
                 elif Method == 'GaQg':
                     # Computing the wavenumbers for the strained strucutres with the Gruneisen parameter
                     wavenumbers_plus_plus = Wvn.Call_Wavenumbers(Method, min_RMS_gradient,
@@ -826,8 +850,11 @@ def Anisotropic_Local_Gradient(Coordinate_file, Program, Temperature, Pressure, 
         os.system('rm p' + file_ending + ' m' + file_ending)
 
     # Calculating deta/dT for all strains
+#    for i in range(6):
+#        for j in range(6):
+#            if np.absolute(dG_ddeta[i,j]) < 1.0:
+#                dG_ddeta[i,j] = 0.
     dstrain = np.linalg.lstsq(dG_ddeta, dS_deta)[0]
-
     dstrain[3:] = dstrain[3:]*0.5
     # Saving numerical outputs
     NO.aniso_gradient(dG_deta, dG_ddeta, dS_deta, dstrain)

@@ -201,9 +201,7 @@ def Test_U(Coordinate_file):
     Coordinate_file = File containing lattice parameters
     """
     lattice_parameters = Test_Lattice_Parameters(Coordinate_file)
-    U = (lattice_parameters[0] - 10) ** 2 + (lattice_parameters[1] - 7) ** 2 + \
-        (lattice_parameters[2] - 12) ** 2 + 200.0 * (lattice_parameters[3] - 90) ** 2 + 100. * \
-        (lattice_parameters[4] - 90) ** 2 + 150. * (lattice_parameters[5] - 90) ** 2 - 43.
+    U = 0.6*(lattice_parameters[0] - 10.)**2 + 0.7*(lattice_parameters[1] - 12.)**2 + 0.8*(lattice_parameters[2] - 14.)**2 + 3.0*(lattice_parameters[3] - 90.)**2 + 3.5*(lattice_parameters[4] - 95.)**2 + 0.9*(lattice_parameters[5] - 88.)**2 - 24
     return U
 
 
