@@ -175,26 +175,24 @@ def Test_Wavenumber(Coordinate_file, strain, function='Test3'):
         wavenumbers = np.arange(1, 200)
         wavenumbers = wavenumbers**(5.0/3.0)  # get something in the right range = 400^(4/3) = 2941
         wavenumbers[0:3] = [0, 0, 0]  # zero translation
-        [refx, refy, refz] = [lattice_parameters[0]/10, lattice_parameters[1]/7, lattice_parameters[2]/12]
+        [refx, refy, refz] = [lattice_parameters[0]/10., lattice_parameters[1]/12., lattice_parameters[2]/15.]
 #        [refx,refy,refz] = [lattice_parameters[0]/5,lattice_parameters[1]/6,lattice_parameters[2]/8]
         for i in range(3,len(wavenumbers[3:])+3):
             wavenumbers[i] = wavenumbers[i]*(1.0/15.0)*(2*refx**4.8 + 10*refy**4.2 + 4*np.sin(2*np.pi*refx) +
                                                         3*refz**4.8)
     elif function == 'Test3':
         if os.path.isfile('wvn0_test.npy') and os.path.isfile('wvnChange_test.npy'):
-            original_lat_param = np.array([10.,12.,14.,90.,95.,88.])
-            #strain = (lattice_parameters - original_lat_param)/original_lat_param
             wvn0 = np.load('wvn0_test.npy')
             change = np.load('wvnChange_test.npy')
             wavenumbers = np.zeros(len(wvn0))
             for i in range(3,len(wavenumbers)):
-                wavenumbers[i] = wvn0[i]*np.exp(-1.*np.sum(strain*change[i]))# + strain**2*(change[i]**2)))
+                wavenumbers[i] = wvn0[i]*np.exp(-1.*np.sum(np.dot(strain,change[i])))# + strain**2*(change[i]**2)))
 
         else:
             # Setting random wavenumbers
             wavenumbers = np.zeros(303)
             wavenumbers[3:241] = np.random.uniform(10., 2000., len(wavenumbers[3:241]))
-            wavenumbers[241:] = np.random.uniform(2800., 3300., len(wavenumbers[241:]))
+            wavenumbers[241:] = np.random.uniform(2800., 3200., len(wavenumbers[241:]))
             wavenumbers = np.sort(wavenumbers)
             np.save('wvn0_test', wavenumbers)
 
@@ -202,7 +200,7 @@ def Test_Wavenumber(Coordinate_file, strain, function='Test3'):
             change = np.zeros((len(wavenumbers), 6))
             for i in range(3,len(wavenumbers)):
                 #change[i, :3] = np.random.uniform(-2*np.exp(-wavenumbers[i]/10.) - 0.001, 7*np.exp(-wavenumbers[i]/100.) + 0.01, 3)
-                change[i, :3] = np.random.uniform(0., 7*np.exp(-wavenumbers[i]/500.) + 0.001, 3)
+                change[i, :3] = np.random.uniform(-2*np.exp(-wavenumbers[i]/200.) - 0.001, 7*np.exp(-wavenumbers[i]/500.) + 0.001)
                 for j in range(3,6):
                     change[j] = np.random.uniform(-0.5*np.absolute(lattice_parameters[j] - 90.)*np.exp(-wavenumbers[i]/100.) - 0.01,
                                                   0.5*np.absolute(lattice_parameters[j] - 90.)*np.exp(-wavenumbers[i]/100.) + 0.01)

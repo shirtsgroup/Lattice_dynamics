@@ -336,38 +336,6 @@ def Isotropic_Change_Lattice_Parameters(volume_fraction_change, Program, Coordin
     dlattice_parameters[3:] = 0.
     return dlattice_parameters
 
-
-#def Change_Crystal_Matrix(matrix_parameters_fraction_change, Program, Coordinate_file):
-    """
-    This function returns a matrix of changes in crystal matrix parameters based off of a general fraction
-    This function is used for local gradient anisotropic expansion, each change in parameter is tested separately in 
-    that case. We are combining them in one matrix here though
-
-    **Required Inputs
-    matrix_parameters_fraction_change = New parameter over old parameter
-    Program = 'Tinker' for Tinker Molecular Modeling
-              'Test' for a test run
-    Coordinate_file = file containing lattice parameters of the previous structure
-    """
-    # Calling the lattice parameters
-#    if Program == 'Tinker':
-#        lattice_parameters = Pr.Tinker_Lattice_Parameters(Coordinate_file)
-#    elif Program == 'Test':
-#        lattice_parameters = Pr.Test_Lattice_Parameters(Coordinate_file)
-
-    # Computing the crystal matrix of the coordinate file and determining the change in parameters based off of the
-    # fractional input
-#    dcrystal_matrix = Lattice_parameters_to_Crystal_matrix(lattice_parameters)*matrix_parameters_fraction_change
-
-    # If lattice parameter is smaller than 5 in the coordinate file than the fractional change is increased as if it
-    # was 5.
-    # This is for cases where the angles are ~90 degrees, it lets us fully test the gradient due to temperature.
-#    for i in range(3):
-#        for j in np.arange(i+1, 3):
-#            if dcrystal_matrix[i, j] < matrix_parameters_fraction_change*5:
-#                dcrystal_matrix[i, j] = matrix_parameters_fraction_change*100
-#    return dcrystal_matrix
-    
 def strain_matrix(strain):
     strain_mat = np.zeros((3, 3))
     # Principal strains
@@ -410,13 +378,9 @@ def Expand_Structure(Coordinate_file, Program, Expansion_type, molecules_in_coor
         lattice_parameters = Pr.Test_Lattice_Parameters(Coordinate_file)
         if Expansion_type == 'lattice_parameters':
             lattice_parameters = lattice_parameters + keyword_parameters['dlattice_parameters']
-#        elif Expansion_type == 'crystal_matrix':
-#            crystal_matrix = Lattice_parameters_to_Crystal_matrix(lattice_parameters)
-#            crystal_matrix = crystal_matrix + keyword_parameters['dcrystal_matrix']
-#            lattice_parameters = Crystal_matrix_to_Lattice_parameters(crystal_matrix)
         elif Expansion_type == 'strain':
             crystal_matrix = Lattice_parameters_to_Crystal_matrix(lattice_parameters)
-            crystal_matrix = crystal_matrix*(np.identity(3) + strain_matrix(keyword_parameters['strain']))
+            crystal_matrix = (np.identity(3) + strain_matrix(keyword_parameters['strain']))*crystal_matrix
             lattice_parameters = Crystal_matrix_to_Lattice_parameters_strain(crystal_matrix)
         Output_Test_New_Coordinate_File(lattice_parameters, Output)
 
@@ -441,11 +405,9 @@ def Expand_Structure(Coordinate_file, Program, Expansion_type, molecules_in_coor
         if Expansion_type == 'lattice_parameters':
             lattice_parameters = lattice_parameters + keyword_parameters['dlattice_parameters']
             crystal_matrix = Lattice_parameters_to_Crystal_matrix(lattice_parameters)
-#        elif Expansion_type == 'crystal_matrix':
-#            crystal_matrix = crystal_matrix + keyword_parameters['dcrystal_matrix']
-#            lattice_parameters = Crystal_matrix_to_Lattice_parameters(crystal_matrix)
         elif Expansion_type == 'strain':
-            crystal_matrix = crystal_matrix*(np.identity(3) + strain_matrix(keyword_parameters['strain']))
+#            crystal_matrix = crystal_matrix*(np.identity(3) + strain_matrix(keyword_parameters['strain']))
+            crystal_matrix = (np.identity(3) + strain_matrix(keyword_parameters['strain']))*crystal_matrix
             lattice_parameters = Crystal_matrix_to_Lattice_parameters_strain(crystal_matrix)
         coordinate_center_of_mass = np.dot(crystal_matrix, coordinate_center_of_mass.T).T
         for i in range(int(molecules_in_coord)):

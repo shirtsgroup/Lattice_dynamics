@@ -3,7 +3,7 @@
 import subprocess
 import numpy as np
 import itertools as it
-
+import Expand as Ex
 
 ##########################################
 #           Export PROPERTIES            #
@@ -200,8 +200,30 @@ def Test_U(Coordinate_file):
     **Required Inputs
     Coordinate_file = File containing lattice parameters
     """
-    lattice_parameters = Test_Lattice_Parameters(Coordinate_file)
-    U = 0.6*(lattice_parameters[0] - 10.)**2 + 0.7*(lattice_parameters[1] - 12.)**2 + 0.8*(lattice_parameters[2] - 14.)**2 + 3.0*(lattice_parameters[3] - 90.)**2 + 3.5*(lattice_parameters[4] - 95.)**2 + 0.9*(lattice_parameters[5] - 88.)**2 - 24
+    original_lp = np.array([6.7,12.7,8.1,90.,110.,90.])
+    new_lp = np.load(Coordinate_file)
+
+    original_matrix = Ex.Lattice_parameters_to_Crystal_matrix(original_lp)
+    new_matrix = Ex.Lattice_parameters_to_Crystal_matrix(new_lp)
+
+    strain = (new_matrix - original_matrix)
+    strain = np.array([strain[0,0]/original_matrix[0,0], strain[1,1]/original_matrix[1,1], strain[2,2]/original_matrix[2,2], strain[0,1]/original_matrix[0,1], strain [0,2]/original_matrix[0,2], strain[1,2]/original_matrix[1,2]])
+
+    polynomial_normal = np.array([[  1.18742203e+01,  -3.48680028e+02,   3.84692732e+03,  -1.88823969e+04,    3.45027603e+04],
+                                  [  5.54323244e-01,  -3.08548327e+01,   6.47357935e+02,  -6.05503179e+03,    2.10055547e+04],
+                                  [  1.95539366e-01,  -1.57382623e+01,   3.29163360e+02,  -2.65196646e+03,    7.14369363e+03],
+                                  [ -1.06949138e-01,   3.85031065e+01,  -5.19373271e+03,   3.11110084e+05,   -6.98276745e+06],
+                                  [ -8.31008319e-05,   3.53173349e-02,  -5.48454476e+00,   3.69411233e+02,   -9.36572066e+03],
+                                  [ -8.55769073e+04,  -3.85214691e+06,   4.93079577e+05,   3.11812591e+10,    5.61260873e+12]])
+
+    U = 0.
+    for i in xrange(3):
+        p = np.poly1d(polynomial_normal[i])
+        U = U + p(new_lp[i])
+#    for j in xrange(3):
+#        p = np.poly1d(polynomial_shear[i])
+#        U = U + p(np.cos(strain[i]))
+
     return U
 
 
