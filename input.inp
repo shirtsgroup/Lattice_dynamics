@@ -99,7 +99,7 @@ StepWise_Vol_UpperFrac = 1.08
 # Volume fraction gruneisen change
 Gruneisen_Vol_FracStep = 1.5e-3
 # Lattice Parameter fraction Gruneisen Change
-Gruneisen_LatParam_FracStep = 1.5e-03
+Gruneisen_Lat_FracStep = 1.5e-03
  
 
 ### Wavenumber tolerance

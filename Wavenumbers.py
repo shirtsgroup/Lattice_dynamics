@@ -49,9 +49,12 @@ def Call_Wavenumbers(Method, min_RMS_gradient, **keyword_parameters):
             wavenumbers = Tinker_Wavenumber(keyword_parameters['Coordinate_file'], keyword_parameters['Parameter_file'])
         elif keyword_parameters['Program'] == 'Test':
             if Method == 'GaQ':
-                wavenumbers = Test_Wavenumber(keyword_parameters['Coordinate_file'],keyword_parameters['Applied_strain'])
+                wavenumbers = Test_Wavenumber(keyword_parameters['Coordinate_file'],
+                                              keyword_parameters['Applied_strain'])
+            elif Method == 'HA':
+                wavenumbers = Test_Wavenumber(keyword_parameters['Coordinate_file'], 0.)
             else:
-                wavenumbers = Test_Wavenumber(keyword_parameters['Coordinate_file'],0.)
+                wavenumbers = Test_Wavenumber(keyword_parameters['Coordinate_file'], True)
         return wavenumbers
 
     elif (Method == 'SiQg') or (Method == 'GiQg'):
@@ -182,6 +185,9 @@ def Test_Wavenumber(Coordinate_file, strain, function='Test3'):
                                                         3*refz**4.8)
     elif function == 'Test3':
         if os.path.isfile('wvn0_test.npy') and os.path.isfile('wvnChange_test.npy'):
+            if np.all(strain == True):
+                strain = np.zeros(6)
+                strain[:3] = (Pr.Volume(Program='Test', Coordinate_file=Coordinate_file) / 686.024)**(1./3.)
             wvn0 = np.load('wvn0_test.npy')
             change = np.load('wvnChange_test.npy')
             wavenumbers = np.zeros(len(wvn0))
@@ -199,9 +205,8 @@ def Test_Wavenumber(Coordinate_file, strain, function='Test3'):
             # Setting gruneisen parameters
             change = np.zeros((len(wavenumbers), 6))
             for i in range(3,len(wavenumbers)):
-                #change[i, :3] = np.random.uniform(-2*np.exp(-wavenumbers[i]/10.) - 0.001, 7*np.exp(-wavenumbers[i]/100.) + 0.01, 3)
                 change[i, :3] = np.random.uniform(-2*np.exp(-wavenumbers[i]/200.) - 0.001, 7*np.exp(-wavenumbers[i]/500.) + 0.001)
-                for j in range(3,6):
+                for j in range(3, 6):
                     change[j] = np.random.uniform(-0.5*np.absolute(lattice_parameters[j] - 90.)*np.exp(-wavenumbers[i]/100.) - 0.01,
                                                   0.5*np.absolute(lattice_parameters[j] - 90.)*np.exp(-wavenumbers[i]/100.) + 0.01)
             np.save('wvnChange_test.npy', change)
@@ -248,8 +253,8 @@ def Setup_Isotropic_Gruneisen(Coordinate_file, Program, Gruneisen_Vol_FracStep, 
     elif Program == 'Test':
         Ex.Expand_Structure(Coordinate_file, Program, 'lattice_parameters', molecules_in_coord, 'temp', min_RMS_gradient,
                             dlattice_parameters=dLattice_Parameters)
-        Wavenumber_Reference = Test_Wavenumber(Coordinate_file)
-        Wavenumber_expand = Test_Wavenumber('temp.npy')
+        Wavenumber_Reference = Test_Wavenumber(Coordinate_file, True)
+        Wavenumber_expand = Test_Wavenumber('temp.npy', True)
         lattice_parameters = Pr.Test_Lattice_Parameters(Coordinate_file)
         file_ending = '.npy'
 
@@ -297,11 +302,14 @@ def Setup_Anisotropic_Gruneisen(Coordinate_file, Program, strain, molecules_in_c
                             strain=applied_strain, Parameter_file=keyword_parameters['Parameter_file'])
 
     # Setting an array of the names of expanded strucutres
-    expanded_coordinates = ['temp_0.xyz', 'temp_1.xyz', 'temp_2.xyz', 'temp_3.xyz', 'temp_4.xyz', 'temp_5.xyz']
+    expanded_coordinates = ['temp_0', 'temp_1', 'temp_2', 'temp_3', 'temp_4', 'temp_5']
 
     if Program == 'Tinker':
+        file_ending = '.xyz'
+
         # Organizing the Tinker wavenumbers
-        Organized_wavenumbers = Tinker_Gru_organized_wavenumbers('Anisotropic', Coordinate_file, expanded_coordinates,
+        Organized_wavenumbers = Tinker_Gru_organized_wavenumbers('Anisotropic', Coordinate_file, 
+                                                                 [s + '.xyz' for s in expanded_coordinates],
                                                                  keyword_parameters['Parameter_file'])
 
         # Setting aside the reference wavenumbers
@@ -313,15 +321,18 @@ def Setup_Anisotropic_Gruneisen(Coordinate_file, Program, strain, molecules_in_c
         for i in range(6):
             # Calculating the Gruneisen parameters
             Gruneisen[3:, i] = -(np.log(Organized_wavenumbers[i + 1, 3:]) - np.log(Wavenumber_Reference[3:])) / strain
-            os.system('rm ' + expanded_coordinates[i])
+            os.system('rm ' + expanded_coordinates[i] + file_ending)
 
     elif Program == 'Test':
-        Wavenumber_Reference = Test_Wavenumber(Coordinate_file)
+        file_ending = '.npy'
+        Wavenumber_Reference = Test_Wavenumber(Coordinate_file, 0.)
         Gruneisen = np.zeros((len(Wavenumber_Reference), 6))
         for i in range(6):
-            Wavenumber_expand = Test_Wavenumber(expanded_coordinates[i])
+            applied_strain = np.zeros(6)
+            applied_strain[i] = strain
+            Wavenumber_expand = Test_Wavenumber(expanded_coordinates[i] + file_ending, applied_strain)
             Gruneisen[3:, i] = -(np.log(Wavenumber_expand[3:]) - np.log(Wavenumber_Reference[3:])) / strain
-            os.system('rm ' + expanded_coordinates[i])
+            os.system('rm ' + expanded_coordinates[i] + file_ending)
     return Gruneisen, Wavenumber_Reference
 
 

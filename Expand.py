@@ -617,7 +617,7 @@ def Anisotropic_Local_Gradient(Coordinate_file, Program, Temperature, Pressure, 
         if Program == 'Tinker':
             wavenumbers = Wvn.Tinker_Wavenumber(Coordinate_file, Parameter_file=keyword_parameters['Parameter_file'])
         elif Program == 'Test':
-            wavenumbers = Wvn.Test_Wavenumber(Coordinate_file,0.)
+            wavenumbers = Wvn.Test_Wavenumber(Coordinate_file,keyword_parameters['Applied_strain'])
     elif Method == 'GaQg':
         wavenumbers = Wvn.Call_Wavenumbers(Method, min_RMS_gradient, Gruneisen=keyword_parameters['Gruneisen'],
                                            Wavenumber_Reference=keyword_parameters['Wavenumber_Reference'],

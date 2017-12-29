@@ -323,7 +323,7 @@ def Isotropic_Stepwise_Expansion(StepWise_Vol_StepFrac, StepWise_Vol_LowerFrac, 
         number_of_wavenumbers = Pr.Tinker_atoms_per_molecule(Coordinate_file, 1)*3
     elif Program == 'Test':
         file_ending = '.npy'
-        number_of_wavenumbers = len(Wvn.Test_Wavenumber(Coordinate_file))
+        number_of_wavenumbers = len(Wvn.Test_Wavenumber(Coordinate_file, 0.))
         keyword_parameters['Parameter_file'] = ''
 
     # Setting up array of volume fractions from the lattice structure
@@ -462,7 +462,7 @@ def Isotropic_Gradient_Expansion(Coordinate_file, Program, molecules_in_coord, O
         number_of_wavenumbers = Pr.Tinker_atoms_per_molecule(Coordinate_file, 1)*3
     elif Program == 'Test':
         file_ending = '.npy'
-        number_of_wavenumbers = len(Wvn.Test_Wavenumber(Coordinate_file))
+        number_of_wavenumbers = len(Wvn.Test_Wavenumber(Coordinate_file, 0.))
         keyword_parameters['Parameter_file'] = ''
 
     # Setting the temperature array
