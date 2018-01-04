@@ -9,15 +9,15 @@ import Wavenumbers as Wvn
 import Thermal_NumericalAnalysis as TNA
 import Expand as Ex
 
-def Temperature_Lattice_Dynamics(Temperature=[0.0, 25.0, 50.0, 75.0, 100.0], Pressure=1., Method='HA', Program='Test',
-                                 Output='out', Coordinate_file='molecule.xyz', Parameter_file='keyfile.key',
-                                 molecules_in_coord=1, properties_to_save=['G', 'T'], NumAnalysis_method='RK4',
-                                 NumAnalysis_step=25.0, LocGrd_Vol_FracStep=3e-02, LocGrd_NormStrain=2.5e-03,
-                                 LocGrd_ShearStrain=1e-03, StepWise_Vol_StepFrac=1.5e-3,
+def Temperature_Lattice_Dynamics(Temperature=[0.,300.], Pressure=1., Method='HA', Program='Test',
+                                 Output='out', Coordinate_file='test.npy', Parameter_file='keyfile.key',
+                                 molecules_in_coord=1, properties_to_save=['G', 'T', 'V'], NumAnalysis_method='RK4',
+                                 NumAnalysis_step=300.0, LocGrd_Vol_FracStep=1.5e-03, LocGrd_NormStrain=1e-03,
+                                 LocGrd_ShearStrain=5e-04, StepWise_Vol_StepFrac=1e-3,
                                  StepWise_Vol_LowerFrac=0.97, StepWise_Vol_UpperFrac=1.16,
                                  Statistical_mechanics='Classical', Gruneisen_Vol_FracStep=1.5e-3, 
-                                 Gruneisen_Lat_FracStep=1.0e-3, Wavenum_Tol=-1., Gradient_MaxTemp=300.0, 
-                                 Aniso_LocGrad_Type='73', min_RMS_gradient=0.01):
+                                 Gruneisen_Lat_FracStep=1.e-3, Wavenum_Tol=-1., Gradient_MaxTemp=300.0, 
+                                 Aniso_LocGrad_Type='73', min_RMS_gradient=0.0001):
 
     Temperature = np.array(Temperature).astype(float)
     if Method == 'HA':

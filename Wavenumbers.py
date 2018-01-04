@@ -187,7 +187,7 @@ def Test_Wavenumber(Coordinate_file, strain, function='Test3'):
         if os.path.isfile('wvn0_test.npy') and os.path.isfile('wvnChange_test.npy'):
             if np.all(strain == True):
                 strain = np.zeros(6)
-                strain[:3] = (Pr.Volume(Program='Test', Coordinate_file=Coordinate_file) / 686.024)**(1./3.)
+                strain[:3] = (Pr.Volume(Program='Test', Coordinate_file=Coordinate_file)/ 686.024)**(1./3.)
             wvn0 = np.load('wvn0_test.npy')
             change = np.load('wvnChange_test.npy')
             wavenumbers = np.zeros(len(wvn0))

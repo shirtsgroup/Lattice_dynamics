@@ -50,7 +50,7 @@ def Properties(Coordinate_file, wavenumbers, Temperature, Pressure, Program, Sta
                                                   wavenumbers) / molecules_in_coord  # Quantum vibrational Helmholtz
             properties[13] = Quantum_Vibrational_S(Temperature,
                                                    wavenumbers) / molecules_in_coord  # Quantum vibrational Entropy
-    properties[5] = Pressure * properties[6] * (6.022 * 10 ** 23) * (2.390 * 10 ** (-29)) / molecules_in_coord  # PV
+    properties[5] = PV_energy(Pressure, properties[6]) / molecules_in_coord  # PV
     properties[2] = sum(properties[3:6])  # Gibbs free energy
     return properties
 
@@ -261,6 +261,8 @@ def Volume(**keyword_parameters):
             np.radians(lattice_parameters[4])) * np.cos(np.radians(lattice_parameters[5])))
     return V
 
+def PV_energy(Pressure, volume):
+    return Pressure * volume * (6.022 * 10 ** 23) * (0.024201) * (10**(-27)) 
 
 def Classical_Vibrational_A(Temperature, wavenumbers):
     """
@@ -417,8 +419,7 @@ def Gibbs_Free_Energy(Temperature, Pressure, Program, wavenumbers, Coordinate_fi
         A = Quantum_Vibrational_A(Temperature, wavenumbers) / molecules_in_coord 
 
     # Gibbs Free energy
-# kcal/mol----    atm    * Ang^3  *   Avagadro's #     *kcal/(L*atm)*  (L/Ang^3)
-    G = U + A + Pressure * volume * (6.022 * 10 ** 23) * (0.024201) * (10**(-27)) /molecules_in_coord
+    G = U + A + PV_energy(Pressure,volume) / molecules_in_coord
     return G
 
 

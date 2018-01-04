@@ -339,7 +339,7 @@ def Isotropic_Stepwise_Expansion(StepWise_Vol_StepFrac, StepWise_Vol_LowerFrac, 
     wavenumbers[:, 0] = volume_fraction
 
     # Setting parameters for the Gruneisen parameter and loading in previously found wavenumbers for SiQ
-    existing_wavenumbers = False
+#    existing_wavenumbers = False
     if Method == 'SiQg':
         print "   Calculating the isotropic Gruneisen parameter"
         Gruneisen, Wavenumber_Reference, Volume_Reference = Wvn.Call_Wavenumbers(Method, min_RMS_gradient, Output=Output,
@@ -357,7 +357,11 @@ def Isotropic_Stepwise_Expansion(StepWise_Vol_StepFrac, StepWise_Vol_LowerFrac, 
         Volume_Reference = 0.
         if os.path.isfile(Output + '_WVN_' + Method + '.npy'):
             old_wavenumbers = np.load(Output + '_WVN_' + Method + '.npy')
-            existing_wavenumbers = True
+#            existing_wavenumbers = True
+            for i in range(len(old_wavenumbers[:, 0])):
+                if any(volume_fraction == old_wavenumbers[i,0]):
+                    loc = np.where(volume_fraction == old_wavenumbers[i,0])[0][0]
+                    wavenumbers[loc] = old_wavenumbers[i]
 
     # setting a matrix for properties versus temperature and pressure
     properties = np.zeros((len(volume_fraction), len(Temperature), 14))
@@ -381,14 +385,17 @@ def Isotropic_Stepwise_Expansion(StepWise_Vol_StepFrac, StepWise_Vol_LowerFrac, 
 
         # Calculating wavenumbers of new expanded strucutre
         find_wavenumbers = True
-        if existing_wavenumbers == True:
-            for j in range(len(old_wavenumbers[:, 0])):
-                if old_wavenumbers[j, 0] == volume_fraction[i]:
-                    print "   ... Using wavenumbers already computed in: " + Output + "_WVN_" + Method + ".npy"
-                    wavenumbers[i, 1:] = old_wavenumbers[j, 1:]
-                    find_wavenumbers = False
-
-        if find_wavenumbers == True:
+        if any(wavenumbers[i, 1:] > 0.):
+            pass
+#        if existing_wavenumbers == True:
+#            for j in range(len(old_wavenumbers[:, 0])):
+#                if old_wavenumbers[j, 0] == volume_fraction[i]:
+#                    print "   ... Using wavenumbers already computed in: " + Output + "_WVN_" + Method + ".npy"
+#                    wavenumbers[i, 1:] = old_wavenumbers[j, 1:]
+#                    find_wavenumbers = False
+#
+#        if find_wavenumbers == True:
+        else:
             wavenumbers[i, 1:] = Wvn.Call_Wavenumbers(Method, min_RMS_gradient, Program=Program, Gruneisen=Gruneisen,
                                                       Wavenumber_Reference=Wavenumber_Reference,
                                                       Volume_Reference=Volume_Reference,
