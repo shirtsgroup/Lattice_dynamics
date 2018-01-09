@@ -114,26 +114,35 @@ def Runge_Kutta_Fourth_Order(Method, Coordinate_file, Program, Temperature, Pres
                                   Gruneisen=keyword_parameters['Gruneisen'],
                                   Wavenumber_Reference=keyword_parameters['Wavenumber_Reference'],
                                   Applied_strain=keyword_parameters['Applied_strain'] + RK_strain,
-                                  Aniso_LocGrad_Type=keyword_parameters['Aniso_LocGrad_Type'])
+                                  Aniso_LocGrad_Type=keyword_parameters['Aniso_LocGrad_Type'],
+                                  Coordinate_file_0=keyword_parameters['Coordinate_file_0'])
             volume_hold = 0.
+
         if i == 0:
             # Saving outputs to be passed to the earlier code (local gradient and wavenumbers of initial strucuture)
             wavenumbers = 1. * wavenumbers_hold
             volume = 1. * volume_hold
             k1 = 1. * RK_grad[0]
+
         if i != 3:
             if (Method == 'GiQ') or (Method == 'GiQg'):
                 # For isotropic expansion, determining the volume fraction change of the input strucutre (V_new/V_input)
                 volume_fraction_change = (volume + RK_grad[i] * temperature_steps[i + 1]) / volume
+
+                # Expanding the crystal to the next step size
+                Ex.Call_Expansion(Method, 'expand', Program, Coordinate_file, molecules_in_coord, min_RMS_gradient,
+                                  Parameter_file=keyword_parameters['Parameter_file'],
+                                  volume_fraction_change=volume_fraction_change, Output='RK4')
+
             elif (Method == 'GaQ') or (Method == 'GaQg'):
                 # For anisotropic expansion, determining the strain of th input strucutre for the next step 
                 RK_strain = RK_grad[i] * temperature_steps[i + 1]
-                volume_fraction_change = 0.
 
-            # Expanding the crystal to the next step size
-            Ex.Call_Expansion(Method, 'expand', Program, Coordinate_file, molecules_in_coord, min_RMS_gradient,
-                              Parameter_file=keyword_parameters['Parameter_file'], strain=RK_strain,
-                              volume_fraction_change=volume_fraction_change, Output='RK4')
+                # Expanding the crystal to the next step size
+                Ex.Call_Expansion(Method, 'expand', Program, keyword_parameters['Coordinate_file_0'],
+                                  molecules_in_coord, min_RMS_gradient,
+                                  Parameter_file=keyword_parameters['Parameter_file'],
+                                  strain=keyword_parameters['Applied_strain'] + RK_strain, Output='RK4')
 
         # Multiplying the found gradient by the fraction it will contribute to the overall gradient
         RK_grad[i] = RK_grad[i] * RK_multiply[i]
@@ -213,10 +222,11 @@ def Spline_Intermediate_Points(Output, Method, Program, properties, Temperature,
                      './temp' + file_ending])
 
     # Setting variables for loop
-    temp_strain = np.zeros(6)
+#    temp_strain = np.zeros(6)
     new_strain = np.zeros(6)
     new_volume = 1.
-    temp_volume = 1.
+    temp_volume = Pr.Volume(Program=Program, Coordinate_file='temp' + file_ending)
+#    temp_volume = 1.
 
     for i in range(len(properties[:, 0]) - 1):
         # Stepsize used for numerical analysis
@@ -228,12 +238,13 @@ def Spline_Intermediate_Points(Output, Method, Program, properties, Temperature,
 
         for j in range(len(Temperature)):
             if Temperature[j] == properties[i + 1, 0]:
-                # Copying up the new reference strucutre
-                subprocess.call(['cp', 'Cords/' + Output + '_' + Method + 'T' + str(properties[i + 1, 0]) + file_ending,
-                                 './temp' + file_ending])
-                if (Method == 'GaQ') or (Method == 'GaQg'):
-                    # Determining the new strain of the reference strucutre
-                    temp_strain = y[i + 1]
+                pass
+#                # Copying up the new reference strucutre
+#                subprocess.call(['cp', 'Cords/' + Output + '_' + Method + 'T' + str(properties[i + 1, 0]) + file_ending,
+#                                 './temp' + file_ending])
+#                if (Method == 'GaQ') or (Method == 'GaQg'):
+#                    # Determining the new strain of the reference strucutre
+#                    temp_strain = y[i + 1]
 
             elif properties[i, 0] < Temperature[j] < properties[i + 1, 0]:
                 print "   Using a Spline, adding intermediate temperature at:" + str(Temperature[j]) + " K"
@@ -242,7 +253,7 @@ def Spline_Intermediate_Points(Output, Method, Program, properties, Temperature,
                 if (Method == 'GiQ') or (Method == 'GiQg'):
                     # Computing the volume we are currently at and the next intermediate step
                     new_volume = RK_Dense_Output(theta, y[i], y[i + 1], tangent[i, 2], tangent[i+1, 2], h)
-                    temp_volume = Pr.Volume(Program=Program, Coordinate_file='temp' + file_ending)
+#                    temp_volume = Pr.Volume(Program=Program, Coordinate_file='temp' + file_ending)
                 elif (Method == 'GaQ') or (Method == 'GaQg'):
                     # Computing the strain from the lattice minimum structure to the next intermediate step
                     new_strain = np.zeros(6)
@@ -252,21 +263,18 @@ def Spline_Intermediate_Points(Output, Method, Program, properties, Temperature,
 
                 # Expanding the strucutre, from the structure at the last temperature to the next intermediate step
                 if os.path.isfile('Cords/' + Output + '_' + Method + 'T' + str(Temperature[j]) + file_ending):
-                    print "   ...Using previous coordinate file"
-                    subprocess.call(['cp', 'Cords/' + Output + '_' + Method + 'T' + str(Temperature[j]) + file_ending, './temp' + file_ending])
+                     pass
+#                    print "   ...Using previous coordinate file"
+#                    subprocess.call(['cp', 'Cords/' + Output + '_' + Method + 'T' + str(Temperature[j]) + file_ending, './temp' + file_ending])
                 else:
                     Ex.Call_Expansion(Method, 'expand', Program, 'temp' + file_ending, molecules_in_coord, min_RMS_gradient,
                                       Parameter_file=keyword_parameters['Parameter_file'],
-                                      volume_fraction_change=new_volume / temp_volume, strain=new_strain - temp_strain,
-                                      Output='temp')
-
-                # Coppying new intermediate structure to the Cords directory for storage
-                subprocess.call(['cp', 'temp' + file_ending, 'Cords/' + Output + '_' + Method + 'T' +
-                                 str(Temperature[j]) + file_ending])
+                                      volume_fraction_change=new_volume / temp_volume, strain=new_strain,
+                                      Output='hold')
 
                 # Computing the wavenumbers for the new structure
                 wavenumbers = Wvn.Call_Wavenumbers(Method, min_RMS_gradient, Program=Program,
-                                                   Coordinate_file='temp' + file_ending,
+                                                   Coordinate_file='hold' + file_ending,
                                                    Parameter_file=keyword_parameters['Parameter_file'],
                                                    Gruneisen=keyword_parameters['Gruneisen'],
                                                    Wavenumber_Reference=keyword_parameters['Wavenumber_Reference'],
@@ -274,9 +282,14 @@ def Spline_Intermediate_Points(Output, Method, Program, properties, Temperature,
                                                    New_Volume=new_volume)
 
                 # Computing the properites
-                properties_out[count] = Pr.Properties('temp' + file_ending, wavenumbers, Temperature[j], Pressure,
+                properties_out[count] = Pr.Properties('hold' + file_ending, wavenumbers, Temperature[j], Pressure,
                                                       Program, Statistical_mechanics, molecules_in_coord,
                                                       Parameter_file=keyword_parameters['Parameter_file'])
+
+                # Moving new intermediate structure to the Cords directory for storage
+                subprocess.call(['mv', 'hold' + file_ending, 'Cords/' + Output + '_' + Method + 'T' +
+                                 str(Temperature[j]) + file_ending])
+
                 count = count + 1
                 temp_strain = new_strain
 
@@ -606,11 +619,11 @@ def Isotropic_Gradient_Expansion(Coordinate_file, Program, molecules_in_coord, O
 ########################################################
 #     Gradient Anisotropic Expansion Due to Strain     #
 ########################################################
-def Ansotropic_Gradient_Expansion(Coordinate_file, Program, molecules_in_coord, Output, Method, Gradient_MaxTemp,
-                                  Pressure, LocGrd_NormStrain, LocGrd_ShearStrain, Statistical_mechanics,
-                                  NumAnalysis_step, NumAnalysis_method, Aniso_LocGrad_Type, Temperature,
-                                  min_RMS_gradient,
-                                  **keyword_parameters):
+def Anisotropic_Gradient_Expansion(Coordinate_file, Program, molecules_in_coord, Output, Method, Gradient_MaxTemp,
+                                   Pressure, LocGrd_NormStrain, LocGrd_ShearStrain, Statistical_mechanics,
+                                   NumAnalysis_step, NumAnalysis_method, Aniso_LocGrad_Type, Temperature,
+                                   min_RMS_gradient,
+                                   **keyword_parameters):
     """
     This function calculated the anisotropic gradient for thermal expansion and returns the properties along that path
     :param Coordinate_file: file containing the lattice parameters (and coordinates)
@@ -719,17 +732,18 @@ def Ansotropic_Gradient_Expansion(Coordinate_file, Program, molecules_in_coord, 
                                                  LocGrd_ShearStrain=LocGrd_ShearStrain,
                                                  Aniso_LocGrad_Type=Aniso_LocGrad_Type, Gruneisen=Gruneisen,
                                                  Wavenumber_Reference=Wavenumber_Reference,
-                                                 Applied_strain=Applied_strain)
+                                                 Applied_strain=Applied_strain, Coordinate_file_0=Coordinate_file)
             elif NumAnalysis_method == 'Euler':
                 strain_gradient[i, 0, 1:], wavenumbers[i, 1:] = \
-                        Ex.Call_Expansion(Method, 'local_gradient', Program, Output + '_' + Method + 'T' + str(temperature[i]) +
-                                          file_ending, molecules_in_coord,
-                                          min_RMS_gradient, Temperature=temperature[i], Pressure=Pressure,
-                                          LocGrd_NormStrain=LocGrd_NormStrain, LocGrd_ShearStrain=LocGrd_ShearStrain,
+                        Ex.Call_Expansion(Method, 'local_gradient', Program,
+                                          Output + '_' + Method + 'T' + str(temperature[i]) + file_ending,
+                                          molecules_in_coord, min_RMS_gradient, Temperature=temperature[i],
+                                          Pressure=Pressure, LocGrd_NormStrain=LocGrd_NormStrain,
+                                          LocGrd_ShearStrain=LocGrd_ShearStrain,
                                           Statistical_mechanics=Statistical_mechanics,
                                           Parameter_file=keyword_parameters['Parameter_file'], Gruneisen=Gruneisen,
                                           Wavenumber_Reference=Wavenumber_Reference, Applied_strain=Applied_strain,
-                                          Aniso_LocGrad_Type=Aniso_LocGrad_Type)
+                                          Aniso_LocGrad_Type=Aniso_LocGrad_Type, Coordinate_file_0=Coordinate_file)
                 # Setting the local gradient equal to the step gradient
                 strain_gradient[i, 1, 1:] = strain_gradient[i, 0, 1:]
 
@@ -744,10 +758,9 @@ def Ansotropic_Gradient_Expansion(Coordinate_file, Program, molecules_in_coord, 
             subprocess.call(['cp', 'Cords/' + Output + '_' + Method + 'T' + str(temperature[i + 1]) + file_ending, './'])
         else:
             # Expanding to the next strucutre using the strain gradient to the next temperature step
-            Ex.Call_Expansion(Method, 'expand', Program, Output + '_' + Method + 'T' + str(temperature[i]) +
-                              file_ending, molecules_in_coord, min_RMS_gradient,
+            Ex.Call_Expansion(Method, 'expand', Program, Coordinate_file, molecules_in_coord, min_RMS_gradient,
                               Parameter_file=keyword_parameters['Parameter_file'],
-                              strain=strain_gradient[i, 0, 1:] * NumAnalysis_step,
+                              strain=Applied_strain + strain_gradient[i, 0, 1:] * NumAnalysis_step,
                               Output=Output + '_' + Method + 'T' + str(temperature[i + 1]))
 
         # Changing the applied strain to the new expanded strucutre
@@ -782,7 +795,7 @@ def Ansotropic_Gradient_Expansion(Coordinate_file, Program, molecules_in_coord, 
                                       Statistical_mechanics=Statistical_mechanics,
                                       Parameter_file=keyword_parameters['Parameter_file'], Gruneisen=Gruneisen,
                                       Wavenumber_Reference=Wavenumber_Reference, Applied_strain=Applied_strain,
-                                      Aniso_LocGrad_Type=Aniso_LocGrad_Type)
+                                      Aniso_LocGrad_Type=Aniso_LocGrad_Type, Coordinate_file_0=Coordinate_file)
 
             # Computing the properties at the final temperature
             properties[i + 1, :] = Pr.Properties(Output + '_' + Method + 'T' + str(temperature[i + 1]) + file_ending,

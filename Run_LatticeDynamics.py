@@ -75,59 +75,59 @@ def Temperature_Lattice_Dynamics(Temperature=[0.,300.], Pressure=1., Method='HA'
 
     if (Method == 'GaQ') or (Method == 'GaQg'):
         print "Performing Gradient Anisotropic Quasi-Harmonic Approximation"
-        properties = TNA.Ansotropic_Gradient_Expansion(Coordinate_file, Program, molecules_in_coord, Output, Method,
-                                                       Gradient_MaxTemp, Pressure, LocGrd_NormStrain,
-                                                       LocGrd_ShearStrain, Statistical_mechanics, NumAnalysis_step,
-                                                       NumAnalysis_method, Aniso_LocGrad_Type, Temperature,
-                                                       min_RMS_gradient, Gruneisen_Lat_FracStep=Gruneisen_Lat_FracStep, 
-                                                       Parameter_file=Parameter_file)
+        properties = TNA.Anisotropic_Gradient_Expansion(Coordinate_file, Program, molecules_in_coord, Output, Method,
+                                                        Gradient_MaxTemp, Pressure, LocGrd_NormStrain,
+                                                        LocGrd_ShearStrain, Statistical_mechanics, NumAnalysis_step,
+                                                        NumAnalysis_method, Aniso_LocGrad_Type, Temperature,
+                                                        min_RMS_gradient, Gruneisen_Lat_FracStep=Gruneisen_Lat_FracStep, 
+                                                        Parameter_file=Parameter_file)
         print "   Saving user specified properties in indipendent files:"
         Pr.Save_Properties(properties, properties_to_save, Output, Method, Statistical_mechanics)
         print "Gradient Anisotropic Quasi-Harmonic Approximation is complete!"
 
 
-def Pressure_setup(Temperature=[0.0, 25.0, 50.0, 75.0, 100.0], Pressure=1., Method='HA', Program='Test',
-                   Output='out', Coordinate_file='molecule.xyz', Parameter_file='keyfile.key',
-                   molecules_in_coord=1, properties_to_save=['G', 'T'], NumAnalysis_method='RK4',
-                   NumAnalysis_step=25.0,
-                   LocGrd_Vol_FracStep=3e-02,
-                   LocGrd_NormStrain=2e-03,
-                   LocGrd_ShearStrain=1e-03, StepWise_Vol_StepFrac=1.5e-3,
-                   StepWise_Vol_LowerFrac=0.97, StepWise_Vol_UpperFrac=1.16,
-                   Statistical_mechanics='Classical', Gruneisen_Vol_FracStep=1.5e-3,
-                   Gruneisen_Lat_FracStep=1.0e-3, Wavenum_Tol=-1., Gradient_MaxTemp=300.0,
-                   Aniso_LocGrad_Type='73', min_RMS_gradient=0.01):
-
-    if Program == 'Tinker':
-        file_ending = '.xyz'
-    elif Program == 'Test':
-        file_ending = '.npy'
-
-    # Making a temporary cooradinate file
-    subprocess.call(['cp',Coordinate_file,'pressure_scan' + file_ending])
-
-    # Making directories for each pressure
-    Pressure = np.insert(Pressure, 0., 0.)
-    for i in range(1, len(Pressure)):
-        # Making a directory to store everything
-        subprocess.call(['mkdir', Output + '_' + str(Pressure[i]) + 'atm'])
-
-        # Determining the pressure gradient
-        dVdP = Ex.Isotropic_pressure_gradient('pressure_scan' + file_ending, Program, 0., Pressure[i - 1], 
-                                              LocGrd_Vol_FracStep,
-                                              molecules_in_coord, Statistical_mechanics, Method, min_RMS_gradient,
-                                              Parameter_file=Parameter_file)
-
-        # Expanding the new structure
-        volume = Pr.Volume(Program=Program, Coordinate_file='pressure_scan' + file_ending) 
-        dlattice_parameters = Ex.Isotropic_Change_Lattice_Parameters((volume + dVdP * (Pressure[i] - Pressure[i-1])) / volume, Program, 'pressure_scan' + file_ending)
-
-        # Building the isotropically expanded and compressed strucutres
-        Ex.Expand_Structure('pressure_scan' + file_ending, Program, 'lattice_parameters', molecules_in_coord, 
-                            'pressure_scan', min_RMS_gradient, dlattice_parameters=dlattice_parameters, 
-                             Parameter_file=Parameter_file)
-        # Copying new structure into the pressure directory
-        subprocess.call(['cp', 'pressure_scan' + file_ending, Output + '_' + str(Pressure[i]) + 'atm/' + Coordinate_file])
+#def Pressure_setup(Temperature=[0.0, 25.0, 50.0, 75.0, 100.0], Pressure=1., Method='HA', Program='Test',
+#                   Output='out', Coordinate_file='molecule.xyz', Parameter_file='keyfile.key',
+#                   molecules_in_coord=1, properties_to_save=['G', 'T'], NumAnalysis_method='RK4',
+#                   NumAnalysis_step=25.0,
+#                   LocGrd_Vol_FracStep=3e-02,
+#                   LocGrd_NormStrain=2e-03,
+#                   LocGrd_ShearStrain=1e-03, StepWise_Vol_StepFrac=1.5e-3,
+#                   StepWise_Vol_LowerFrac=0.97, StepWise_Vol_UpperFrac=1.16,
+#                   Statistical_mechanics='Classical', Gruneisen_Vol_FracStep=1.5e-3,
+#                   Gruneisen_Lat_FracStep=1.0e-3, Wavenum_Tol=-1., Gradient_MaxTemp=300.0,
+#                   Aniso_LocGrad_Type='73', min_RMS_gradient=0.01):
+#
+#    if Program == 'Tinker':
+#        file_ending = '.xyz'
+#    elif Program == 'Test':
+#        file_ending = '.npy'
+#
+#    # Making a temporary cooradinate file
+#    subprocess.call(['cp',Coordinate_file,'pressure_scan' + file_ending])
+#
+#    # Making directories for each pressure
+#    Pressure = np.insert(Pressure, 0., 0.)
+#    for i in range(1, len(Pressure)):
+#        # Making a directory to store everything
+#        subprocess.call(['mkdir', Output + '_' + str(Pressure[i]) + 'atm'])
+#
+#        # Determining the pressure gradient
+#        dVdP = Ex.Isotropic_pressure_gradient('pressure_scan' + file_ending, Program, 0., Pressure[i - 1],
+#                                              LocGrd_Vol_FracStep,
+#                                              molecules_in_coord, Statistical_mechanics, Method, min_RMS_gradient,
+#                                              Parameter_file=Parameter_file)
+#
+#        # Expanding the new structure
+#        volume = Pr.Volume(Program=Program, Coordinate_file='pressure_scan' + file_ending)
+#        dlattice_parameters = Ex.Isotropic_Change_Lattice_Parameters((volume + dVdP * (Pressure[i] - Pressure[i-1])) / volume, Program, 'pressure_scan' + file_ending)
+#
+#        # Building the isotropically expanded and compressed strucutres
+#        Ex.Expand_Structure('pressure_scan' + file_ending, Program, 'lattice_parameters', molecules_in_coord,
+#                            'pressure_scan', min_RMS_gradient, dlattice_parameters=dlattice_parameters,
+#                             Parameter_file=Parameter_file)
+#        # Copying new structure into the pressure directory
+#        subprocess.call(['cp', 'pressure_scan' + file_ending, Output + '_' + str(Pressure[i]) + 'atm/' + Coordinate_file])
 
 
 if __name__ == '__main__':
@@ -388,28 +388,30 @@ if __name__ == '__main__':
                                      min_RMS_gradient=min_RMS_gradient)
     
     else:
-        Pressure_setup(Temperature=Temperature,
-                       Pressure=Pressure,
-                       Method=Method,
-                       Program=Program,
-                       Output=Output,
-                       Coordinate_file=Coordinate_file,
-                       Parameter_file=Parameter_file,
-                       molecules_in_coord=molecules_in_coord,
-                       properties_to_save=properties_to_save,
-                       NumAnalysis_method=NumAnalysis_method,
-                       NumAnalysis_step=NumAnalysis_step,
-                       LocGrd_Vol_FracStep=LocGrd_Vol_FracStep,
-                       LocGrd_NormStrain=LocGrd_NormStrain,
-                       LocGrd_ShearStrain=LocGrd_ShearStrain,
-                       StepWise_Vol_StepFrac=StepWise_Vol_StepFrac,
-                       StepWise_Vol_LowerFrac=StepWise_Vol_LowerFrac,
-                       StepWise_Vol_UpperFrac=StepWise_Vol_UpperFrac,
-                       Statistical_mechanics=Statistical_mechanics,
-                       Gruneisen_Vol_FracStep=Gruneisen_Vol_FracStep,
-                       Gruneisen_Lat_FracStep=Gruneisen_Lat_FracStep,
-                       Wavenum_Tol=Wavenum_Tol,
-                       Gradient_MaxTemp=Gradient_MaxTemp,
-                       Aniso_LocGrad_Type=Aniso_LocGrad_Type,
-                       min_RMS_gradient=min_RMS_gradient)
+        print "Warning! The scanning of multiple pressures is not yet supported in this code."
+        print "... Please contact Nate Abraham (nate.abraham@colorado.edu) with ways to perform this."
+#        Pressure_setup(Temperature=Temperature,
+#                       Pressure=Pressure,
+#                       Method=Method,
+#                       Program=Program,
+#                       Output=Output,
+#                       Coordinate_file=Coordinate_file,
+#                       Parameter_file=Parameter_file,
+#                       molecules_in_coord=molecules_in_coord,
+#                       properties_to_save=properties_to_save,
+#                       NumAnalysis_method=NumAnalysis_method,
+#                       NumAnalysis_step=NumAnalysis_step,
+#                       LocGrd_Vol_FracStep=LocGrd_Vol_FracStep,
+#                       LocGrd_NormStrain=LocGrd_NormStrain,
+#                       LocGrd_ShearStrain=LocGrd_ShearStrain,
+#                       StepWise_Vol_StepFrac=StepWise_Vol_StepFrac,
+#                       StepWise_Vol_LowerFrac=StepWise_Vol_LowerFrac,
+#                       StepWise_Vol_UpperFrac=StepWise_Vol_UpperFrac,
+#                       Statistical_mechanics=Statistical_mechanics,
+#                       Gruneisen_Vol_FracStep=Gruneisen_Vol_FracStep,
+#                       Gruneisen_Lat_FracStep=Gruneisen_Lat_FracStep,
+#                       Wavenum_Tol=Wavenum_Tol,
+#                       Gradient_MaxTemp=Gradient_MaxTemp,
+#                       Aniso_LocGrad_Type=Aniso_LocGrad_Type,
+#                       min_RMS_gradient=min_RMS_gradient)
 
