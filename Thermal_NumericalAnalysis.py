@@ -114,8 +114,8 @@ def Runge_Kutta_Fourth_Order(Method, Coordinate_file, Program, Temperature, Pres
                                   Gruneisen=keyword_parameters['Gruneisen'],
                                   Wavenumber_Reference=keyword_parameters['Wavenumber_Reference'],
                                   Applied_strain=keyword_parameters['Applied_strain'] + RK_strain,
-                                  Aniso_LocGrad_Type=keyword_parameters['Aniso_LocGrad_Type'],
-                                  Coordinate_file_0=keyword_parameters['Coordinate_file_0'])
+                                  crystal_matrix=np.dot((np.identity(3) + Ex.strain_matrix(RK_strain)), keyword_parameters['crystal_matrix']),
+                                  Aniso_LocGrad_Type=keyword_parameters['Aniso_LocGrad_Type'])
             volume_hold = 0.
 
         if i == 0:
@@ -135,14 +135,16 @@ def Runge_Kutta_Fourth_Order(Method, Coordinate_file, Program, Temperature, Pres
                                   volume_fraction_change=volume_fraction_change, Output='RK4')
 
             elif (Method == 'GaQ') or (Method == 'GaQg'):
-                # For anisotropic expansion, determining the strain of th input strucutre for the next step 
+                # For anisotropic expansion, determining the strain of th input strucutre for the next step
                 RK_strain = RK_grad[i] * temperature_steps[i + 1]
 
                 # Expanding the crystal to the next step size
-                Ex.Call_Expansion(Method, 'expand', Program, keyword_parameters['Coordinate_file_0'],
+                Ex.Call_Expansion(Method, 'expand', Program, Coordinate_file,
                                   molecules_in_coord, min_RMS_gradient,
                                   Parameter_file=keyword_parameters['Parameter_file'],
-                                  strain=keyword_parameters['Applied_strain'] + RK_strain, Output='RK4')
+                                  strain=Ex.strain_matrix(RK_strain),
+                                  crystal_matrix=keyword_parameters['crystal_matrix'],
+                                  Output='RK4')
 
         # Multiplying the found gradient by the fraction it will contribute to the overall gradient
         RK_grad[i] = RK_grad[i] * RK_multiply[i]
@@ -515,6 +517,7 @@ def Isotropic_Gradient_Expansion(Coordinate_file, Program, molecules_in_coord, O
                                                                                  molecules_in_coord=molecules_in_coord,
                                                                                  Parameter_file=
                                                                                  keyword_parameters['Parameter_file'])
+
     elif Method == 'GiQ':
         Gruneisen = 0.
         Wavenumber_Reference = 0.
@@ -657,7 +660,7 @@ def Anisotropic_Gradient_Expansion(Coordinate_file, Program, molecules_in_coord,
         number_of_wavenumbers = Pr.Tinker_atoms_per_molecule(Coordinate_file, 1) * 3
     elif Program == 'Test':
         file_ending = '.npy'
-        number_of_wavenumbers = len(Wvn.Test_Wavenumber(Coordinate_file,0.))
+        number_of_wavenumbers = len(Wvn.Test_Wavenumber(Coordinate_file, 0.))
         keyword_parameters['Parameter_file'] = ''
 
     # Setting the temperature array
@@ -708,6 +711,7 @@ def Anisotropic_Gradient_Expansion(Coordinate_file, Program, molecules_in_coord,
 
     # Keeping track of the strain applied to the system [3 diagonal, 3 off-diagonal]
     Applied_strain = np.zeros(6)
+    crystal_matrix = Ex.Lattice_parameters_to_Crystal_matrix(Pr.Lattice_parameters(Program, Coordinate_file))
 
     # Finding structures at higher temperatures
     for i in range(len(temperature) - 1):
@@ -717,7 +721,6 @@ def Anisotropic_Gradient_Expansion(Coordinate_file, Program, molecules_in_coord,
                 wavenumbers[i, 1:] = Wvn.Call_Wavenumbers(Method, min_RMS_gradient, Gruneisen=Gruneisen, 
                                                           Wavenumber_Reference=Wavenumber_Reference, 
                                                           Applied_strain=Applied_strain)
-            pass
 
         else:
             print "   Determining local gradient and thermal properties at: " + str(temperature[i]) + " K"
@@ -732,7 +735,9 @@ def Anisotropic_Gradient_Expansion(Coordinate_file, Program, molecules_in_coord,
                                                  LocGrd_ShearStrain=LocGrd_ShearStrain,
                                                  Aniso_LocGrad_Type=Aniso_LocGrad_Type, Gruneisen=Gruneisen,
                                                  Wavenumber_Reference=Wavenumber_Reference,
-                                                 Applied_strain=Applied_strain, Coordinate_file_0=Coordinate_file)
+                                                 Applied_strain=Applied_strain,
+                                                 crystal_matrix=crystal_matrix)
+
             elif NumAnalysis_method == 'Euler':
                 strain_gradient[i, 0, 1:], wavenumbers[i, 1:] = \
                         Ex.Call_Expansion(Method, 'local_gradient', Program,
@@ -742,8 +747,11 @@ def Anisotropic_Gradient_Expansion(Coordinate_file, Program, molecules_in_coord,
                                           LocGrd_ShearStrain=LocGrd_ShearStrain,
                                           Statistical_mechanics=Statistical_mechanics,
                                           Parameter_file=keyword_parameters['Parameter_file'], Gruneisen=Gruneisen,
-                                          Wavenumber_Reference=Wavenumber_Reference, Applied_strain=Applied_strain,
-                                          Aniso_LocGrad_Type=Aniso_LocGrad_Type, Coordinate_file_0=Coordinate_file)
+                                          Wavenumber_Reference=Wavenumber_Reference,
+                                          Applied_strain=Applied_strain,
+                                          crystal_matrix=crystal_matrix,
+                                          Aniso_LocGrad_Type=Aniso_LocGrad_Type)
+
                 # Setting the local gradient equal to the step gradient
                 strain_gradient[i, 1, 1:] = strain_gradient[i, 0, 1:]
 
@@ -754,18 +762,21 @@ def Anisotropic_Gradient_Expansion(Coordinate_file, Program, molecules_in_coord,
             # Saving the strain gradient
             np.save(Output + '_dEta_' + Method, strain_gradient)
 
+        # Changing the applied strain to the new expanded strucutre
+        Applied_strain = Applied_strain + strain_gradient[i, 0, 1:] * NumAnalysis_step
+
         if os.path.isfile('Cords/' + Output + '_' + Method + 'T' + str(temperature[i + 1]) + file_ending):
             subprocess.call(['cp', 'Cords/' + Output + '_' + Method + 'T' + str(temperature[i + 1]) + file_ending, './'])
         else:
             # Expanding to the next strucutre using the strain gradient to the next temperature step
-            Ex.Call_Expansion(Method, 'expand', Program, Coordinate_file, molecules_in_coord, min_RMS_gradient,
-                              Parameter_file=keyword_parameters['Parameter_file'],
-                              strain=Applied_strain + strain_gradient[i, 0, 1:] * NumAnalysis_step,
+            Ex.Call_Expansion(Method, 'expand', Program,
+                              Output + '_' + Method + 'T' + str(temperature[i]) + file_ending, molecules_in_coord,
+                              min_RMS_gradient, Parameter_file=keyword_parameters['Parameter_file'],
+                              strain=Ex.strain_matrix(strain_gradient[i, 0, 1:] * NumAnalysis_step),
+                              crystal_matrix=crystal_matrix,
                               Output=Output + '_' + Method + 'T' + str(temperature[i + 1]))
 
-        # Changing the applied strain to the new expanded strucutre
-        Applied_strain = Applied_strain + strain_gradient[i, 0, 1:] * NumAnalysis_step
-
+        crystal_matrix = np.dot((np.identity(3) + Ex.strain_matrix(strain_gradient[i, 0, 1:] * NumAnalysis_step)), crystal_matrix)
         # Populating the properties for the current temperature
         properties[i, :] = Pr.Properties(Output + '_' + Method + 'T' + str(temperature[i]) + file_ending,
                                          wavenumbers[i, 1:], temperature[i], Pressure, Program, Statistical_mechanics,
@@ -778,10 +789,10 @@ def Anisotropic_Gradient_Expansion(Coordinate_file, Program, molecules_in_coord,
             # Completing the run for the final structure
             if (any(wavenumbers[i + 1, 4:] != 0.) or (Method == 'GaQg')) and any(strain_gradient[i + 1, 1, 1:] != 0.):
                 print "   Using previous data for the local gradient at: " + str(temperature[i + 1]) + " K"
-                wavenumbers[i + 1, 1:] = Wvn.Call_Wavenumbers(Method, min_RMS_gradient, Gruneisen=Gruneisen,
-                                                          Wavenumber_Reference=Wavenumber_Reference,
-                                                          Applied_strain=Applied_strain)
-                pass
+                if Method == 'GaQg':
+                    wavenumbers[i + 1, 1:] = Wvn.Call_Wavenumbers(Method, min_RMS_gradient, Gruneisen=Gruneisen,
+                                                                  Wavenumber_Reference=Wavenumber_Reference,
+                                                                  Applied_strain_wvn=Applied_strain, Program=Program)
 
             else:
                 print "   Determining local gradient and thermal properties at: " + str(temperature[i + 1]) + " K"
@@ -795,7 +806,8 @@ def Anisotropic_Gradient_Expansion(Coordinate_file, Program, molecules_in_coord,
                                       Statistical_mechanics=Statistical_mechanics,
                                       Parameter_file=keyword_parameters['Parameter_file'], Gruneisen=Gruneisen,
                                       Wavenumber_Reference=Wavenumber_Reference, Applied_strain=Applied_strain,
-                                      Aniso_LocGrad_Type=Aniso_LocGrad_Type, Coordinate_file_0=Coordinate_file)
+                                      crystal_matrix=crystal_matrix,
+                                      Aniso_LocGrad_Type=Aniso_LocGrad_Type)
 
             # Computing the properties at the final temperature
             properties[i + 1, :] = Pr.Properties(Output + '_' + Method + 'T' + str(temperature[i + 1]) + file_ending,
@@ -818,7 +830,7 @@ def Anisotropic_Gradient_Expansion(Coordinate_file, Program, molecules_in_coord,
                                             Pressure, Statistical_mechanics, min_RMS_gradient,
                                             Parameter_file=keyword_parameters['Parameter_file'],
                                             Gruneisen=Gruneisen, Wavenumber_Reference=Wavenumber_Reference,)
-    
+
     # Saving the raw data before minimizing
     print "   All properties have been saved in " + Output + "_raw.npy"
     np.save(Output + '_raw', properties)

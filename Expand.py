@@ -62,7 +62,7 @@ def Call_Expansion(Method, Purpose, Program, Coordinate_file, molecules_in_coord
         elif (Method == 'GaQ') or (Method == 'GaQg'):
             Expand_Structure(Coordinate_file, Program, 'strain', molecules_in_coord, keyword_parameters['Output'],
                              min_RMS_gradient, Parameter_file=keyword_parameters['Parameter_file'],
-                             strain=keyword_parameters['strain'])
+                             strain=keyword_parameters['strain'], crystal_matrix=keyword_parameters['crystal_matrix'])
 
     # Fining the local gradient of expansion for inputted strucutre
     elif Purpose == 'local_gradient':
@@ -88,13 +88,14 @@ def Call_Expansion(Method, Purpose, Program, Coordinate_file, molecules_in_coord
 
         elif (Method == 'GaQ') or (Method == 'GaQg'):
             strain_local_gradient, wavenumbers = \
-                Anisotropic_Local_Gradient(Coordinate_file, keyword_parameters['Coordinate_file_0'], Program,
-                                           keyword_parameters['Temperature'], keyword_parameters['Pressure'],
+                Anisotropic_Local_Gradient(Coordinate_file, Program, keyword_parameters['Temperature'],
+                                           keyword_parameters['Pressure'],
                                            keyword_parameters['LocGrd_NormStrain'],
                                            keyword_parameters['LocGrd_ShearStrain'], molecules_in_coord,
                                            keyword_parameters['Statistical_mechanics'], Method,
                                            keyword_parameters['Aniso_LocGrad_Type'], min_RMS_gradient,
                                            keyword_parameters['Applied_strain'],
+                                           keyword_parameters['crystal_matrix'],
                                            Parameter_file=keyword_parameters['Parameter_file'],
                                            Gruneisen=keyword_parameters['Gruneisen'],
                                            Wavenumber_Reference=keyword_parameters['Wavenumber_Reference'])
@@ -298,13 +299,13 @@ def Crystal_matrix_to_Lattice_parameters_strain(crystal_matrix):
                                               [Vzx,Vzy,Vzz]])
     """
     # Computing lattice parameters
-    a = np.linalg.norm(crystal_matrix[:,0])
-    b = np.linalg.norm(crystal_matrix[:,1])
-    c = np.linalg.norm(crystal_matrix[:,2])
+    a = np.linalg.norm(crystal_matrix[:, 0])
+    b = np.linalg.norm(crystal_matrix[:, 1])
+    c = np.linalg.norm(crystal_matrix[:, 2])
 
     gamma = np.arccos(np.dot(np.squeeze(np.asarray(crystal_matrix[:, 0])), np.squeeze(np.asarray(crystal_matrix[:, 1])))
                       / (a * b)) * 180. / np.pi
-    alpha = np.arccos(np.dot(np.squeeze(np.asarray(crystal_matrix[:, 1])), np.squeeze(np.asarray(crystal_matrix[:,2])))
+    alpha = np.arccos(np.dot(np.squeeze(np.asarray(crystal_matrix[:, 1])), np.squeeze(np.asarray(crystal_matrix[:, 2])))
                       / (b * c)) * 180. / np.pi
     beta = np.arccos(np.dot(np.squeeze(np.asarray(crystal_matrix[:, 2])), np.squeeze(np.asarray(crystal_matrix[:, 0])))
                      / (c * a)) * 180. / np.pi
@@ -380,9 +381,8 @@ def Expand_Structure(Coordinate_file, Program, Expansion_type, molecules_in_coor
         if Expansion_type == 'lattice_parameters':
             lattice_parameters = lattice_parameters + keyword_parameters['dlattice_parameters']
         elif Expansion_type == 'strain':
-            crystal_matrix = Lattice_parameters_to_Crystal_matrix(lattice_parameters)
-#            crystal_matrix = (np.identity(3) + strain_matrix(keyword_parameters['strain']))*crystal_matrix
-            crystal_matrix = crystal_matrix*(np.identity(3) + strain_matrix(keyword_parameters['strain']))
+            crystal_matrix = keyword_parameters['crystal_matrix']
+            crystal_matrix = np.dot((np.identity(3) + keyword_parameters['strain']),crystal_matrix)
             lattice_parameters = Crystal_matrix_to_Lattice_parameters_strain(crystal_matrix)
         Output_Test_New_Coordinate_File(lattice_parameters, Output)
 
@@ -408,9 +408,9 @@ def Expand_Structure(Coordinate_file, Program, Expansion_type, molecules_in_coor
             lattice_parameters = lattice_parameters + keyword_parameters['dlattice_parameters']
             crystal_matrix = Lattice_parameters_to_Crystal_matrix(lattice_parameters)
         elif Expansion_type == 'strain':
-#            crystal_matrix = crystal_matrix*(np.identity(3) + strain_matrix(keyword_parameters['strain']))
-            crystal_matrix = (np.identity(3) + strain_matrix(keyword_parameters['strain']))*crystal_matrix
+            crystal_matrix = np.dot((np.identity(3) + keyword_parameters['strain']),keyword_parameters['crystal_matrix'])
             lattice_parameters = Crystal_matrix_to_Lattice_parameters_strain(crystal_matrix)
+            crystal_matrix = Lattice_parameters_to_Crystal_matrix(lattice_parameters)
         coordinate_center_of_mass = np.dot(crystal_matrix, coordinate_center_of_mass.T).T
         for i in range(int(molecules_in_coord)):
             coordinates[i*atoms_per_molecule:(i+1)*atoms_per_molecule] = \
@@ -549,14 +549,13 @@ def Isotropic_Local_Gradient(Coordinate_file, Program, Temperature, Pressure, Lo
     return dS/ddG, wavenumbers, volume
 
 
-def Anisotropic_Local_Gradient(Coordinate_file, Coordinate_file_0, Program, Temperature, Pressure, LocGrd_NormStrain,
+def Anisotropic_Local_Gradient(Coordinate_file, Program, Temperature, Pressure, LocGrd_NormStrain,
                                LocGrd_ShearStrain, molecules_in_coord, Statistical_mechanics, Method, Hessian_number,
-                               min_RMS_gradient, Applied_strain, **keyword_parameters):
+                               min_RMS_gradient, Applied_strain, crystal_matrix_0, **keyword_parameters):
     """
     This function calculates the local gradient of anisotropic expansion for a given coordinate file
 
     :param Coordinate_file: file containing lattice parameters (and coordinates)
-    :param Coordinate_file_0: The initial coordinate file given to the input files, which is used for all expansions.
     :param Program: 'Tinker' Tinker molecular modeling
                     'Test' Test case
     :param Temperature: in Kelvin
@@ -627,7 +626,7 @@ def Anisotropic_Local_Gradient(Coordinate_file, Coordinate_file_0, Program, Temp
                                            Applied_strain=Applied_strain)
 
     # Making array for dG/deta 
-    dG_deta = np.zeros((6,3))
+    dG_deta = np.zeros((6, 3))
 
     if Temperature == 0.:
         # If temperature is zero, we assume that the local gradient is the same at 0.1K
@@ -641,10 +640,12 @@ def Anisotropic_Local_Gradient(Coordinate_file, Coordinate_file_0, Program, Temp
         strain_array[i] = LocGrd_strain[i]
 
         # Straining the input structure by the current diagonal
-        Expand_Structure(Coordinate_file_0, Program, 'strain', molecules_in_coord, 'p', min_RMS_gradient,
-                         strain=Applied_strain + strain_array, Parameter_file=keyword_parameters['Parameter_file'])
-        Expand_Structure(Coordinate_file_0, Program, 'strain', molecules_in_coord, 'm', min_RMS_gradient,
-                         strain=Applied_strain - strain_array, Parameter_file=keyword_parameters['Parameter_file'])
+        Expand_Structure(Coordinate_file, Program, 'strain', molecules_in_coord, 'p', min_RMS_gradient,
+                         strain=strain_matrix(strain_array), crystal_matrix=crystal_matrix_0,
+                         Parameter_file=keyword_parameters['Parameter_file'])
+        Expand_Structure(Coordinate_file, Program, 'strain', molecules_in_coord, 'm', min_RMS_gradient,
+                         strain=strain_matrix(-1.*strain_array), crystal_matrix=crystal_matrix_0,
+                         Parameter_file=keyword_parameters['Parameter_file'])
 
         if Method == 'GaQ':
             # Computing the wavenumbers for the strained strucutres with the mass-weighted Hessian
@@ -718,18 +719,42 @@ def Anisotropic_Local_Gradient(Coordinate_file, Coordinate_file_0, Program, Temp
                 strain_array_2[j] = LocGrd_strain[j]
 
                 # Expanding the strucutres for a varying number of strains
-                Expand_Structure(Coordinate_file_0, Program, 'strain', molecules_in_coord, 'pp', min_RMS_gradient,
-                                 strain=Applied_strain + strain_array + strain_array_2,
+                Expand_Structure('p' + file_ending, Program, 'strain', molecules_in_coord, 'pp', min_RMS_gradient,
+                                 strain=strain_matrix(strain_array_2),
+                                 crystal_matrix=np.dot((np.identity(3) + strain_matrix(strain_array)), crystal_matrix_0),
                                  Parameter_file=keyword_parameters['Parameter_file'])
-                Expand_Structure(Coordinate_file_0, Program, 'strain', molecules_in_coord, 'pm', min_RMS_gradient,
-                                 strain=Applied_strain + strain_array - strain_array_2,
+                Expand_Structure('p' + file_ending, Program, 'strain', molecules_in_coord, 'pm', min_RMS_gradient,
+                                 strain=strain_matrix(-1.*strain_array_2),
+                                 crystal_matrix=np.dot((np.identity(3) + strain_matrix(strain_array)), crystal_matrix_0),
                                  Parameter_file=keyword_parameters['Parameter_file'])
-                Expand_Structure(Coordinate_file_0, Program, 'strain', molecules_in_coord, 'mm', min_RMS_gradient,
-                                 strain=Applied_strain - strain_array - strain_array_2,
+
+                Expand_Structure('m' + file_ending, Program, 'strain', molecules_in_coord, 'mm', min_RMS_gradient,
+                                 strain=strain_matrix(-1.*strain_array_2),
+                                 crystal_matrix=np.dot((np.identity(3) + strain_matrix(-1.*strain_array)), crystal_matrix_0),
                                  Parameter_file=keyword_parameters['Parameter_file'])
-                Expand_Structure(Coordinate_file_0, Program, 'strain', molecules_in_coord, 'mp', min_RMS_gradient,
-                                 strain=Applied_strain - strain_array + strain_array_2,
+                Expand_Structure('m' + file_ending, Program, 'strain', molecules_in_coord, 'mp', min_RMS_gradient,
+                                 strain=strain_matrix(strain_array_2),
+                                 crystal_matrix=np.dot((np.identity(3) + strain_matrix(-1.*strain_array)), crystal_matrix_0),
                                  Parameter_file=keyword_parameters['Parameter_file'])
+
+#                Expand_Structure(Coordinate_file, Program, 'strain', molecules_in_coord, 'pp', min_RMS_gradient,
+#                                 strain=strain_matrix(strain_array_2 + strain_array),
+#                                 crystal_matrix=crystal_matrix_0,
+#                                 Parameter_file=keyword_parameters['Parameter_file'])
+#                Expand_Structure(Coordinate_file, Program, 'strain', molecules_in_coord, 'pm', min_RMS_gradient,
+#                                 strain=strain_matrix(-1.*strain_array_2 + strain_array),
+#                                 crystal_matrix=crystal_matrix_0,
+#                                 Parameter_file=keyword_parameters['Parameter_file'])
+
+#                Expand_Structure(Coordinate_file, Program, 'strain', molecules_in_coord, 'mm', min_RMS_gradient,
+#                                 strain=strain_matrix(-1.*strain_array_2 - strain_array),
+#                                 crystal_matrix=crystal_matrix_0,
+#                                 Parameter_file=keyword_parameters['Parameter_file'])
+#                Expand_Structure(Coordinate_file, Program, 'strain', molecules_in_coord, 'mp', min_RMS_gradient,
+#                                 strain=strain_matrix(strain_array_2 - strain_array),
+#                                 crystal_matrix=crystal_matrix_0,
+#                                 Parameter_file=keyword_parameters['Parameter_file'])
+
 
                 if Method == 'GaQ':
                     # Computing the wavenumbers for the strained strucutres with the mass-weighted Hessian
@@ -806,7 +831,6 @@ def Anisotropic_Local_Gradient(Coordinate_file, Coordinate_file_0, Program, Temp
 
     # Calculating deta/dT for all strains
     dstrain = np.linalg.lstsq(dG_ddeta, dS_deta)[0]
-
     # Saving numerical outputs
     NO.aniso_gradient(dG_deta, dG_ddeta, dS_deta, dstrain)
     return dstrain, wavenumbers

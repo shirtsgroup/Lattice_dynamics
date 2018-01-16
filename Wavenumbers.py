@@ -191,8 +191,8 @@ def Test_Wavenumber(Coordinate_file, strain, function='Test3'):
             wvn0 = np.load('wvn0_test.npy')
             change = np.load('wvnChange_test.npy')
             wavenumbers = np.zeros(len(wvn0))
-            for i in range(3,len(wavenumbers)):
-                wavenumbers[i] = wvn0[i]*np.exp(-1.*np.sum(np.dot(strain,change[i])))# + strain**2*(change[i]**2)))
+            for i in range(3, len(wavenumbers)):
+                wavenumbers[i] = wvn0[i]*np.exp(-1.*np.sum(np.dot(strain, change[i]))) # + strain**2*(change[i]**2)))
 
         else:
             # Setting random wavenumbers
@@ -299,7 +299,9 @@ def Setup_Anisotropic_Gruneisen(Coordinate_file, Program, strain, molecules_in_c
         applied_strain = np.zeros(6)
         applied_strain[i] = strain
         Ex.Expand_Structure(Coordinate_file, Program, 'strain', molecules_in_coord, 'temp_' + str(i), min_RMS_gradient,
-                            strain=applied_strain, Parameter_file=keyword_parameters['Parameter_file'])
+                            strain=Ex.strain_matrix(applied_strain),
+                            crystal_matrix=Ex.Lattice_parameters_to_Crystal_matrix(Pr.Lattice_parameters(Program, Coordinate_file)),
+                            Parameter_file=keyword_parameters['Parameter_file'])
 
     # Setting an array of the names of expanded strucutres
     expanded_coordinates = ['temp_0', 'temp_1', 'temp_2', 'temp_3', 'temp_4', 'temp_5']

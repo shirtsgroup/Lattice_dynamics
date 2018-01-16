@@ -26,7 +26,6 @@ def Properties(Coordinate_file, wavenumbers, Temperature, Pressure, Program, Sta
     **Optional Inputs
     Parameter_file = Optional input for program
     """
-
     properties = np.zeros(14)
     properties[0] = Temperature  # Temperature
     properties[1] = Pressure  # Pressure
@@ -140,6 +139,12 @@ def Save_Properties(properties, Properties_to_save, Output, Method, Statistical_
             print "   ... Saving entropy in: " + Output + "_S" + Statistical_mechanics + "_" + Method + ".npy"
             np.save(Output + '_S' + Statistical_mechanics + '_' + Method, properties[:, 14])
 
+def Lattice_parameters(Program, Coordinate_file):
+    if Program == 'Tinker':
+        lattice_parameters = Tinker_Lattice_Parameters(Coordinate_file)
+    elif Program == 'Test':
+        lattice_parameters = Test_Lattice_Parameters(Coordinate_file)
+    return lattice_parameters
 
 ##########################################
 #       TINKER MOLECULAR MODELING        #
@@ -202,10 +207,9 @@ def Test_U(Coordinate_file):
     new_lp = np.load(Coordinate_file)
 
     polynomial_normal = np.array([[  1.32967100e+01,  -3.86230306e+02,   4.21859038e+03,  -2.05171077e+04,    3.71986258e+04],
-                                  [  5.96012607e-01,  -3.29643734e+01,   6.87371706e+02,  -6.39222328e+03,    2.20706869e+04],
+                                  [  5.96012607e-00,  -3.29643734e+01,   6.87371706e+02,  -6.39222328e+03,    2.20706869e+04],
                                   [  6.54309591e-01,  -2.95928106e+01,   4.82192443e+02,  -3.37907613e+03,    8.38105955e+03],
                                   [  1.73101682e-04,  -6.23169023e-02,   8.53269922e+00,  -5.26349633e+02,    1.20653441e+04],
-#                                  [ -6.87342875e-05,   3.45384256e-02,  -6.09885843e+00,   4.58100859e+02,   -1.27492294e+04],
                                   [  1.87342875e-04,  -6.45384256e-02,   8.09885843e+00,  -4.58100859e+02,    1.27492294e+04],
                                   [ -7.85675953e-05,   2.82845448e-02,  -3.66590698e+00,   2.01651921e+02,   -4.18251942e+03]])
 
@@ -419,7 +423,7 @@ def Gibbs_Free_Energy(Temperature, Pressure, Program, wavenumbers, Coordinate_fi
         A = Quantum_Vibrational_A(Temperature, wavenumbers) / molecules_in_coord 
 
     # Gibbs Free energy
-    G = U + A + PV_energy(Pressure,volume) / molecules_in_coord
+    G = U + A + PV_energy(Pressure, volume) / molecules_in_coord
     return G
 
 
