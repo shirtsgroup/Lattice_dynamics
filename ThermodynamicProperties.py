@@ -139,12 +139,6 @@ def Save_Properties(properties, Properties_to_save, Output, Method, Statistical_
             print "   ... Saving entropy in: " + Output + "_S" + Statistical_mechanics + "_" + Method + ".npy"
             np.save(Output + '_S' + Statistical_mechanics + '_' + Method, properties[:, 14])
 
-def Lattice_parameters(Program, Coordinate_file):
-    if Program == 'Tinker':
-        lattice_parameters = Tinker_Lattice_Parameters(Coordinate_file)
-    elif Program == 'Test':
-        lattice_parameters = Test_Lattice_Parameters(Coordinate_file)
-    return lattice_parameters
 
 ##########################################
 #       TINKER MOLECULAR MODELING        #
@@ -264,6 +258,21 @@ def Volume(**keyword_parameters):
             np.radians(lattice_parameters[5])) ** 2 + 2 * np.cos(np.radians(lattice_parameters[3])) * np.cos(
             np.radians(lattice_parameters[4])) * np.cos(np.radians(lattice_parameters[5])))
     return V
+
+
+def Potential_energy(Program, **keyword_parameters):
+    if Program == 'Tinker':
+        U = Tinker_U(keyword_parameters['Coordinate_file'], keyword_parameters['Parameter_file'])
+    elif Program == 'Test':
+        U = Test_U(keyword_parameters['Coordinate_file'])
+    return U
+
+def Lattice_parameters(Program, Coordinate_file):
+    if Program == 'Tinker':
+        lattice_parameters = Tinker_Lattice_Parameters(Coordinate_file)
+    elif Program == 'Test':
+        lattice_parameters = Test_Lattice_Parameters(Coordinate_file)
+    return lattice_parameters
 
 def PV_energy(Pressure, volume):
     return Pressure * volume * (6.022 * 10 ** 23) * (0.024201) * (10**(-27)) 

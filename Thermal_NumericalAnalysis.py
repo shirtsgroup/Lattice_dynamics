@@ -776,7 +776,8 @@ def Anisotropic_Gradient_Expansion(Coordinate_file, Program, molecules_in_coord,
                               crystal_matrix=crystal_matrix,
                               Output=Output + '_' + Method + 'T' + str(temperature[i + 1]))
 
-        crystal_matrix = np.dot((np.identity(3) + Ex.strain_matrix(strain_gradient[i, 0, 1:] * NumAnalysis_step)), crystal_matrix)
+        crystal_matrix = np.dot((np.identity(3) + Ex.strain_matrix(strain_gradient[i, 0, 1:] * NumAnalysis_step)), 
+                                Ex.Lattice_parameters_to_Crystal_matrix(Ex.Crystal_matrix_to_Lattice_parameters_strain(crystal_matrix)))
         # Populating the properties for the current temperature
         properties[i, :] = Pr.Properties(Output + '_' + Method + 'T' + str(temperature[i]) + file_ending,
                                          wavenumbers[i, 1:], temperature[i], Pressure, Program, Statistical_mechanics,
