@@ -274,6 +274,28 @@ def Lattice_parameters(Program, Coordinate_file):
         lattice_parameters = Test_Lattice_Parameters(Coordinate_file)
     return lattice_parameters
 
+def RotationFree_StrainArray_from_CrystalMatrix(ref_crystal_matrix, new_crystal_matrix):
+    # The deformation matrix is C = F*C0 --> F = C*C0^-1
+    F = np.dot(new_crystal_matrix, np.linalg.inv(ref_crystal_matrix))
+
+    # Computing necessary variables
+    C = np.dot(F.T, F)
+    F_eig = np.linalg.eig(F)[0]
+    I_U = np.sum(F_eig)
+    II_U = F_eig[0]*F_eig[1] + F_eig[1]*F_eig[2] + F_eig[2]*F_eig[0]
+    III_U = np.product(F_eig)
+
+    # F = R*U, where R is the rotational piece
+    # For us, R is simply an artifact of computing between Cartesian coordinates
+    U = np.dot(np.linalg.inv(C + II_U*np.identity(3)), I_U*C +III_U*np.identity(3))
+
+    # Computing the strain on the crystal due to the non-rotational deformation matrix
+    # We assume the relationship can be described with small strains
+    eta = 0.5*(U + U.T) - np.identity(3)
+    eta = np.array([eta[0, 0], eta[1, 1], eta[2, 2],
+                    eta[0, 1], eta[0, 2], eta[1, 2]])
+    return eta
+
 def PV_energy(Pressure, volume):
     return Pressure * volume * (6.022 * 10 ** 23) * (0.024201) * (10**(-27)) 
 

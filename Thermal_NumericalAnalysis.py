@@ -46,11 +46,7 @@ def Runge_Kutta_Fourth_Order(Method, Coordinate_file, Program, Temperature, Pres
     Crystal_matrix_Reference:
     """
     # Setting up program specific file endings and giving parameter files blank names to avoid errors
-    if Program == 'Tinker':
-        file_ending = '.xyz'
-    elif Program == 'Test':
-        file_ending = '.npy'
-        keyword_parameters['Parameter_file'] = ''
+    file_ending = Ex.assign_file_ending(Program)
 
     # Output of numerical analysis
     NO.start_RK(Temperature, RK4_stepsize)
@@ -69,6 +65,7 @@ def Runge_Kutta_Fourth_Order(Method, Coordinate_file, Program, Temperature, Pres
         # Setting array to save 4 gradients in dV/dT
         RK_grad = np.zeros(4)
         if Method == 'GiQ':
+### These next parts shouldn't be needed`
             # Setting parameters for non-Gruneisen methods
             keyword_parameters['Gruneisen'] = 0.
             keyword_parameters['Wavenumber_Reference'] = 0.
@@ -113,8 +110,7 @@ def Runge_Kutta_Fourth_Order(Method, Coordinate_file, Program, Temperature, Pres
                                   Parameter_file=keyword_parameters['Parameter_file'],
                                   Gruneisen=keyword_parameters['Gruneisen'],
                                   Wavenumber_Reference=keyword_parameters['Wavenumber_Reference'],
-                                  Applied_strain=keyword_parameters['Applied_strain'] + RK_strain,
-                                  crystal_matrix=np.dot((np.identity(3) + Ex.strain_matrix(RK_strain)), keyword_parameters['crystal_matrix']),
+                                  ref_crystal_matrix=keyword_parameters['ref_crystal_matrix'],
                                   Aniso_LocGrad_Type=keyword_parameters['Aniso_LocGrad_Type'])
             volume_hold = 0.
 
@@ -136,14 +132,13 @@ def Runge_Kutta_Fourth_Order(Method, Coordinate_file, Program, Temperature, Pres
 
             elif (Method == 'GaQ') or (Method == 'GaQg'):
                 # For anisotropic expansion, determining the strain of th input strucutre for the next step
-                RK_strain = RK_grad[i] * temperature_steps[i + 1]
+                RK_crystal_matrix = RK_grad[i] * temperature_steps[i + 1]
 
                 # Expanding the crystal to the next step size
                 Ex.Call_Expansion(Method, 'expand', Program, Coordinate_file,
                                   molecules_in_coord, min_RMS_gradient,
                                   Parameter_file=keyword_parameters['Parameter_file'],
-                                  strain=Ex.strain_matrix(RK_strain),
-                                  crystal_matrix=keyword_parameters['crystal_matrix'],
+                                  dcrystal_matrix=Ex.array_to_triangle_crystal_matrix(RK_crystal_matrix),
                                   Output='RK4')
 
         # Multiplying the found gradient by the fraction it will contribute to the overall gradient
@@ -206,7 +201,7 @@ def Spline_Intermediate_Points(Output, Method, Program, properties, Temperature,
         y = properties[:, 6]
     elif (Method == 'GaQ') or (Method == 'GaQg'):
         # Loading in the local gradients found form numerical analysis
-        tangent = np.load(Output + '_dEta_' + Method + '.npy')
+        tangent = np.load(Output + '_dC_' + Method + '.npy')
         # Setting the anisotropic strain for the gradients loaded in
         y = np.zeros((len(properties[:, 0]), 6))
         for i in range(1, len(properties[:, 0] + 1)):
@@ -655,27 +650,26 @@ def Anisotropic_Gradient_Expansion(Coordinate_file, Program, molecules_in_coord,
     Gruneisen_Lat_FracStep
     """
     # Setting file endings and determining how many wavenumbers there will be
+    file_ending = Ex.assign_file_ending(Program)
     if Program == 'Tinker':
-        file_ending = '.xyz'
         number_of_wavenumbers = Pr.Tinker_atoms_per_molecule(Coordinate_file, 1) * 3
     elif Program == 'Test':
-        file_ending = '.npy'
-        number_of_wavenumbers = len(Wvn.Test_Wavenumber(Coordinate_file, 0.))
+        number_of_wavenumbers = len(Wvn.Test_Wavenumber(Coordinate_file, True))
         keyword_parameters['Parameter_file'] = ''
 
     # Setting the temperature array
     temperature = np.arange(0, Gradient_MaxTemp + 1, NumAnalysis_step)
 
     # Setting the volume gradient array to be filled
-    strain_gradient = np.zeros((len(temperature), 2, 7))
-    strain_gradient[:, 0, 0] = temperature[:len(temperature)]
-    if os.path.isfile(Output + '_dEta_' + Method + '.npy'):
-        strain_gradient_hold = np.load(Output + '_dEta_' + Method + '.npy')
+    crystal_matrix_gradient = np.zeros((len(temperature), 2, 7))
+    crystal_matrix_gradient[:, 0, 0] = temperature[:len(temperature)]
+    if os.path.isfile(Output + '_dC_' + Method + '.npy'):
+        crystal_matrix_gradient_hold = np.load(Output + '_dC_' + Method + '.npy')
         # If the temperatures line up, then the previous local gradients will be used
-        if len(strain_gradient_hold[:, 0, 0]) <= len(strain_gradient[:, 0, 0]):
-            if all(strain_gradient_hold[:, 0, 0] == strain_gradient[:len(strain_gradient_hold[:, 0, 0]), 0, 0]):
-                print "   Using lattice gradients in: " + Output + "_dEta_" + Method + ".npy"
-                strain_gradient[:len(strain_gradient_hold[:, 0, 0]), :, :] = strain_gradient_hold
+        if len(crystal_matrix_gradient_hold[:, 0, 0]) <= len(crystal_matrix_gradient[:, 0, 0]):
+            if all(crystal_matrix_gradient_hold[:, 0, 0] == crystal_matrix_gradient[:len(crystal_matrix_gradient_hold[:, 0, 0]), 0, 0]):
+                print "   Using lattice gradients in: " + Output + "_dC_" + Method + ".npy"
+                crystal_matrix_gradient[:len(crystal_matrix_gradient_hold[:, 0, 0]), :, :] = crystal_matrix_gradient_hold
 
     # Setting up a matrix to store the wavenumbers in
     wavenumbers = np.zeros((len(temperature), number_of_wavenumbers + 1))
@@ -710,23 +704,24 @@ def Anisotropic_Gradient_Expansion(Coordinate_file, Program, molecules_in_coord,
     os.system('cp ' + Coordinate_file + ' ' + Output + '_' + Method + 'T' + str(temperature[0]) + file_ending)
 
     # Keeping track of the strain applied to the system [3 diagonal, 3 off-diagonal]
-    Applied_strain = np.zeros(6)
-    crystal_matrix = Ex.Lattice_parameters_to_Crystal_matrix(Pr.Lattice_parameters(Program, Coordinate_file))
+    ref_crystal_matrix = Ex.Lattice_parameters_to_Crystal_matrix(Pr.Lattice_parameters(Program, Coordinate_file))
 
     # Finding structures at higher temperatures
     for i in range(len(temperature) - 1):
-        if (any(wavenumbers[i, 4:] != 0.) or (Method == 'GaQg')) and any(strain_gradient[i, 0, 1:] != 0.):
+        if (any(wavenumbers[i, 4:] != 0.) or (Method == 'GaQg')) and any(crystal_matrix_gradient[i, 0, 1:] != 0.):
             print "   Using previous data for the local gradient at: " + str(temperature[i]) + " K"
             if Method == 'GaQg':
                 wavenumbers[i, 1:] = Wvn.Call_Wavenumbers(Method, min_RMS_gradient, Gruneisen=Gruneisen, 
                                                           Wavenumber_Reference=Wavenumber_Reference, 
-                                                          Applied_strain=Applied_strain)
+                                                          Coordinate_file=Output + '_' + Method + 'T' + 
+                                                          str(temperature[i]) + file_ending,
+                                                          ref_crystal_matrix=ref_crystal_matrix)
 
         else:
             print "   Determining local gradient and thermal properties at: " + str(temperature[i]) + " K"
             # Using a numerical method to determine the gradient of the strains with thermal expansion
             if NumAnalysis_method == 'RK4':
-                strain_gradient[i, 0, 1:], wavenumbers[i, 1:], ignore, strain_gradient[i, 1, 1:] = \
+                crystal_matrix_gradient[i, 0, 1:], wavenumbers[i, 1:], ignore, crystal_matrix_gradient[i, 1, 1:] = \
                         Runge_Kutta_Fourth_Order(Method, Output + '_' + Method + 'T' + str(temperature[i]) +
                                                  file_ending, Program, temperature[i], Pressure,
                                                  molecules_in_coord, Statistical_mechanics, NumAnalysis_step,
@@ -735,11 +730,10 @@ def Anisotropic_Gradient_Expansion(Coordinate_file, Program, molecules_in_coord,
                                                  LocGrd_ShearStrain=LocGrd_ShearStrain,
                                                  Aniso_LocGrad_Type=Aniso_LocGrad_Type, Gruneisen=Gruneisen,
                                                  Wavenumber_Reference=Wavenumber_Reference,
-                                                 Applied_strain=Applied_strain,
-                                                 crystal_matrix=crystal_matrix)
+                                                 ref_crystal_matrix=ref_crystal_matrix)
 
             elif NumAnalysis_method == 'Euler':
-                strain_gradient[i, 0, 1:], wavenumbers[i, 1:] = \
+                crystal_matrix_gradient[i, 0, 1:], wavenumbers[i, 1:] = \
                         Ex.Call_Expansion(Method, 'local_gradient', Program,
                                           Output + '_' + Method + 'T' + str(temperature[i]) + file_ending,
                                           molecules_in_coord, min_RMS_gradient, Temperature=temperature[i],
@@ -748,23 +742,20 @@ def Anisotropic_Gradient_Expansion(Coordinate_file, Program, molecules_in_coord,
                                           Statistical_mechanics=Statistical_mechanics,
                                           Parameter_file=keyword_parameters['Parameter_file'], Gruneisen=Gruneisen,
                                           Wavenumber_Reference=Wavenumber_Reference,
-                                          Applied_strain=Applied_strain,
-                                          crystal_matrix=crystal_matrix,
+                                          ref_crystal_matrix=ref_crystal_matrix,
                                           Aniso_LocGrad_Type=Aniso_LocGrad_Type)
 
                 # Setting the local gradient equal to the step gradient
-                strain_gradient[i, 1, 1:] = strain_gradient[i, 0, 1:]
+                crystal_matrix_gradient[i, 1, 1:] = crystal_matrix_gradient[i, 0, 1:]
 
             # Saving wavenumbers for non-Gruneisen methods
             if Method == 'GaQ':
                 np.save(Output + '_WVN_' + Method, wavenumbers[~np.all(wavenumbers == 0, axis=1)])
 
             # Saving the strain gradient
-            np.save(Output + '_dEta_' + Method, strain_gradient)
+            np.save(Output + '_dC_' + Method, crystal_matrix_gradient)
 
         # Changing the applied strain to the new expanded strucutre
-        Applied_strain = Applied_strain + strain_gradient[i, 0, 1:] * NumAnalysis_step
-
         if os.path.isfile('Cords/' + Output + '_' + Method + 'T' + str(temperature[i + 1]) + file_ending):
             subprocess.call(['cp', 'Cords/' + Output + '_' + Method + 'T' + str(temperature[i + 1]) + file_ending, './'])
         else:
@@ -772,12 +763,9 @@ def Anisotropic_Gradient_Expansion(Coordinate_file, Program, molecules_in_coord,
             Ex.Call_Expansion(Method, 'expand', Program,
                               Output + '_' + Method + 'T' + str(temperature[i]) + file_ending, molecules_in_coord,
                               min_RMS_gradient, Parameter_file=keyword_parameters['Parameter_file'],
-                              strain=Ex.strain_matrix(strain_gradient[i, 0, 1:] * NumAnalysis_step),
-                              crystal_matrix=crystal_matrix,
+                              dcrystal_matrix=Ex.array_to_triangle_crystal_matrix(crystal_matrix_gradient[i, 0, 1:]*NumAnalysis_step),
                               Output=Output + '_' + Method + 'T' + str(temperature[i + 1]))
 
-        crystal_matrix = np.dot((np.identity(3) + Ex.strain_matrix(strain_gradient[i, 0, 1:] * NumAnalysis_step)), 
-                                Ex.Lattice_parameters_to_Crystal_matrix(Ex.Crystal_matrix_to_Lattice_parameters_strain(crystal_matrix)))
         # Populating the properties for the current temperature
         properties[i, :] = Pr.Properties(Output + '_' + Method + 'T' + str(temperature[i]) + file_ending,
                                          wavenumbers[i, 1:], temperature[i], Pressure, Program, Statistical_mechanics,
@@ -788,26 +776,27 @@ def Anisotropic_Gradient_Expansion(Coordinate_file, Program, molecules_in_coord,
 
         if temperature[i + 1] == temperature[-1]:
             # Completing the run for the final structure
-            if (any(wavenumbers[i + 1, 4:] != 0.) or (Method == 'GaQg')) and any(strain_gradient[i + 1, 1, 1:] != 0.):
+            if (any(wavenumbers[i + 1, 4:] != 0.) or (Method == 'GaQg')) and any(crystal_matrix_gradient[i + 1, 1, 1:] != 0.):
                 print "   Using previous data for the local gradient at: " + str(temperature[i + 1]) + " K"
                 if Method == 'GaQg':
                     wavenumbers[i + 1, 1:] = Wvn.Call_Wavenumbers(Method, min_RMS_gradient, Gruneisen=Gruneisen,
                                                                   Wavenumber_Reference=Wavenumber_Reference,
-                                                                  Applied_strain_wvn=Applied_strain, Program=Program)
+                                                                  ref_crystal_matrix=ref_crystal_matrix, Program=Program,
+                                                                  Coordinate_file=Output + '_' + Method + 'T' +
+                                                                  str(temperature[i + 1]) + file_ending)
 
             else:
                 print "   Determining local gradient and thermal properties at: " + str(temperature[i + 1]) + " K"
 
                 # Determinin the local gradient at the final structure (Used for finding intermediate temperatures)
-                strain_gradient[i + 1, 1, 1:], wavenumbers[i + 1, 1:] = \
+                crystal_matrix_gradient[i + 1, 1, 1:], wavenumbers[i + 1, 1:] = \
                     Ex.Call_Expansion(Method, 'local_gradient', Program, Output + '_' + Method + 'T' +
                                       str(temperature[i + 1]) + file_ending, molecules_in_coord, min_RMS_gradient,
                                       Temperature=temperature[i + 1], Pressure=Pressure,
                                       LocGrd_NormStrain=LocGrd_NormStrain, LocGrd_ShearStrain=LocGrd_ShearStrain,
                                       Statistical_mechanics=Statistical_mechanics,
                                       Parameter_file=keyword_parameters['Parameter_file'], Gruneisen=Gruneisen,
-                                      Wavenumber_Reference=Wavenumber_Reference, Applied_strain=Applied_strain,
-                                      crystal_matrix=crystal_matrix,
+                                      Wavenumber_Reference=Wavenumber_Reference, ref_crystal_matrix=ref_crystal_matrix,
                                       Aniso_LocGrad_Type=Aniso_LocGrad_Type)
 
             # Computing the properties at the final temperature
@@ -824,13 +813,13 @@ def Anisotropic_Gradient_Expansion(Coordinate_file, Program, molecules_in_coord,
                 np.save(Output + '_WVN_' + Method, wavenumbers[~np.all(wavenumbers == 0, axis=1)])
 
             # Saving the gradients for the temperature range
-            np.save(Output + '_dEta_' + Method, strain_gradient)
+            np.save(Output + '_dC_' + Method, crystal_matrix_gradient)
 
     # Calculatin the properties for intermediate points
-    properties = Spline_Intermediate_Points(Output, Method, Program, properties, Temperature, molecules_in_coord,
-                                            Pressure, Statistical_mechanics, min_RMS_gradient,
-                                            Parameter_file=keyword_parameters['Parameter_file'],
-                                            Gruneisen=Gruneisen, Wavenumber_Reference=Wavenumber_Reference,)
+#    properties = Spline_Intermediate_Points(Output, Method, Program, properties, Temperature, molecules_in_coord,
+#                                            Pressure, Statistical_mechanics, min_RMS_gradient,
+#                                            Parameter_file=keyword_parameters['Parameter_file'],
+#                                            Gruneisen=Gruneisen, Wavenumber_Reference=Wavenumber_Reference,)
 
     # Saving the raw data before minimizing
     print "   All properties have been saved in " + Output + "_raw.npy"

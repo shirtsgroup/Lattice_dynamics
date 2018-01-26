@@ -50,7 +50,7 @@ def Call_Wavenumbers(Method, min_RMS_gradient, **keyword_parameters):
         elif keyword_parameters['Program'] == 'Test':
             if Method == 'GaQ':
                 wavenumbers = Test_Wavenumber(keyword_parameters['Coordinate_file'],
-                                              keyword_parameters['Applied_strain'])
+                                              keyword_parameters['ref_crystal_matrix'])
             elif Method == 'HA':
                 wavenumbers = Test_Wavenumber(keyword_parameters['Coordinate_file'], 0.)
             else:
@@ -95,12 +95,14 @@ def Call_Wavenumbers(Method, min_RMS_gradient, **keyword_parameters):
 
     elif Method == 'GaQg':
         if ('Gruneisen' in keyword_parameters) and ('Wavenumber_Reference' in keyword_parameters) and \
-                ('Applied_strain' in keyword_parameters):
+                ('ref_crystal_matrix' in keyword_parameters):
             # Calculating the wavenumbers of the new anisotropically expanded structure
             # The Gruniesen parameter and reference wavenumbers have already been calculated
             wavenumbers = Get_Aniso_Gruneisen_Wavenumbers(keyword_parameters['Gruneisen'],
                                                           keyword_parameters['Wavenumber_Reference'],
-                                                          keyword_parameters['Applied_strain'])
+                                                          keyword_parameters['ref_crystal_matrix'],
+                                                          keyword_parameters['Coordinate_file'],
+                                                          keyword_parameters['Program'])
             return wavenumbers
 
         else:
@@ -159,7 +161,7 @@ def Tinker_Wavenumber(Coordinate_file, Parameter_file):
 ##########################################
 #                  Test                  #
 ##########################################
-def Test_Wavenumber(Coordinate_file, strain, function='Test3'):
+def Test_Wavenumber(Coordinate_file, ref_crystal_matrix, function='Test3'):
     """
     This function takes a set of lattice parameters in a .npy file and returns a set of wavenumbers
     Random functions can be input here to run different tests and implimented new methods efficiently
@@ -185,9 +187,12 @@ def Test_Wavenumber(Coordinate_file, strain, function='Test3'):
                                                         3*refz**4.8)
     elif function == 'Test3':
         if os.path.isfile('wvn0_test.npy') and os.path.isfile('wvnChange_test.npy'):
-            if np.all(strain == True):
+            if np.all(ref_crystal_matrix == True):
                 strain = np.zeros(6)
                 strain[:3] = (Pr.Volume(Program='Test', Coordinate_file=Coordinate_file)/ 686.024)**(1./3.)
+            else:
+                new_crystal_matrix = Ex.Lattice_parameters_to_Crystal_matrix(Pr.Lattice_parameters('Test', Coordinate_file))
+                strain = Pr.RotationFree_StrainArray_from_CrystalMatrix(ref_crystal_matrix, new_crystal_matrix)
             wvn0 = np.load('wvn0_test.npy')
             change = np.load('wvnChange_test.npy')
             wavenumbers = np.zeros(len(wvn0))
@@ -338,15 +343,18 @@ def Setup_Anisotropic_Gruneisen(Coordinate_file, Program, strain, molecules_in_c
     return Gruneisen, Wavenumber_Reference
 
 
-def Get_Aniso_Gruneisen_Wavenumbers(Gruneisen, Wavenumber_Reference, Applied_strain):
+def Get_Aniso_Gruneisen_Wavenumbers(Gruneisen, Wavenumber_Reference, ref_crystal_matrix, Coordinate_file, Program):
     # Setting a blank array for new wavenumbers
+    new_crystal_matrix = Ex.Lattice_parameters_to_Crystal_matrix(Pr.Lattice_parameters(Program, Coordinate_file))
+    applied_strain = Pr.RotationFree_StrainArray_from_CrystalMatrix(ref_crystal_matrix, new_crystal_matrix)
+
     wavenumbers = np.zeros(len(Wavenumber_Reference))
 
     for i in np.arange(3, len(wavenumbers), 1):
         # Computing the change to each wavenumber due to the curren strain
         hold = 0
         for j in range(6):
-            hold = hold + -1 * Applied_strain[j] * Gruneisen[i, j]
+            hold = hold + -1 * applied_strain[j] * Gruneisen[i, j]
         wavenumbers[i] = Wavenumber_Reference[i] * np.exp(hold)
     return wavenumbers
 
