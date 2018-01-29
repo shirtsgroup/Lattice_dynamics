@@ -19,7 +19,7 @@ Pressure = 1.
 # GiQg - Gradient isotropic quasi-harmonic approximation with Gruneisen parameter
 # GaQ  - Gradient anisotropic quasi-harmonic approximation
 # GaQg - Gradient anisotropic quasi-harmonic approximation with Gruneisen parameter
-Method = GaQg
+Method = HA
 
 ## Output
 # Output name for files
@@ -31,6 +31,7 @@ Output = out
 # Option - Description:
 # Tinker - Tinker Molecular Modeling Package
 # Test - Input functions in *.py to determine thermal expansion landscape and *.py to determine changes in wavenumber
+# CP2K - CP2K Quantum mechanical package
 Program = Tinker
 
 ## Statistical mechanics
@@ -47,9 +48,12 @@ Coordinate_file = molecule.xyz
 # Input file for particular program
 Parameter_file = keyfile.key
 
+## Root for cp2k files
+cp2kroot = BNZ_NMA_p1
+
 ## Nuber of molecules
 #****I want to eventually replace this with a program specific code to look at connectivity
-molecules_in_coord = 8
+molecules_in_coord = 4
 
 ## Properties
 # Properties to output in individual files

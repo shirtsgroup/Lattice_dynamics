@@ -7,7 +7,7 @@ import itertools as it
 ##########################################
 #           Export PROPERTIES            #
 ##########################################
-def Properties(Coordinate_file, wavenumbers, Temperature, Pressure, Program, Statistical_mechanics, molecules_in_coord,
+def Properties(Coordinate_file, wavenumbers, Temperature, Pressure, Program, Statistical_mechanics, molecules_in_coord, cp2kroot,
                **keyword_parameters):
     """
     Function to calculate all properties for a single temperature and pressure
@@ -33,6 +33,9 @@ def Properties(Coordinate_file, wavenumbers, Temperature, Pressure, Program, Sta
         properties[3] = Tinker_U(Coordinate_file, keyword_parameters['Parameter_file']) / molecules_in_coord
         # Potential energy
         properties[7:13] = Tinker_Lattice_Parameters(Coordinate_file)  # Lattice parameters
+    elif Program == 'CP2K':
+        properties[3] = CP2K_U(cp2kroot) / molecules_in_coord  # Potential energy
+        properties[7:13] = CP2K_Lattice_Parameters(Coordinate_file)  # Lattice parameters
     elif Program == 'Test':
         properties[3] = Test_U(Coordinate_file) / molecules_in_coord  # Potential energy
         properties[7:13] = Test_Lattice_Parameters(Coordinate_file)  # Lattice parameters
@@ -54,7 +57,7 @@ def Properties(Coordinate_file, wavenumbers, Temperature, Pressure, Program, Sta
 
 
 def Properties_with_Temperature(Coordinate_file, wavenumbers, Temperature, Pressure, Program, Statistical_mechanics,
-                                molecules_in_coord, **keyword_parameters):
+                                molecules_in_coord, cp2kroot, **keyword_parameters):
     """
     This function collects the properties for a specific coordinate file over a temperature range
 
@@ -76,11 +79,11 @@ def Properties_with_Temperature(Coordinate_file, wavenumbers, Temperature, Press
     for i in range(len(Temperature)):
         if 'Parameter_file' in keyword_parameters:
             properties[i, :] = Properties(Coordinate_file, wavenumbers, Temperature[i], Pressure, Program,
-                                          Statistical_mechanics, molecules_in_coord,
+                                          Statistical_mechanics, molecules_in_coord, cp2kroot,
                                           Parameter_file=keyword_parameters['Parameter_file'])
         else:
             properties[i, :] = Properties(Coordinate_file, wavenumbers, Temperature[i], Pressure, Program,
-                                          Statistical_mechanics, molecules_in_coord)
+                                          Statistical_mechanics, molecules_in_coord, cp2kroot)
     return properties
 
 
@@ -224,6 +227,55 @@ def Test_Lattice_Parameters(Coordinate_file):
     lattice_parameters = np.load(Coordinate_file)
     return lattice_parameters
 
+##########################################
+#                 CP2K                   #
+##########################################
+
+def CP2K_U(cp2kroot):
+    """
+    This function takes a set of lattice parameters in a .npy file and returns the potential energy
+    Random funcitons can be input here to run different tests and implimented new methods efficiently
+
+    **Required Inputs
+    Coordinate_file = File containing lattice parameters
+    """
+    l = open(cp2kroot+'-r-0.out')
+    lines = l.readlines()
+    for x in range(0,len(lines)):
+	if 'ENERGY| Total FORCE_EVAL ( QS ) energy (a.u.): ' in lines[x]:
+	    U = float(lines[x].split()[-1])*627.5
+	   
+    return U
+
+
+def CP2K_Lattice_Parameters(Coordinate_file):
+    """
+    This function extracts the lattice parameters from within the Tinker coordinate file 
+
+    **Required Inputs
+    Coordinate_file = Tinker .xyz file for crystal structure
+    """
+    with open('%s' % Coordinate_file, 'r') as l:
+	lines = l.readlines()
+        lattice_parameters = lines[1].split()[1:7]
+
+
+    return lattice_parameters
+
+def CP2K_atoms_per_molecule(Coordinate_file, molecules_in_coord):
+    """
+    This function determines the number of atoms per molecule
+
+    **Required Inputs
+    Coordinate_file = Tinker .xyz file for crystal structure
+    molecules_in_coord = number of molecules in Coordinate_file
+    """
+    with open('%s' % Coordinate_file, 'r') as l:
+        coordinates = [lines.split() for lines in l]
+        coordinates = np.array(list(it.izip_longest(*coordinates, fillvalue=' '))).T
+    atoms_per_molecule = int(coordinates[0, 0]) / molecules_in_coord
+    return atoms_per_molecule
+
 
 ##########################################
 #           THERMO-PROPERTIES            #
@@ -252,6 +304,9 @@ def Volume(**keyword_parameters):
         elif program == 'Test':
             # Retrieving lattice parameters of a test coordinate file
             lattice_parameters = Test_Lattice_Parameters(coordinate_file)
+        elif program == 'CP2K':
+            # Retrieving lattice parameters of a test coordinate file
+            lattice_parameters = CP2K_Lattice_Parameters(coordinate_file)
 
     V = lattice_parameters[0] * lattice_parameters[1] * lattice_parameters[2] * np.sqrt(
         1 - np.cos(np.radians(lattice_parameters[3])) ** 2 - np.cos(np.radians(lattice_parameters[4])) ** 2 - np.cos(

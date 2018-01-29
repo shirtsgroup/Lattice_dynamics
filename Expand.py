@@ -7,6 +7,7 @@ import ThermodynamicProperties as Pr
 import Wavenumbers as Wvn
 import Numerical_Outputs as NO
 import subprocess
+import fileinput
 
 ##########################################
 #                 Input                  #
@@ -232,6 +233,110 @@ def Output_Test_New_Coordinate_File(lattice_parameters, Output):
     This function saves the lattice parameters in a .npy file for the test Program
     """
     np.save(Output, lattice_parameters)
+    
+##########################################
+#       CP2K MOLECULAR MODELING        #
+##########################################
+def Return_CP2K_Coordinates(Coordinate_file):
+    """
+    This function opens a Tinker .xyz for a crystal and returns the 3x(number of atoms) matrix
+
+    **Required Inputs
+    Coordinate_file = Tinker .xyz file for a crystal
+    """
+    with open(Coordinate_file) as f:
+        # Opening xyz coordinate file to expand
+        coordinates = np.array(list(it.izip_longest(*[lines.split() for lines in f], fillvalue=' '))).T
+    coords = np.zeros((len(coordinates)-3,3))
+    coords[:,:] = coordinates[2:-1, 3:6].astype(float)
+    return coords
+
+
+def Output_CP2K_New_Coordinate_File(Coordinate_file, Parameter_file, coordinates, lattice_parameters, Output, min_RMS_gradient):
+    """
+    This function takes a new set of coordinates and utilizes a previous coordinate file as a template to produce a new
+    Tinker .xyz crystal file
+    The structure is also minimized
+
+    **Required Inputs
+    Coordinate_file = Tinker .xyz file for a crystal
+    Parameter_file = Tinker .key file with force field parameters
+    coordinates = New coordinates in a 3x(number of atoms) matrix
+    lattice_parameters = lattice parameters as an array ([a,b,c,alpha,beta,gamma])
+    Output = file name of new .xyz file
+    """   
+    Ouput_Tinker_Coordinate_File(Coordinate_file, Parameter_file, coordinates, lattice_parameters, Output)
+    CP2K_minimization(Parameter_file, Output + '.xyz', Output, min_RMS_gradient)
+
+def Ouput_CP2K_Coordinate_File(Coordinate_file, Parameter_file, coordinates, lattice_parameters, Output):
+    """
+    This function takes a new set of coordinates and utilizes a previous coordinate file as a template to produce a new
+    .pdb crystal file
+
+    **Required Inputs
+    Coordinate_file = Tinker .xyz file for a crystal
+    Parameter_file = Tinker .key file with force field parameters
+    coordinates = New coordinates in a 3x(number of atoms) matrix
+    lattice_parameters = lattice parameters as an array ([a,b,c,alpha,beta,gamma])
+    Output = file name of new .xyz file
+    """
+    xstr = []
+    numatoms = np.shape(coordinates)[0]
+    for d in range(3):                  
+        xstr.append("%9.3f" % (lattice_param[d]))
+    for d in range(3,6):                  
+        xstr.append("%7.2f" % (lattice_param[d]))
+    with open(Output + '.pdb', 'w') as file_out:
+        file_out.write('REMARK'+ '\n')
+        file_out.write('CRYST1    '+str(lattice_param[0])+xstr[1]+xstr[2]+xstr[3]+xstr[4]+xstr[5]+'\n')
+        for x in range(numatoms):
+
+            if (x+1) % 2 == 1:
+                ty = 'C'
+            else:
+                ty = 'H'
+            line =  '{:6s}{:5d} {:^4s}{:1s}{:3s} {:1s}{:4s}{:1s}   {:8.3f}{:8.3f}{:8.3f}{:6.2f}{:6.2f}          {:>2s}{:2s}'.format('ATOM',x+1, ty,'','','','','',coordinates[x,0],coordinates[x,0],coordinates[x,0], 0.0,0.0,ty,'')
+            file_out.write(line+'\n')
+        file_out.write('END')
+
+
+def CP2K_minimization(Parameter_file, Coordinate_file, Output, min_RMS_gradient):
+    new_coord_file = 'Temp_min_0.pdb'
+    subprocess.call(['cp', Coordinate_file, new_coord_file])
+    new_param_file = 'Temp_min_0.inp'
+    subprocess.call(['cp', parameter_file, new_param_file])
+    #lattice_param = Pr.CP2K_Lattice_Parameters(Coordinate_file)
+    volume = '{:4.8s}'.format(str(lattice_param[0]*lattice_param[2]*lattice_param[1]))
+    
+    tempnamestr = 's/TEMPORARY/BNZ_VOL_'+volume+'/g'
+    subprocess.call(["sed", "-i", "-e",  tempnamestr, new_param_file])
+    
+    tempcoordstr = 's/TEMPCOORDFILE/'+new_coord_file+'/g'
+    subprocess.call(["sed", "-i", "-e",  tempcoordstr, new_param_file])
+    
+    tempalphastr = 's/ALPHA/{:4.5s}/g'.format(str(lattice_param[3]))
+    subprocess.call(["sed", "-i", "-e",  tempalphastr, new_param_file])
+    
+    tempbetastr = 's/BETA/{:4.5s}/g'.format(str(lattice_param[4]))
+    subprocess.call(["sed", "-i", "-e",  tempbetastr, new_param_file])
+
+    tempgammastr = 's/GAMMA/{:4.5s}/g'.format(str(lattice_param[5]))
+    subprocess.call(["sed", "-i", "-e",  tempgammastr, new_param_file])
+    
+    tempaaastr = 's/AAA/{:4.5s}/g'.format(str(lattice_param[0]))
+    subprocess.call(["sed", "-i", "-e",  tempaaastr, new_param_file])
+    
+    tempbbbstr = 's/BBB/{:4.5s}/g'.format(str(lattice_param[1]))
+    subprocess.call(["sed", "-i", "-e",  tempbbbstr, new_param_file])
+
+    tempcccstr = 's/CCC/{:4.5s}/g'.format(str(lattice_param[2]))
+    subprocess.call(["sed", "-i", "-e",  tempcccstr, new_param_file])
+
+    temprunstr = 's/TEMPRUNTYPE/GEO_OPT/g'
+    subprocess.call(["sed", "-i", "-e",  temprunstr, new_param_file])
+
+
+    subprocess.call(['mpirun', '-np', '112', 'cp2k.popt', '-i', INPUTFILE, '>', OUTPUTNAME])
 
 
 ##########################################
@@ -859,4 +964,3 @@ def Anisotropic_Local_Gradient(Coordinate_file, Program, Temperature, Pressure, 
     # Saving numerical outputs
     NO.aniso_gradient(dG_dC, ddG_ddC, dS_dC, dcrystal_matrix)
     return dcrystal_matrix, wavenumbers
-

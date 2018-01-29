@@ -17,7 +17,7 @@ def Temperature_Lattice_Dynamics(Temperature=[0.,300.], Pressure=1., Method='HA'
                                  StepWise_Vol_LowerFrac=0.97, StepWise_Vol_UpperFrac=1.16,
                                  Statistical_mechanics='Classical', Gruneisen_Vol_FracStep=1.5e-3, 
                                  Gruneisen_Lat_FracStep=1.e-3, Wavenum_Tol=-1., Gradient_MaxTemp=300.0, 
-                                 Aniso_LocGrad_Type='73', min_RMS_gradient=0.0001):
+                                 Aniso_LocGrad_Type='73', min_RMS_gradient=0.0001, cp2kroot='BNZ_NMA_p3'):
 
     Temperature = np.array(Temperature).astype(float)
     if Method == 'HA':
@@ -29,13 +29,13 @@ def Temperature_Lattice_Dynamics(Temperature=[0.,300.], Pressure=1., Method='HA'
         else:
             print "   Computing wavenumbers of coordinate file"
             wavenumbers = Wvn.Call_Wavenumbers(Method, min_RMS_gradient, Program=Program, Coordinate_file=Coordinate_file,
-                                               Parameter_file=Parameter_file)
+                                               Parameter_file=Parameter_file, cp2kroot=cp2kroot)
             np.save(Output + '_' + Method + '_WVN', wavenumbers)
 
         if all(wavenumbers > Wavenum_Tol):
             print "   All wavenumbers are greater than tolerance of: " + str(Wavenum_Tol) + " cm^-1"
             properties = Pr.Properties_with_Temperature(Coordinate_file, wavenumbers, Temperature, Pressure, Program,
-                                                        Statistical_mechanics, molecules_in_coord,
+                                                        Statistical_mechanics, molecules_in_coord, cp2kroot=cp2kroot,
                                                         Parameter_file=Parameter_file)
             print "   All properties have been saved in " + Output + "_raw.npy"
             np.save(Output + '_raw', properties)
@@ -213,7 +213,7 @@ if __name__ == '__main__':
     try:
         Program = subprocess.check_output("less " + str(args.Input_file) + " | grep Program | grep = ", shell=True)
         Program = Program.split('=')[1].strip()
-        if Program not in ['Tinker', 'Test']:
+        if Program not in ['Tinker', 'Test', 'CP2K']:
             print "Input program is not supported. Please select from the following:"
             print "   Tinker, Test"
             print "Exiting code"
@@ -420,6 +420,12 @@ if __name__ == '__main__':
     except subprocess.CalledProcessError as grepexc:
         min_RMS_gradient = 0.01
 
+    try:
+        cp2kroot =  subprocess.check_output("less " + str(args.Input_file) + " | grep cp2kroot"
+                                                                                      " | grep = ", shell=True)
+        cp2kroot = (cp2kroot.split('=')[1].strip())
+    except subprocess.CalledProcessError as grepexc:
+        cp2kroot = 'BNZ_NMA_p2'
     if pressure_scan == False: 
         Temperature_Lattice_Dynamics(Temperature=Temperature,
                                      Pressure=Pressure,
@@ -444,7 +450,8 @@ if __name__ == '__main__':
                                      Wavenum_Tol=Wavenum_Tol,
                                      Gradient_MaxTemp=Gradient_MaxTemp,
                                      Aniso_LocGrad_Type=Aniso_LocGrad_Type,
-                                     min_RMS_gradient=min_RMS_gradient)
+                                     min_RMS_gradient=min_RMS_gradient,
+                                     cp2kroot=cp2kroot)
     
     else:
         if Statistical_mechanics == 'Quantum':
@@ -474,5 +481,6 @@ if __name__ == '__main__':
                            Wavenum_Tol=Wavenum_Tol,
                            Gradient_MaxTemp=Gradient_MaxTemp,
                            Aniso_LocGrad_Type=Aniso_LocGrad_Type,
-                           min_RMS_gradient=min_RMS_gradient)
+                           min_RMS_gradient=min_RMS_gradient,
+                           cp2kroot=cp2kroot)
 
