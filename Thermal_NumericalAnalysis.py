@@ -70,7 +70,6 @@ def Runge_Kutta_Fourth_Order(Method, Coordinate_file, Program, Temperature, Pres
             keyword_parameters['Gruneisen'] = 0.
             keyword_parameters['Wavenumber_Reference'] = 0.
             keyword_parameters['Volume_Reference'] = 0.
-            keyword_parameters['Crystal_matrix_Reference'] = 0.
     elif (Method == 'GaQ') or (Method == 'GaQg'):
         # Setting arra to save 4 gradients for the six different strains d\eta/dT
         RK_grad = np.zeros((4, 6))
