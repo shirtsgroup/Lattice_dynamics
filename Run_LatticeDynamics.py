@@ -55,7 +55,8 @@ def Temperature_Lattice_Dynamics(Temperature=[0.,300.], Pressure=1., Method='HA'
                                                       Pressure, Output, Method, molecules_in_coord, Wavenum_Tol,
                                                       Statistical_mechanics, min_RMS_gradient,
                                                       Parameter_file=Parameter_file,
-                                                      Gruneisen_Vol_FracStep=Gruneisen_Vol_FracStep)
+                                                      Gruneisen_Vol_FracStep=Gruneisen_Vol_FracStep,
+                                                      cp2kroot=cp2kroot)
         print "   Saving user specified properties in indipendent files:"
         Pr.Save_Properties(properties, properties_to_save, Output, Method, Statistical_mechanics)
         print "Stepwise Isotropic Quasi-Harmonic Approximation is complete!"

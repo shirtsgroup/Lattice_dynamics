@@ -416,7 +416,7 @@ def Isotropic_Stepwise_Expansion(StepWise_Vol_StepFrac, StepWise_Vol_LowerFrac, 
                                                       New_Volume=volume_fraction[i]*lattice_volume,
                                                       Coordinate_file=(Output + '_' + Method + str(volume_fraction[i])
                                                                        + file_ending),
-                                                      Parameter_file=keyword_parameters['Parameter_file'], cp2kroot=keyword_parameters(['cp2kroot']))
+                                                      Parameter_file=keyword_parameters['Parameter_file'], cp2kroot=keyword_parameters['cp2kroot'])
 
         # Saving the wavenumbers if the Gruneisen parameter is not being used
         if Method == 'SiQ':
@@ -429,7 +429,7 @@ def Isotropic_Stepwise_Expansion(StepWise_Vol_StepFrac, StepWise_Vol_LowerFrac, 
             properties[i, :, :] = Pr.Properties_with_Temperature(Output + '_' + Method + str(volume_fraction[i]) +
                                                                  file_ending, wavenumbers[i, 1:], Temperature, Pressure,
                                                                  Program, Statistical_mechanics, molecules_in_coord,
-                                                                 Parameter_file=keyword_parameters['Parameter_file'], cp2kroot = keyword_parameters(['cp2kroot']))
+                                                                 Parameter_file=keyword_parameters['Parameter_file'], cp2kroot = keyword_parameters['cp2kroot'])
         else:
             print "   ... WARNING: wavenumbers are lower than tolerance of: " + str(Wavenum_Tol) + " cm^-1"
             print "      ... Properties will be bypassed for this paricular strucutre."

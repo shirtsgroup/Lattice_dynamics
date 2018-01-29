@@ -55,6 +55,8 @@ def Call_Wavenumbers(Method, min_RMS_gradient, **keyword_parameters):
                 wavenumbers = Test_Wavenumber(keyword_parameters['Coordinate_file'], 0.)
             else:
                 wavenumbers = Test_Wavenumber(keyword_parameters['Coordinate_file'], True)
+        elif keyword_parameters['Program'] == 'CP2K':
+            return "Natalie add this in"
         return wavenumbers
 
     elif (Method == 'SiQg') or (Method == 'GiQg'):
@@ -129,14 +131,14 @@ def Call_Wavenumbers(Method, min_RMS_gradient, **keyword_parameters):
             return Gruneisen, Wavenumber_Reference
 
 #### NATE FIX THIS
-    elif (Method == 'SiQ') or (Method == 'GiQ') or (Method == 'GaQ') or (Method == 'HA'):
-        # Directly computing the wavenumbers for a specific program, given a coordinate file
-        if keyword_parameters['Program'] == 'Tinker':
-            wavenumbers = Tinker_Wavenumber(keyword_parameters['Coordinate_file'], keyword_parameters['Parameter_file'])
-
-        elif keyword_parameters['Program'] == 'Test':
-            wavenumbers = Test_Wavenumber(keyword_parameters['Coordinate_file'])
-        return wavenumbers
+#    elif (Method == 'SiQ') or (Method == 'GiQ') or (Method == 'GaQ') or (Method == 'HA'):
+#        # Directly computing the wavenumbers for a specific program, given a coordinate file
+#        if keyword_parameters['Program'] == 'Tinker':
+#            wavenumbers = Tinker_Wavenumber(keyword_parameters['Coordinate_file'], keyword_parameters['Parameter_file'])
+#
+#        elif keyword_parameters['Program'] == 'Test':
+#            wavenumbers = Test_Wavenumber(keyword_parameters['Coordinate_file'])
+#        return wavenumbers
 
 
 ##########################################
