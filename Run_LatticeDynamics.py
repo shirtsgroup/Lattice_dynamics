@@ -7,17 +7,16 @@ import subprocess
 import ThermodynamicProperties as Pr
 import Wavenumbers as Wvn
 import Thermal_NumericalAnalysis as TNA
-import Expand as Ex
 
-def Temperature_Lattice_Dynamics(Temperature=[0.,300.], Pressure=1., Method='HA', Program='Test',
-                                 Output='out', Coordinate_file='test.npy', Parameter_file='keyfile.key',
-                                 molecules_in_coord=1, properties_to_save=['G', 'T', 'V'], NumAnalysis_method='RK4',
-                                 NumAnalysis_step=300.0, LocGrd_Vol_FracStep=1.5e-03, LocGrd_NormStrain=1e-03,
-                                 LocGrd_ShearStrain=5e-04, StepWise_Vol_StepFrac=1e-3,
-                                 StepWise_Vol_LowerFrac=0.97, StepWise_Vol_UpperFrac=1.16,
-                                 Statistical_mechanics='Classical', Gruneisen_Vol_FracStep=1.5e-3, 
-                                 Gruneisen_Lat_FracStep=1.e-3, Wavenum_Tol=-1., Gradient_MaxTemp=300.0, 
-                                 Aniso_LocGrad_Type='73', min_RMS_gradient=0.0001):
+def Lattice_Dynamics(Temperature=[0.0, 25.0, 50.0, 75.0, 100.0], Pressure=1., Method='HA', Program='Test',
+                     Output='out', Coordinate_file='molecule.xyz', Parameter_file='keyfile.key',
+                     molecules_in_coord=1, properties_to_save=['G', 'T'], NumAnalysis_method='RK4',
+                     NumAnalysis_step=25.0,
+                     LocGrd_Vol_FracStep=3e-02,
+                     LocGrd_LatParam_FracStep=5e-05, StepWise_Vol_StepFrac=1.5e-3,
+                     StepWise_Vol_LowerFrac=0.97, StepWise_Vol_UpperFrac=1.16,
+                     Statistical_mechanics='Classical', Gruneisen_Vol_FracStep=1.5e-3, Gruneisen_Lat_FracStep=1.0e-3,
+                     Wavenum_Tol=-1., Gradient_MaxTemp=300.0, Aniso_LocGrad_Type='73', min_RMS_gradient=0.01, cp2kroot='BNZ_NMA_p3'):
 
     Temperature = np.array(Temperature).astype(float)
     if Method == 'HA':
@@ -29,14 +28,15 @@ def Temperature_Lattice_Dynamics(Temperature=[0.,300.], Pressure=1., Method='HA'
         else:
             print "   Computing wavenumbers of coordinate file"
             wavenumbers = Wvn.Call_Wavenumbers(Method, min_RMS_gradient, Program=Program, Coordinate_file=Coordinate_file,
-                                               Parameter_file=Parameter_file)
+                                               Parameter_file=Parameter_file, cp2kroot=cp2kroot)
             np.save(Output + '_' + Method + '_WVN', wavenumbers)
 
-        if all(wavenumbers > Wavenum_Tol):
+
+        if all(i > Wavenum_Tol for i in wavenumbers):
             print "   All wavenumbers are greater than tolerance of: " + str(Wavenum_Tol) + " cm^-1"
             properties = Pr.Properties_with_Temperature(Coordinate_file, wavenumbers, Temperature, Pressure, Program,
-                                                        Statistical_mechanics, molecules_in_coord,
-                                                        Parameter_file=Parameter_file)
+                                                        Statistical_mechanics, molecules_in_coord, cp2kroot=cp2kroot,
+                                                        Parameter_file=Parameter_file )
             print "   All properties have been saved in " + Output + "_raw.npy"
             np.save(Output + '_raw', properties)
             print "   Saving user specified properties in indipendent files:"
@@ -75,119 +75,17 @@ def Temperature_Lattice_Dynamics(Temperature=[0.,300.], Pressure=1., Method='HA'
 
     if (Method == 'GaQ') or (Method == 'GaQg'):
         print "Performing Gradient Anisotropic Quasi-Harmonic Approximation"
-        properties = TNA.Anisotropic_Gradient_Expansion(Coordinate_file, Program, molecules_in_coord, Output, Method,
-                                                        Gradient_MaxTemp, Pressure, LocGrd_NormStrain,
-                                                        LocGrd_ShearStrain, Statistical_mechanics, NumAnalysis_step,
-                                                        NumAnalysis_method, Aniso_LocGrad_Type, Temperature,
-                                                        min_RMS_gradient, Gruneisen_Lat_FracStep=Gruneisen_Lat_FracStep, 
-                                                        Parameter_file=Parameter_file)
+        properties = TNA.Ansotropic_Gradient_Expansion(Coordinate_file, Program, molecules_in_coord, Output, Method,
+                                                       Gradient_MaxTemp, Pressure, LocGrd_LatParam_FracStep,
+                                                       Statistical_mechanics, NumAnalysis_step,
+                                                       NumAnalysis_method, Aniso_LocGrad_Type, Temperature,
+                                                       min_RMS_gradient, Gruneisen_Lat_FracStep=Gruneisen_Lat_FracStep, Parameter_file=Parameter_file)
         print "   Saving user specified properties in indipendent files:"
         Pr.Save_Properties(properties, properties_to_save, Output, Method, Statistical_mechanics)
         print "Gradient Anisotropic Quasi-Harmonic Approximation is complete!"
 
 
-def Pressure_setup(Temperature=[0.0, 25.0, 50.0, 75.0, 100.0], Pressure=1., Method='HA', Program='Test',
-                   Output='out', Coordinate_file='molecule.xyz', Parameter_file='keyfile.key',
-                   molecules_in_coord=1, properties_to_save=['G', 'T'], NumAnalysis_method='RK4',
-                   NumAnalysis_step=25.0,
-                   LocGrd_Vol_FracStep=3e-02,
-                   LocGrd_NormStrain=2e-03,
-                   LocGrd_ShearStrain=1e-03, StepWise_Vol_StepFrac=1.5e-3,
-                   StepWise_Vol_LowerFrac=0.97, StepWise_Vol_UpperFrac=1.16,
-                   Statistical_mechanics='Classical', Gruneisen_Vol_FracStep=1.5e-3,
-                   Gruneisen_Lat_FracStep=1.0e-3, Wavenum_Tol=-1., Gradient_MaxTemp=300.0,
-                   Aniso_LocGrad_Type='73', min_RMS_gradient=0.01):
 
-    if Program == 'Tinker':
-        file_ending = '.xyz'
-    elif Program == 'Test':
-        file_ending = '.npy'
-
-    # Making an array of volume fractions
-    V_frac = np.arange(StepWise_Vol_LowerFrac, 1.0, StepWise_Vol_StepFrac)
-    V_frac = np.arange(StepWise_Vol_LowerFrac, StepWise_Vol_UpperFrac, StepWise_Vol_StepFrac)
-
-    # Volume of lattice minimum strucutre
-    V0 = Pr.Volume(Program=Program, Coordinate_file=Coordinate_file)
-
-    # Making an array to store the potential energy and volume of each structure
-    U = np.zeros(len(V_frac))
-    V = np.zeros(len(V_frac))
-
-    for i in xrange(len(V_frac)):
-        # Expanding the structures and saving the required data
-        Ex.Call_Expansion(Method, 'expand', Program, Coordinate_file, molecules_in_coord, min_RMS_gradient,
-                          volume_fraction_change=V_frac[i], Output='temporary', Parameter_file=Parameter_file)
-        U[i] = Pr.Potential_energy(Program, Coordinate_file='temporary' + file_ending, Parameter_file=Parameter_file)
-        V[i] = Pr.Volume(Program=Program, Coordinate_file='temporary' + file_ending)
-        subprocess.call(['rm', 'temporary' + file_ending])
-
-    for i in xrange(len(Pressure)):
-        # Fitting the U + PV energy to a 4th order polynomial
-        U_fit = np.polyfit(V, U + Pr.PV_energy(Pressure[i], V), 4)
-        U_fit = np.poly1d(U_fit)
-
-        # Using a fine volume spacing to determine the minimum energy volume at each pressure
-        V_fine = np.arange(min(V), max(V), 1.)
-        U_fine = U_fit(V_fine)
-        V_min = V_fine[np.where(U_fine == min(U_fine))]
-
-        # Expanding the lattice minimum structure to the minimum energy structure at Pressure i
-        Ex.Call_Expansion(Method, 'expand', Program, Coordinate_file, molecules_in_coord, min_RMS_gradient,
-                          volume_fraction_change=V_min/V0, Output='temporary', Parameter_file=Parameter_file)
-
-        # Making a new directory
-        subprocess.call(['mkdir', Output + '_' + str(Pressure[i]) + 'atm'])
-
-        # Copying necessary files over
-        subprocess.call(['cp', 'temporary' + file_ending, Output + '_' + str(Pressure[i]) + 'atm/' + Coordinate_file])
-        try:
-            subprocess.call(['cp', Parameter_file, Output + '_' + str(Pressure[i]) + 'atm'])
-        except ValueError:
-            pass
-        write_input_file(Temperature, Pressure[i], Method, Program, Output, Coordinate_file, Parameter_file,
-                         molecules_in_coord, properties_to_save, NumAnalysis_method, NumAnalysis_step, LocGrd_Vol_FracStep,
-                         LocGrd_NormStrain, LocGrd_ShearStrain, StepWise_Vol_StepFrac, StepWise_Vol_LowerFrac,
-                         StepWise_Vol_UpperFrac, Statistical_mechanics, Gruneisen_Vol_FracStep, Gruneisen_Lat_FracStep,
-                         Wavenum_Tol, Gradient_MaxTemp, Aniso_LocGrad_Type, min_RMS_gradient, Output + '_' +
-                         str(Pressure[i]) + 'atm/input.inp')
-
-
-def write_input_file(Temperature, Pressure, Method, Program, Output, Coordinate_file, Parameter_file, 
-                     molecules_in_coord, properties_to_save, NumAnalysis_method, NumAnalysis_step, LocGrd_Vol_FracStep,
-                     LocGrd_NormStrain, LocGrd_ShearStrain, StepWise_Vol_StepFrac, StepWise_Vol_LowerFrac, 
-                     StepWise_Vol_UpperFrac, Statistical_mechanics, Gruneisen_Vol_FracStep, Gruneisen_Lat_FracStep,
-                     Wavenum_Tol, Gradient_MaxTemp, Aniso_LocGrad_Type, min_RMS_gradient, input_file_location_and_name):
-    properties_out = ''
-    for i in xrange(len(properties_to_save) - 1):
-        properties_out = properties_out + properties_to_save[i] + ','
-    properties_out = properties_out + properties_to_save[-1]
-
-    with open(input_file_location_and_name, 'a') as myfile:
-        myfile.write('Temperature = ' + ','.join('{:,}'.format(x) for x in Temperature) + '\n')
-        myfile.write('Pressure = ' + str(Pressure) + '\n')
-        myfile.write('Method = ' + Method + '\n')
-        myfile.write('Program = ' + Program + '\n')
-        myfile.write('Output = ' + Output + '\n')
-        myfile.write('Coordinate_file = ' + Coordinate_file + '\n')
-        myfile.write('Parameter_file = ' + Parameter_file + '\n')
-        myfile.write('molecules_in_coord = ' + str(molecules_in_coord) + '\n')
-        myfile.write('properties_to_save = ' + properties_out + '\n')
-        myfile.write('NumAnalysis_method = ' + NumAnalysis_method + '\n')
-        myfile.write('NumAnalysis_step = ' + str(NumAnalysis_step) + '\n')
-        myfile.write('LocGrd_Vol_FracStep = ' + str(LocGrd_Vol_FracStep) + '\n')
-        myfile.write('LocGrd_NormStrain = ' + str(LocGrd_NormStrain) + '\n')
-        myfile.write('LocGrd_ShearStrain = ' + str(LocGrd_ShearStrain) + '\n')
-        myfile.write('StepWise_Vol_StepFrac = ' + str(StepWise_Vol_StepFrac) + '\n')
-        myfile.write('StepWise_Vol_LowerFrac = ' + str(StepWise_Vol_LowerFrac) + '\n')
-        myfile.write('StepWise_Vol_UpperFrac = ' + str(StepWise_Vol_UpperFrac) + '\n')
-        myfile.write('Statistical_mechanics = ' + Statistical_mechanics + '\n')
-        myfile.write('Gruneisen_Vol_FracStep = ' + str(Gruneisen_Vol_FracStep) + '\n')
-        myfile.write('Gruneisen_Lat_FracStep = ' + str(Gruneisen_Lat_FracStep) + '\n')
-        myfile.write('Wavenum_Tol = ' + str(Wavenum_Tol) + '\n')
-        myfile.write('Gradient_MaxTemp = ' + str(Gradient_MaxTemp) + '\n')
-        myfile.write('Aniso_LocGrad_Type = ' + str(Aniso_LocGrad_Type) + '\n')
-        myfile.write('min_RMS_gradient = ' + str(min_RMS_gradient) + '\n')
 
 if __name__ == '__main__':
     import argparse
@@ -213,7 +111,7 @@ if __name__ == '__main__':
     try:
         Program = subprocess.check_output("less " + str(args.Input_file) + " | grep Program | grep = ", shell=True)
         Program = Program.split('=')[1].strip()
-        if Program not in ['Tinker', 'Test']:
+        if Program not in ['Tinker', 'Test', 'CP2K']:
             print "Input program is not supported. Please select from the following:"
             print "   Tinker, Test"
             print "Exiting code"
@@ -251,12 +149,7 @@ if __name__ == '__main__':
 
     try:
         Pressure = subprocess.check_output("less " + str(args.Input_file) + " | grep Pressure | grep = ", shell=True)
-        Pressure = np.array(Pressure.split('=')[1].strip().split(',')).astype(float) 
-        if len(Pressure) == 1:
-            Pressure = Pressure[0]
-            pressure_scan = False
-        elif len(Pressure) > 1:
-            pressure_scan = True
+        Pressure = float(Pressure.split('=')[1].strip())
     except subprocess.CalledProcessError as grepexc:
         print "No pressure was selected, using default pressure"
         Pressure = 1.
@@ -340,18 +233,12 @@ if __name__ == '__main__':
         LocGrd_Vol_FracStep = 3e-02
 
     try:
-        LocGrd_NormStrain = subprocess.check_output("less " + str(args.Input_file) + " | grep LocGrd_NormStrain"
-                                                                                     " | grep = ", shell=True)
-        LocGrd_NormStrain = float(LocGrd_NormStrain.split('=')[1].strip())
+        LocGrd_LatParam_FracStep = subprocess.check_output("less " + str(args.Input_file) + " | grep "
+                                                                                            "LocGrd_LatParam_FracStep"
+                                                                                            " | grep = ", shell=True)
+        LocGrd_LatParam_FracStep = float(LocGrd_LatParam_FracStep.split('=')[1].strip())
     except subprocess.CalledProcessError as grepexc:
-        LocGrd_NormStrain = 2.5e-03
-
-    try:
-        LocGrd_ShearStrain = subprocess.check_output("less " + str(args.Input_file) + " | grep LocGrd_ShearStrain"
-                                                                                      " | grep = ", shell=True)
-        LocGrd_ShearStrain = float(LocGrd_ShearStrain.split('=')[1].strip())
-    except subprocess.CalledProcessError as grepexc:
-        LocGrd_ShearStrain = 1e-03
+        LocGrd_LatParam_FracStep = 5e-02
 
     try:
         StepWise_Vol_StepFrac = subprocess.check_output("less " + str(args.Input_file) + " | grep StepWise_Vol_StepFrac"
@@ -414,65 +301,46 @@ if __name__ == '__main__':
         Aniso_LocGrad_Type = 73
 
     try:
-        min_RMS_gradient = subprocess.check_output("less " + str(args.Input_file) + " | grep min_RMS_gradient"
-                                                                                    " | grep = ", shell=True)
+        min_RMS_gradient =  subprocess.check_output("less " + str(args.Input_file) + " | grep min_RMS_gradient"
+                                                                                      " | grep = ", shell=True)
         min_RMS_gradient = float(min_RMS_gradient.split('=')[1].strip())
     except subprocess.CalledProcessError as grepexc:
         min_RMS_gradient = 0.01
 
-    if pressure_scan == False: 
-        Temperature_Lattice_Dynamics(Temperature=Temperature,
-                                     Pressure=Pressure,
-                                     Method=Method,
-                                     Program=Program,
-                                     Output=Output,
-                                     Coordinate_file=Coordinate_file,
-                                     Parameter_file=Parameter_file,
-                                     molecules_in_coord=molecules_in_coord,
-                                     properties_to_save=properties_to_save,
-                                     NumAnalysis_method=NumAnalysis_method,
-                                     NumAnalysis_step=NumAnalysis_step,
-                                     LocGrd_Vol_FracStep=LocGrd_Vol_FracStep,
-                                     LocGrd_NormStrain=LocGrd_NormStrain,
-                                     LocGrd_ShearStrain=LocGrd_ShearStrain,
-                                     StepWise_Vol_StepFrac=StepWise_Vol_StepFrac,
-                                     StepWise_Vol_LowerFrac=StepWise_Vol_LowerFrac,
-                                     StepWise_Vol_UpperFrac=StepWise_Vol_UpperFrac,
-                                     Statistical_mechanics=Statistical_mechanics,
-                                     Gruneisen_Vol_FracStep=Gruneisen_Vol_FracStep,
-                                     Gruneisen_Lat_FracStep=Gruneisen_Lat_FracStep,
-                                     Wavenum_Tol=Wavenum_Tol,
-                                     Gradient_MaxTemp=Gradient_MaxTemp,
-                                     Aniso_LocGrad_Type=Aniso_LocGrad_Type,
-                                     min_RMS_gradient=min_RMS_gradient)
-    
-    else:
-        if Statistical_mechanics == 'Quantum':
-            print "Warning! The scanning of multiple pressures is not yet supported in this code for Qunantum Mechanics."
-            print "... Please contact Nate Abraham (nate.abraham@colorado.edu) with ways to perform this."
-        else:
-            Pressure_setup(Temperature=Temperature,
-                           Pressure=Pressure,
-                           Method=Method,
-                           Program=Program,
-                           Output=Output,
-                           Coordinate_file=Coordinate_file,
-                           Parameter_file=Parameter_file,
-                           molecules_in_coord=molecules_in_coord,
-                           properties_to_save=properties_to_save,
-                           NumAnalysis_method=NumAnalysis_method,
-                           NumAnalysis_step=NumAnalysis_step,
-                           LocGrd_Vol_FracStep=LocGrd_Vol_FracStep,
-                           LocGrd_NormStrain=LocGrd_NormStrain,
-                           LocGrd_ShearStrain=LocGrd_ShearStrain,
-                           StepWise_Vol_StepFrac=StepWise_Vol_StepFrac,
-                           StepWise_Vol_LowerFrac=StepWise_Vol_LowerFrac,
-                           StepWise_Vol_UpperFrac=StepWise_Vol_UpperFrac,
-                           Statistical_mechanics=Statistical_mechanics,
-                           Gruneisen_Vol_FracStep=Gruneisen_Vol_FracStep,
-                           Gruneisen_Lat_FracStep=Gruneisen_Lat_FracStep,
-                           Wavenum_Tol=Wavenum_Tol,
-                           Gradient_MaxTemp=Gradient_MaxTemp,
-                           Aniso_LocGrad_Type=Aniso_LocGrad_Type,
-                           min_RMS_gradient=min_RMS_gradient)
+    try:
+        cp2kroot =  subprocess.check_output("less " + str(args.Input_file) + " | grep cp2kroot"
+                                                                                      " | grep = ", shell=True)
+        cp2kroot = (cp2kroot.split('=')[1].strip())
+    except subprocess.CalledProcessError as grepexc:
+        cp2kroot = 'BNZ_NMA_p2'
 
+#    try:
+#        Gruneisen_order = subprocess.check_output("less " + str(args.Input_file) + " | grep Gruneisen_order"
+#                                                                                   " | grep = ", shell=True)
+#        Gruneisen_order = Gruneisen_order.split('=')[1].strip()
+#    except subprocess.CalledProcessError as grepexc:
+#        Gruneisen_order = 'First'
+    Lattice_Dynamics(Temperature=Temperature,
+                     Pressure=Pressure,
+                     Method=Method,
+                     Program=Program,
+                     Output=Output,
+                     Coordinate_file=Coordinate_file,
+                     Parameter_file=Parameter_file,
+                     molecules_in_coord=molecules_in_coord,
+                     properties_to_save=properties_to_save,
+                     NumAnalysis_method=NumAnalysis_method,
+                     NumAnalysis_step=NumAnalysis_step,
+                     LocGrd_Vol_FracStep=LocGrd_Vol_FracStep,
+                     LocGrd_LatParam_FracStep=LocGrd_LatParam_FracStep,
+                     StepWise_Vol_StepFrac=StepWise_Vol_StepFrac,
+                     StepWise_Vol_LowerFrac=StepWise_Vol_LowerFrac,
+                     StepWise_Vol_UpperFrac=StepWise_Vol_UpperFrac,
+                     Statistical_mechanics=Statistical_mechanics,
+                     Gruneisen_Vol_FracStep=Gruneisen_Vol_FracStep,
+                     Gruneisen_Lat_FracStep=Gruneisen_Lat_FracStep,
+                     Wavenum_Tol=Wavenum_Tol,
+                     Gradient_MaxTemp=Gradient_MaxTemp,
+                     Aniso_LocGrad_Type=Aniso_LocGrad_Type,
+                     min_RMS_gradient=min_RMS_gradient, cp2kroot=cp2kroot)
+#                     Gruneisen_order=args.Gruneisen_order)
