@@ -338,11 +338,8 @@ def triangle_crystal_matrix_to_array(crystal_matrix):
 
 def array_to_triangle_crystal_matrix(array):
     return np.matrix([[array[0], array[3], array[4]],
-                      [array[3], array[1], array[5]],
-                      [array[4], array[5], array[2]]])
-#    return np.matrix([[array[0], array[3], array[4]],
-#                      [0.,       array[1], array[5]],
-#                      [0.,       0.,       array[2]]])
+                      [0.,       array[1], array[5]],
+                      [0.,       0.,       array[2]]])
 
 ##########################################
 #            General Expansion           #
@@ -578,9 +575,12 @@ def Anisotropic_Local_Gradient(Coordinate_file, Program, Temperature, Pressure, 
     """
     # Setting up an array for changes in the crystal matrix
     crystal_matrix = Lattice_parameters_to_Crystal_matrix(Pr.Lattice_parameters(Program, Coordinate_file))
-    numerical_crystal_matrix_step = triangle_crystal_matrix_to_array(crystal_matrix)
+    numerical_crystal_matrix_step = np.absolute(triangle_crystal_matrix_to_array(crystal_matrix))
     numerical_crystal_matrix_step[:3] = LocGrd_NormStrain * numerical_crystal_matrix_step[:3]
-    numerical_crystal_matrix_step[3:] = 0.001*LocGrd_ShearStrain * numerical_crystal_matrix_step[3:]
+    numerical_crystal_matrix_step[3:] = LocGrd_ShearStrain * numerical_crystal_matrix_step[3:]
+    for i in range(6):
+        if numerical_crystal_matrix_step[i] < 0.001:
+            numerical_crystal_matrix_step[i] = 0.001
     # Determining the file ending of the coordinate files
     file_ending = assign_file_ending(Program)
 
@@ -855,7 +855,6 @@ def Anisotropic_Local_Gradient(Coordinate_file, Program, Temperature, Pressure, 
 
     # Calculating deta/dT for all strains
     dcrystal_matrix = np.linalg.lstsq(ddG_ddC, dS_dC)[0]
-    dcrystal_matrix[3:] = dcrystal_matrix[3:]
 
     # Saving numerical outputs
     NO.aniso_gradient(dG_dC, ddG_ddC, dS_dC, dcrystal_matrix)
