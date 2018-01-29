@@ -3,11 +3,11 @@
 ### General Inputs ###
 ## Temperature
 # Import numpy array of temperatures
-Temperature = 10.,20.,30.,40.,50.,60.,70.,80.,90.,100.,110.,120.,130.,140.,150.,160.,170.,180.,190.,200.,210.,220.,230.,240.,250.,260.,270.,280.,290.
+Temperature = 0.,10.,20.,30.,40.,50.,60.,70.,80.,90.,100.,110.,120.,130.,140.,150.,160.,170.,180.,190.,200.,210.,220.,230.,240.,250.,260.,270.,280.,290.,300.
 
 ## Pressure
 # Only set up for single pressure values
-Pressure = 1
+Pressure = 1.
 
 ## Method
 # Only one method is accepted currently
@@ -32,21 +32,21 @@ Output = out
 # Tinker - Tinker Molecular Modeling Package
 # Test - Input functions in *.py to determine thermal expansion landscape and *.py to determine changes in wavenumber
 # CP2K - CP2K Quantum mechanical package
-Program = CP2K
+Program = Tinker
 
 ## Statistical mechanics
 # Option - Description
 # Classical - Classical
 # Quantum - Quantum
-Statistical_mechanics = Quantum
+Statistical_mechanics = Classical
 
 ## Structure
 # Coordinate file
-Coordinate_file = benzene_p1_4.pdb
+Coordinate_file = molecule.xyz
 
 ## Molecular parameters
 # Input file for particular program
-Parameter_file = nma.inp
+Parameter_file = keyfile.key
 
 ## Root for cp2k files
 cp2kroot = BNZ_NMA_p1
@@ -84,23 +84,27 @@ NumAnalysis_step = 150.0
 ## Local gradient presets
 # These options are tuned best for a wide array of options
 # Isotropic volume fraction change
-LocGrd_Vol_FracStep = 3e-02
-# Anisotropic lattice fraction change
-LocGrd_LatParam_FracStep = 5e-02
+LocGrd_Vol_FracStep = 1.5e-03
+# Anisotropic noraml and shear strains
+LocGrd_NormStrain = 2.0e-03
+LocGrd_ShearStrain = 1.0e-03
 
 ### Stepwise options ###
 # Stepwise thermal expansion is only set up for isotropic expansion
 # It is far too expansive to run anistropic expansion stepwise
 # Volume fraction stepsize
-StepWise_Vol_StepFrac = 1.5e-3
+StepWise_Vol_StepFrac = 1.e-3
 # Volume fraction lowerbound
 StepWise_Vol_LowerFrac = 0.99
 # Volume fraction upperbound
-StepWise_Vol_UpperFrac = 1.02
+StepWise_Vol_UpperFrac = 1.08
 
 ### Gruneisen options ###
 # Volume fraction gruneisen change
 Gruneisen_Vol_FracStep = 1.5e-3
+# Lattice Parameter fraction Gruneisen Change
+Gruneisen_Lat_FracStep = 1.5e-03
+ 
 
 ### Wavenumber tolerance
 Wavenum_Tol = -1.0
@@ -115,11 +119,6 @@ Gradient_MaxTemp = 300.0
 # matrix
 Aniso_LocGrad_Type = 73
 
-# Gruneisen Order
-# Option - Description
-# First     - gamma = dln(omega)/dln(V)
-# Second    - gamma = V/omega*[domega/dV + d^2omega/dV^2
-Gruneisen_order = First
-
-
+# Gradient for minimization
+min_RMS_gradient = 0.0001
 

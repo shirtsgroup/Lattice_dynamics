@@ -4,7 +4,6 @@ import subprocess
 import numpy as np
 import itertools as it
 
-
 ##########################################
 #           Export PROPERTIES            #
 ##########################################
@@ -52,7 +51,7 @@ def Properties(Coordinate_file, wavenumbers, Temperature, Pressure, Program, Sta
                                                   wavenumbers) / molecules_in_coord  # Quantum vibrational Helmholtz
             properties[13] = Quantum_Vibrational_S(Temperature,
                                                    wavenumbers) / molecules_in_coord  # Quantum vibrational Entropy
-    properties[5] = Pressure * properties[6] * (6.022 * 10 ** 23) * (2.390 * 10 ** (-29)) / molecules_in_coord  # PV
+    properties[5] = PV_energy(Pressure, properties[6]) / molecules_in_coord  # PV
     properties[2] = sum(properties[3:6])  # Gibbs free energy
     return properties
 
@@ -202,10 +201,19 @@ def Test_U(Coordinate_file):
     **Required Inputs
     Coordinate_file = File containing lattice parameters
     """
-    lattice_parameters = Test_Lattice_Parameters(Coordinate_file)
-    U = (lattice_parameters[0] - 10) ** 2 + (lattice_parameters[1] - 7) ** 2 + \
-        (lattice_parameters[2] - 12) ** 2 + 200.0 * (lattice_parameters[3] - 90) ** 2 + 100. * \
-        (lattice_parameters[4] - 90) ** 2 + 150. * (lattice_parameters[5] - 90) ** 2 - 43.
+    new_lp = np.load(Coordinate_file)
+
+    polynomial_normal = np.array([[  1.32967100e+01,  -3.86230306e+02,   4.21859038e+03,  -2.05171077e+04,    3.71986258e+04],
+                                  [  5.96012607e-00,  -3.29643734e+01,   6.87371706e+02,  -6.39222328e+03,    2.20706869e+04],
+                                  [  6.54309591e-01,  -2.95928106e+01,   4.82192443e+02,  -3.37907613e+03,    8.38105955e+03],
+                                  [  1.73101682e-04,  -6.23169023e-02,   8.53269922e+00,  -5.26349633e+02,    1.20653441e+04],
+                                  [  1.87342875e-04,  -6.45384256e-02,   8.09885843e+00,  -4.58100859e+02,    1.27492294e+04],
+                                  [ -7.85675953e-05,   2.82845448e-02,  -3.66590698e+00,   2.01651921e+02,   -4.18251942e+03]])
+
+    U = 0.
+    for i in xrange(6):
+        p = np.poly1d(polynomial_normal[i])
+        U = U + p(new_lp[i])
     return U
 
 
@@ -307,6 +315,45 @@ def Volume(**keyword_parameters):
     return V
 
 
+def Potential_energy(Program, **keyword_parameters):
+    if Program == 'Tinker':
+        U = Tinker_U(keyword_parameters['Coordinate_file'], keyword_parameters['Parameter_file'])
+    elif Program == 'Test':
+        U = Test_U(keyword_parameters['Coordinate_file'])
+    return U
+
+def Lattice_parameters(Program, Coordinate_file):
+    if Program == 'Tinker':
+        lattice_parameters = Tinker_Lattice_Parameters(Coordinate_file)
+    elif Program == 'Test':
+        lattice_parameters = Test_Lattice_Parameters(Coordinate_file)
+    return lattice_parameters
+
+def RotationFree_StrainArray_from_CrystalMatrix(ref_crystal_matrix, new_crystal_matrix):
+    # The deformation matrix is C = F*C0 --> F = C*C0^-1
+    F = np.dot(new_crystal_matrix, np.linalg.inv(ref_crystal_matrix))
+
+    # Computing necessary variables
+    C = np.dot(F.T, F)
+    F_eig = np.linalg.eig(F)[0]
+    I_U = np.sum(F_eig)
+    II_U = F_eig[0]*F_eig[1] + F_eig[1]*F_eig[2] + F_eig[2]*F_eig[0]
+    III_U = np.product(F_eig)
+
+    # F = R*U, where R is the rotational piece
+    # For us, R is simply an artifact of computing between Cartesian coordinates
+    U = np.dot(np.linalg.inv(C + II_U*np.identity(3)), I_U*C +III_U*np.identity(3))
+
+    # Computing the strain on the crystal due to the non-rotational deformation matrix
+    # We assume the relationship can be described with small strains
+    eta = 0.5*(U + U.T) - np.identity(3)
+    eta = np.array([eta[0, 0], eta[1, 1], eta[2, 2],
+                    eta[0, 1], eta[0, 2], eta[1, 2]])
+    return eta
+
+def PV_energy(Pressure, volume):
+    return Pressure * volume * (6.022 * 10 ** 23) * (0.024201) * (10**(-27)) 
+
 def Classical_Vibrational_A(Temperature, wavenumbers):
     """
     Function to calculate the Classical Helmholtz vibrational energy at a given temperature
@@ -346,10 +393,8 @@ def Quantum_Vibrational_A(Temperature, wavenumbers):
     Na = 6.022 * 10 ** 23  # Avogadro's number
     beta = 1 / (k * Temperature)
     wavenumbers = np.sort(wavenumbers)
-
     A = []
     for i in wavenumbers[3:]:  # Skipping translational modes
-	i = float(i)
         if i > 0:  # Skipping negative wavenumbers
             a = ((h * i * c * np.pi) + (1 / beta) * np.log(1 - np.exp(-beta * h * i * c * 2 * np.pi))) * Na / 1000
             A.append(a)
@@ -416,7 +461,6 @@ def Quantum_Vibrational_S(Temperature, wavenumbers):
     wavenumbers = np.sort(wavenumbers)
     S = []
     for i in wavenumbers[3:]:
-	i = float(i)
         if i > 0:
             s = (h * i * c * 2 * np.pi / (Temperature * (np.exp(beta * h * i * c * 2 * np.pi) - 1)) - k * np.log(
                 1 - np.exp(-beta * h * i * c * 2 * np.pi))) * Na / 1000
@@ -465,5 +509,7 @@ def Gibbs_Free_Energy(Temperature, Pressure, Program, wavenumbers, Coordinate_fi
         A = Quantum_Vibrational_A(Temperature, wavenumbers) / molecules_in_coord 
 
     # Gibbs Free energy
-    G = U + A + Pressure * volume * (6.022 * 10 ** 23) * (2.390 * 10 ** (-29)) / molecules_in_coord
+    G = U + A + PV_energy(Pressure, volume) / molecules_in_coord
     return G
+
+
