@@ -126,7 +126,7 @@ def aniso_gradient(dG, ddG, dS, dC):
 
     # Outputting deta/dT
     write_out('dC/dT [Ang./K] = \n')
-    numpy_write_out_precision(deta)
+    numpy_write_out_precision(dC)
     write_out('\n')
 
 
