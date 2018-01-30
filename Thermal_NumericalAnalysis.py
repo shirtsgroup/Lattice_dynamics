@@ -334,7 +334,7 @@ def Isotropic_Stepwise_Expansion(StepWise_Vol_StepFrac, StepWise_Vol_LowerFrac, 
         number_of_wavenumbers = Pr.Tinker_atoms_per_molecule(Coordinate_file, 1)*3
     elif Program == 'Test':
         file_ending = '.npy'
-        number_of_wavenumbers = len(Wvn.Test_Wavenumber(Coordinate_file, 0.))
+        number_of_wavenumbers = len(Wvn.Test_Wavenumber(Coordinate_file, True))
         keyword_parameters['Parameter_file'] = ''
     elif Program =='CP2L':
 	file_ending = '.pdb'
@@ -429,7 +429,8 @@ def Isotropic_Stepwise_Expansion(StepWise_Vol_StepFrac, StepWise_Vol_LowerFrac, 
             properties[i, :, :] = Pr.Properties_with_Temperature(Output + '_' + Method + str(volume_fraction[i]) +
                                                                  file_ending, wavenumbers[i, 1:], Temperature, Pressure,
                                                                  Program, Statistical_mechanics, molecules_in_coord,
-                                                                 Parameter_file=keyword_parameters['Parameter_file'], cp2kroot = keyword_parameters['cp2kroot'])
+                                                                 keyword_parameters['cp2kroot'],
+                                                                 Parameter_file=keyword_parameters['Parameter_file'])
         else:
             print "   ... WARNING: wavenumbers are lower than tolerance of: " + str(Wavenum_Tol) + " cm^-1"
             print "      ... Properties will be bypassed for this paricular strucutre."
@@ -483,7 +484,7 @@ def Isotropic_Gradient_Expansion(Coordinate_file, Program, molecules_in_coord, O
         number_of_wavenumbers = Pr.Tinker_atoms_per_molecule(Coordinate_file, 1)*3
     elif Program == 'Test':
         file_ending = '.npy'
-        number_of_wavenumbers = len(Wvn.Test_Wavenumber(Coordinate_file, 0.))
+        number_of_wavenumbers = len(Wvn.Test_Wavenumber(Coordinate_file, True))
         keyword_parameters['Parameter_file'] = ''
     elif Program =='CP2K':
         file_ending = '.pdb'
@@ -580,7 +581,8 @@ def Isotropic_Gradient_Expansion(Coordinate_file, Program, molecules_in_coord, O
         # Populating the properties for the current temperature
         properties[i, :] = Pr.Properties(Output + '_' + Method + 'T' + str(temperature[i]) + file_ending,
                                          wavenumbers[i, 1:], temperature[i], Pressure, Program, Statistical_mechanics,
-                                         molecules_in_coord, Parameter_file=keyword_parameters['Parameter_file'], cp2kroot=keywor_parameters['cp2kroot'])
+                                         molecules_in_coord, keyword_parameters['cp2kroot'],
+                                         Parameter_file=keyword_parameters['Parameter_file'])
 
         # Expanding to the next strucutre
         print "   Expanding to strucutre at: " + str(temperature[i + 1]) + " K"
@@ -602,7 +604,7 @@ def Isotropic_Gradient_Expansion(Coordinate_file, Program, molecules_in_coord, O
                                   Volume_Reference=Volume_Reference)
             properties[i+1, :] = Pr.Properties(Output + '_' + Method + 'T' + str(temperature[i + 1]) + file_ending,
                                                wavenumbers[i + 1, 1:], temperature[i + 1], Pressure, Program,
-                                               Statistical_mechanics, molecules_in_coord,
+                                               Statistical_mechanics, molecules_in_coord, keyword_parameters['cp2kroot'],
                                                Parameter_file=keyword_parameters['Parameter_file'])
             os.system('mv ' + Output + '_' + Method + 'T' + str(temperature[i + 1]) + file_ending + ' Cords/')
             if Method == 'GiQ':
@@ -774,7 +776,8 @@ def Anisotropic_Gradient_Expansion(Coordinate_file, Program, molecules_in_coord,
         # Populating the properties for the current temperature
         properties[i, :] = Pr.Properties(Output + '_' + Method + 'T' + str(temperature[i]) + file_ending,
                                          wavenumbers[i, 1:], temperature[i], Pressure, Program, Statistical_mechanics,
-                                         molecules_in_coord, Parameter_file=keyword_parameters['Parameter_file'])
+                                         molecules_in_coord, keyword_parameters['cp2kroot'],
+                                         Parameter_file=keyword_parameters['Parameter_file'])
 
         # Moving the current strucutre to the Cords directory
         os.system('mv ' + Output + '_' + Method + 'T' + str(temperature[i]) + file_ending + ' Cords/')
@@ -807,7 +810,7 @@ def Anisotropic_Gradient_Expansion(Coordinate_file, Program, molecules_in_coord,
             # Computing the properties at the final temperature
             properties[i + 1, :] = Pr.Properties(Output + '_' + Method + 'T' + str(temperature[i + 1]) + file_ending,
                                                  wavenumbers[i + 1, 1:], temperature[i + 1], Pressure, Program,
-                                                 Statistical_mechanics, molecules_in_coord,
+                                                 Statistical_mechanics, molecules_in_coord, keyword_parameters['cp2kroot'],
                                                  Parameter_file=keyword_parameters['Parameter_file'])
 
             # Moving the final strucutre to the Cords directory

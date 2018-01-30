@@ -446,6 +446,7 @@ def array_to_triangle_crystal_matrix(array):
                       [0.,       array[1], array[5]],
                       [0.,       0.,       array[2]]])
 
+
 ##########################################
 #            General Expansion           #
 ##########################################

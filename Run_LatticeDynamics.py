@@ -69,7 +69,8 @@ def Temperature_Lattice_Dynamics(Temperature=[0.,300.], Pressure=1., Method='HA'
                                                       Statistical_mechanics, NumAnalysis_step, NumAnalysis_method,
                                                       Temperature, min_RMS_gradient,
                                                       Parameter_file=Parameter_file,
-                                                      Gruneisen_Vol_FracStep=Gruneisen_Vol_FracStep)
+                                                      Gruneisen_Vol_FracStep=Gruneisen_Vol_FracStep,
+                                                      cp2kroot=cp2kroot)
         print "   Saving user specified properties in indipendent files:"
         Pr.Save_Properties(properties, properties_to_save, Output, Method, Statistical_mechanics)
         print "Gradient Isotropic Quasi-Harmonic Approximation is complete!"
@@ -81,7 +82,7 @@ def Temperature_Lattice_Dynamics(Temperature=[0.,300.], Pressure=1., Method='HA'
                                                         LocGrd_ShearStrain, Statistical_mechanics, NumAnalysis_step,
                                                         NumAnalysis_method, Aniso_LocGrad_Type, Temperature,
                                                         min_RMS_gradient, Gruneisen_Lat_FracStep=Gruneisen_Lat_FracStep, 
-                                                        Parameter_file=Parameter_file)
+                                                        Parameter_file=Parameter_file, cp2kroot=cp2kroot)
         print "   Saving user specified properties in indipendent files:"
         Pr.Save_Properties(properties, properties_to_save, Output, Method, Statistical_mechanics)
         print "Gradient Anisotropic Quasi-Harmonic Approximation is complete!"
