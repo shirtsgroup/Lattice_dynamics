@@ -12,8 +12,8 @@ import Expand as Ex
 def Temperature_Lattice_Dynamics(Temperature=[0.,300.], Pressure=1., Method='HA', Program='Test',
                                  Output='out', Coordinate_file='test.npy', Parameter_file='keyfile.key',
                                  molecules_in_coord=1, properties_to_save=['G', 'T', 'V'], NumAnalysis_method='RK4',
-                                 NumAnalysis_step=300.0, LocGrd_Vol_FracStep=1.5e-03, LocGrd_NormStrain=1e-03,
-                                 LocGrd_ShearStrain=5e-04, StepWise_Vol_StepFrac=1e-3,
+                                 NumAnalysis_step=300.0, LocGrd_Vol_FracStep=1.5e-03, LocGrd_Diag_FracStep=1e-03,
+                                 LocGrd_OffDiag_FracStep=5e-04, StepWise_Vol_StepFrac=1e-3,
                                  StepWise_Vol_LowerFrac=0.97, StepWise_Vol_UpperFrac=1.16,
                                  Statistical_mechanics='Classical', Gruneisen_Vol_FracStep=1.5e-3, 
                                  Gruneisen_Lat_FracStep=1.e-3, Wavenum_Tol=-1., Gradient_MaxTemp=300.0, 
@@ -78,8 +78,8 @@ def Temperature_Lattice_Dynamics(Temperature=[0.,300.], Pressure=1., Method='HA'
     if (Method == 'GaQ') or (Method == 'GaQg'):
         print "Performing Gradient Anisotropic Quasi-Harmonic Approximation"
         properties = TNA.Anisotropic_Gradient_Expansion(Coordinate_file, Program, molecules_in_coord, Output, Method,
-                                                        Gradient_MaxTemp, Pressure, LocGrd_NormStrain,
-                                                        LocGrd_ShearStrain, Statistical_mechanics, NumAnalysis_step,
+                                                        Gradient_MaxTemp, Pressure, LocGrd_Diag_FracStep,
+                                                        LocGrd_OffDiag_FracStep, Statistical_mechanics, NumAnalysis_step,
                                                         NumAnalysis_method, Aniso_LocGrad_Type, Temperature,
                                                         min_RMS_gradient, Gruneisen_Lat_FracStep=Gruneisen_Lat_FracStep, 
                                                         Parameter_file=Parameter_file, cp2kroot=cp2kroot)
@@ -93,8 +93,8 @@ def Pressure_setup(Temperature=[0.0, 25.0, 50.0, 75.0, 100.0], Pressure=1., Meth
                    molecules_in_coord=1, properties_to_save=['G', 'T'], NumAnalysis_method='RK4',
                    NumAnalysis_step=25.0,
                    LocGrd_Vol_FracStep=3e-02,
-                   LocGrd_NormStrain=2e-03,
-                   LocGrd_ShearStrain=1e-03, StepWise_Vol_StepFrac=1.5e-3,
+                   LocGrd_Diag_FracStep=2e-03,
+                   LocGrd_OffDiag_FracStep=1e-03, StepWise_Vol_StepFrac=1.5e-3,
                    StepWise_Vol_LowerFrac=0.97, StepWise_Vol_UpperFrac=1.16,
                    Statistical_mechanics='Classical', Gruneisen_Vol_FracStep=1.5e-3,
                    Gruneisen_Lat_FracStep=1.0e-3, Wavenum_Tol=-1., Gradient_MaxTemp=300.0,
@@ -149,7 +149,7 @@ def Pressure_setup(Temperature=[0.0, 25.0, 50.0, 75.0, 100.0], Pressure=1., Meth
             pass
         write_input_file(Temperature, Pressure[i], Method, Program, Output, Coordinate_file, Parameter_file,
                          molecules_in_coord, properties_to_save, NumAnalysis_method, NumAnalysis_step, LocGrd_Vol_FracStep,
-                         LocGrd_NormStrain, LocGrd_ShearStrain, StepWise_Vol_StepFrac, StepWise_Vol_LowerFrac,
+                         LocGrd_Diag_FracStep, LocGrd_OffDiag_FracStep, StepWise_Vol_StepFrac, StepWise_Vol_LowerFrac,
                          StepWise_Vol_UpperFrac, Statistical_mechanics, Gruneisen_Vol_FracStep, Gruneisen_Lat_FracStep,
                          Wavenum_Tol, Gradient_MaxTemp, Aniso_LocGrad_Type, min_RMS_gradient, Output + '_' +
                          str(Pressure[i]) + 'atm/input.inp')
@@ -157,7 +157,7 @@ def Pressure_setup(Temperature=[0.0, 25.0, 50.0, 75.0, 100.0], Pressure=1., Meth
 
 def write_input_file(Temperature, Pressure, Method, Program, Output, Coordinate_file, Parameter_file, 
                      molecules_in_coord, properties_to_save, NumAnalysis_method, NumAnalysis_step, LocGrd_Vol_FracStep,
-                     LocGrd_NormStrain, LocGrd_ShearStrain, StepWise_Vol_StepFrac, StepWise_Vol_LowerFrac, 
+                     LocGrd_Diag_FracStep, LocGrd_OffDiag_FracStep, StepWise_Vol_StepFrac, StepWise_Vol_LowerFrac, 
                      StepWise_Vol_UpperFrac, Statistical_mechanics, Gruneisen_Vol_FracStep, Gruneisen_Lat_FracStep,
                      Wavenum_Tol, Gradient_MaxTemp, Aniso_LocGrad_Type, min_RMS_gradient, input_file_location_and_name):
     properties_out = ''
@@ -178,8 +178,8 @@ def write_input_file(Temperature, Pressure, Method, Program, Output, Coordinate_
         myfile.write('NumAnalysis_method = ' + NumAnalysis_method + '\n')
         myfile.write('NumAnalysis_step = ' + str(NumAnalysis_step) + '\n')
         myfile.write('LocGrd_Vol_FracStep = ' + str(LocGrd_Vol_FracStep) + '\n')
-        myfile.write('LocGrd_NormStrain = ' + str(LocGrd_NormStrain) + '\n')
-        myfile.write('LocGrd_ShearStrain = ' + str(LocGrd_ShearStrain) + '\n')
+        myfile.write('LocGrd_Diag_FracStep = ' + str(LocGrd_Diag_FracStep) + '\n')
+        myfile.write('LocGrd_OffDiag_FracStep = ' + str(LocGrd_OffDiag_FracStep) + '\n')
         myfile.write('StepWise_Vol_StepFrac = ' + str(StepWise_Vol_StepFrac) + '\n')
         myfile.write('StepWise_Vol_LowerFrac = ' + str(StepWise_Vol_LowerFrac) + '\n')
         myfile.write('StepWise_Vol_UpperFrac = ' + str(StepWise_Vol_UpperFrac) + '\n')
@@ -342,18 +342,18 @@ if __name__ == '__main__':
         LocGrd_Vol_FracStep = 3e-02
 
     try:
-        LocGrd_NormStrain = subprocess.check_output("less " + str(args.Input_file) + " | grep LocGrd_NormStrain"
+        LocGrd_Diag_FracStep = subprocess.check_output("less " + str(args.Input_file) + " | grep LocGrd_Diag_FracStep"
                                                                                      " | grep = ", shell=True)
-        LocGrd_NormStrain = float(LocGrd_NormStrain.split('=')[1].strip())
+        LocGrd_Diag_FracStep = float(LocGrd_Diag_FracStep.split('=')[1].strip())
     except subprocess.CalledProcessError as grepexc:
-        LocGrd_NormStrain = 2.5e-03
+        LocGrd_Diag_FracStep = 2.5e-03
 
     try:
-        LocGrd_ShearStrain = subprocess.check_output("less " + str(args.Input_file) + " | grep LocGrd_ShearStrain"
+        LocGrd_OffDiag_FracStep = subprocess.check_output("less " + str(args.Input_file) + " | grep LocGrd_OffDiag_FracStep"
                                                                                       " | grep = ", shell=True)
-        LocGrd_ShearStrain = float(LocGrd_ShearStrain.split('=')[1].strip())
+        LocGrd_OffDiag_FracStep = float(LocGrd_OffDiag_FracStep.split('=')[1].strip())
     except subprocess.CalledProcessError as grepexc:
-        LocGrd_ShearStrain = 1e-03
+        LocGrd_OffDiag_FracStep = 1e-03
 
     try:
         StepWise_Vol_StepFrac = subprocess.check_output("less " + str(args.Input_file) + " | grep StepWise_Vol_StepFrac"
@@ -441,8 +441,8 @@ if __name__ == '__main__':
                                      NumAnalysis_method=NumAnalysis_method,
                                      NumAnalysis_step=NumAnalysis_step,
                                      LocGrd_Vol_FracStep=LocGrd_Vol_FracStep,
-                                     LocGrd_NormStrain=LocGrd_NormStrain,
-                                     LocGrd_ShearStrain=LocGrd_ShearStrain,
+                                     LocGrd_Diag_FracStep=LocGrd_Diag_FracStep,
+                                     LocGrd_OffDiag_FracStep=LocGrd_OffDiag_FracStep,
                                      StepWise_Vol_StepFrac=StepWise_Vol_StepFrac,
                                      StepWise_Vol_LowerFrac=StepWise_Vol_LowerFrac,
                                      StepWise_Vol_UpperFrac=StepWise_Vol_UpperFrac,
@@ -472,8 +472,8 @@ if __name__ == '__main__':
                            NumAnalysis_method=NumAnalysis_method,
                            NumAnalysis_step=NumAnalysis_step,
                            LocGrd_Vol_FracStep=LocGrd_Vol_FracStep,
-                           LocGrd_NormStrain=LocGrd_NormStrain,
-                           LocGrd_ShearStrain=LocGrd_ShearStrain,
+                           LocGrd_Diag_FracStep=LocGrd_Diag_FracStep,
+                           LocGrd_OffDiag_FracStep=LocGrd_OffDiag_FracStep,
                            StepWise_Vol_StepFrac=StepWise_Vol_StepFrac,
                            StepWise_Vol_LowerFrac=StepWise_Vol_LowerFrac,
                            StepWise_Vol_UpperFrac=StepWise_Vol_UpperFrac,
