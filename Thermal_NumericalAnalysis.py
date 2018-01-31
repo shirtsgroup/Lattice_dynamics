@@ -711,7 +711,7 @@ def Anisotropic_Gradient_Expansion(Coordinate_file, Program, molecules_in_coord,
                                                           Wavenumber_Reference=Wavenumber_Reference, 
                                                           Coordinate_file=Output + '_' + Method + 'T' + 
                                                           str(temperature[i]) + file_ending,
-                                                          ref_crystal_matrix=ref_crystal_matrix)
+                                                          ref_crystal_matrix=ref_crystal_matrix, Program=Program)
 
         else:
             print "   Determining local gradient and thermal properties at: " + str(temperature[i]) + " K"
