@@ -685,8 +685,8 @@ def Anisotropic_Local_Gradient(Coordinate_file, Program, Temperature, Pressure, 
     numerical_crystal_matrix_step[:3] = LocGrd_NormStrain * numerical_crystal_matrix_step[:3]
     numerical_crystal_matrix_step[3:] = LocGrd_ShearStrain * numerical_crystal_matrix_step[3:]
     for i in range(6):
-        if numerical_crystal_matrix_step[i] < 0.001:
-            numerical_crystal_matrix_step[i] = 0.001
+        if numerical_crystal_matrix_step[i] < 0.0001:
+            numerical_crystal_matrix_step[i] = 0.0001
     # Determining the file ending of the coordinate files
     file_ending = assign_file_ending(Program)
 
