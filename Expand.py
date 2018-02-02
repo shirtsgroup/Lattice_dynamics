@@ -685,8 +685,8 @@ def Anisotropic_Local_Gradient(Coordinate_file, Program, Temperature, Pressure, 
     numerical_crystal_matrix_step[:3] = LocGrd_NormStrain * numerical_crystal_matrix_step[:3]
     numerical_crystal_matrix_step[3:] = LocGrd_ShearStrain * numerical_crystal_matrix_step[3:]
     for i in range(6):
-        if numerical_crystal_matrix_step[i] < 0.0001:
-            numerical_crystal_matrix_step[i] = 0.0001
+        if numerical_crystal_matrix_step[i] < 0.001:
+            numerical_crystal_matrix_step[i] = 0.001
     # Determining the file ending of the coordinate files
     file_ending = assign_file_ending(Program)
 
@@ -959,9 +959,17 @@ def Anisotropic_Local_Gradient(Coordinate_file, Program, Temperature, Pressure, 
         # Removing excess files
         os.system('rm p' + file_ending + ' m' + file_ending)
 
+    # 
+    crystal_matrix_array = np.absolute(triangle_crystal_matrix_to_array(crystal_matrix))
+    for i in range(3,6):
+        if crystal_matrix_array[i] < 1.e-06:
+            for j in [k != i for k in range(6)]:
+                ddG_ddC[i, j] = 0.
+                ddG_ddC[j, i] = 0.
+
     # Calculating deta/dT for all strains
-    dcrystal_matrix = np.linalg.lstsq(ddG_ddC, dS_dC)[0]
+    dC_dT = np.linalg.lstsq(ddG_ddC, dS_dC)[0]
 
     # Saving numerical outputs
-    NO.aniso_gradient(dG_dC, ddG_ddC, dS_dC, dcrystal_matrix)
-    return dcrystal_matrix, wavenumbers
+    NO.aniso_gradient(dG_dC, ddG_ddC, dS_dC, dC_dT)
+    return dC_dT, wavenumbers
