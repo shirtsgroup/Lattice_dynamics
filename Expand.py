@@ -962,8 +962,8 @@ def Anisotropic_Local_Gradient(Coordinate_file, Program, Temperature, Pressure, 
     # 
     crystal_matrix_array = np.absolute(triangle_crystal_matrix_to_array(crystal_matrix))
     for i in range(3,6):
-        if crystal_matrix_array[i] < 1.e-06:
-            for j in [k != i for k in range(6)]:
+        if crystal_matrix_array[i] < 1.e-02:
+            for j in [k for k in range(6) if k != i]:
                 ddG_ddC[i, j] = 0.
                 ddG_ddC[j, i] = 0.
 
