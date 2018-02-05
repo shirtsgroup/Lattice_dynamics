@@ -959,13 +959,12 @@ def Anisotropic_Local_Gradient(Coordinate_file, Program, Temperature, Pressure, 
         # Removing excess files
         os.system('rm p' + file_ending + ' m' + file_ending)
 
-    # 
-    crystal_matrix_array = np.absolute(triangle_crystal_matrix_to_array(crystal_matrix))
-    for i in range(3,6):
-        if crystal_matrix_array[i] < 1.e-02:
-            for j in [k for k in range(6) if k != i]:
-                ddG_ddC[i, j] = 0.
-                ddG_ddC[j, i] = 0.
+#    crystal_matrix_array = np.absolute(triangle_crystal_matrix_to_array(crystal_matrix))
+#    for i in range(3,6):
+#        if crystal_matrix_array[i] < 1.e-02:
+#            for j in [k for k in range(6) if k != i]:
+#                ddG_ddC[i, j] = 0.
+#                ddG_ddC[j, i] = 0.
 
     # Calculating deta/dT for all strains
     dC_dT = np.linalg.lstsq(ddG_ddC, dS_dC)[0]
