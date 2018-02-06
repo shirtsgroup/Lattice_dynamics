@@ -185,10 +185,9 @@ def Spline_Intermediate_Points(Output, Method, Program, properties, Temperature,
     """
     print "Using cubic spline to determine intermediate temperature steps."
     # Setting file endings
-    if Program == 'Tinker':
-        file_ending = '.xyz'
-    elif Program == 'Test':
-        file_ending = '.npy'
+    file_ending = Ex.assign_file_ending(Program)
+
+    if Program == 'Test':
         keyword_parameters['Parameter_file'] = ''
 
     # Making temperature array for wanted output values (user specified)
@@ -203,11 +202,12 @@ def Spline_Intermediate_Points(Output, Method, Program, properties, Temperature,
     elif (Method == 'GaQ') or (Method == 'GaQg'):
         # Loading in the local gradients found form numerical analysis
         tangent = np.load(Output + '_dC_' + Method + '.npy')
-        # Setting the anisotropic strain for the gradients loaded in
+        # Assigning an array of crystal matricies at each temperature recorded
         y = np.zeros((len(properties[:, 0]), 6))
-        for i in range(1, len(properties[:, 0] + 1)):
-            # Using the slopes from RK to solve for the strains in numerical analysis
-            y[i] = y[i - 1] + tangent[i - 1, 0, 1:] * (properties[i, 0] - properties[i - 1, 0])
+
+        for i in range(len(properties[:, 0])):
+            # Pulling the crystal matrix from the original properites
+            y[i] = Ex.triangle_crystal_matrix_to_array(Ex.Lattice_parameters_to_Crystal_matrix(properties[i, 7:13]))
 
     # Setting up an array to store the output properties
     properties_out = np.zeros((len(np.unique(np.append(Temperature, properties[:, 0]))), len(properties[0, :])))
@@ -216,17 +216,15 @@ def Spline_Intermediate_Points(Output, Method, Program, properties, Temperature,
     count = 0
 
     # Pulling up starting structure
-    subprocess.call(['cp', 'Cords/' + Output + '_' + Method + 'T' + str(properties[0, 0]) + file_ending, 
-                     './temp' + file_ending])
 
     # Setting variables for loop
-#    temp_strain = np.zeros(6)
-    new_strain = np.zeros(6)
     new_volume = 1.
-    temp_volume = Pr.Volume(Program=Program, Coordinate_file='temp' + file_ending)
-#    temp_volume = 1.
 
     for i in range(len(properties[:, 0]) - 1):
+        # Pulling up structure to expand from
+        subprocess.call(['cp', 'Cords/' + Output + '_' + Method + 'T' + str(properties[i, 0]) + file_ending, 
+                         './temp' + file_ending])
+
         # Stepsize used for numerical analysis
         h = properties[i + 1, 0] - properties[i, 0]
 
@@ -237,12 +235,6 @@ def Spline_Intermediate_Points(Output, Method, Program, properties, Temperature,
         for j in range(len(Temperature)):
             if Temperature[j] == properties[i + 1, 0]:
                 pass
-#                # Copying up the new reference strucutre
-#                subprocess.call(['cp', 'Cords/' + Output + '_' + Method + 'T' + str(properties[i + 1, 0]) + file_ending,
-#                                 './temp' + file_ending])
-#                if (Method == 'GaQ') or (Method == 'GaQg'):
-#                    # Determining the new strain of the reference strucutre
-#                    temp_strain = y[i + 1]
 
             elif properties[i, 0] < Temperature[j] < properties[i + 1, 0]:
                 print "   Using a Spline, adding intermediate temperature at:" + str(Temperature[j]) + " K"
@@ -251,23 +243,21 @@ def Spline_Intermediate_Points(Output, Method, Program, properties, Temperature,
                 if (Method == 'GiQ') or (Method == 'GiQg'):
                     # Computing the volume we are currently at and the next intermediate step
                     new_volume = RK_Dense_Output(theta, y[i], y[i + 1], tangent[i, 2], tangent[i+1, 2], h)
-#                    temp_volume = Pr.Volume(Program=Program, Coordinate_file='temp' + file_ending)
                 elif (Method == 'GaQ') or (Method == 'GaQg'):
                     # Computing the strain from the lattice minimum structure to the next intermediate step
-                    new_strain = np.zeros(6)
+                    new_cm_array = np.zeros(6)
                     for k in range(6):
-                        new_strain[k] = RK_Dense_Output(theta, y[i, k], y[i + 1, k], tangent[i, 1, k + 1],
+                        new_cm_array[k] = RK_Dense_Output(theta, y[i, k], y[i + 1, k], tangent[i, 1, k + 1],
                                                         tangent[i + 1, 1, k + 1], h)
 
                 # Expanding the strucutre, from the structure at the last temperature to the next intermediate step
                 if os.path.isfile('Cords/' + Output + '_' + Method + 'T' + str(Temperature[j]) + file_ending):
                      pass
-#                    print "   ...Using previous coordinate file"
-#                    subprocess.call(['cp', 'Cords/' + Output + '_' + Method + 'T' + str(Temperature[j]) + file_ending, './temp' + file_ending])
                 else:
                     Ex.Call_Expansion(Method, 'expand', Program, 'temp' + file_ending, molecules_in_coord, min_RMS_gradient,
                                       Parameter_file=keyword_parameters['Parameter_file'],
-                                      volume_fraction_change=new_volume / temp_volume, strain=new_strain,
+                                      volume_fraction_change=new_volume / y[i], 
+                                      dcrystal_matrix=Ex.array_to_triangle_crystal_matrix(new_cm_array - y[i]),
                                       Output='hold')
 
                 # Computing the wavenumbers for the new structure
@@ -276,12 +266,12 @@ def Spline_Intermediate_Points(Output, Method, Program, properties, Temperature,
                                                    Parameter_file=keyword_parameters['Parameter_file'],
                                                    Gruneisen=keyword_parameters['Gruneisen'],
                                                    Wavenumber_Reference=keyword_parameters['Wavenumber_Reference'],
-                                                   Volume_Reference=properties[0, 6], Applied_strain=new_strain,
+                                                   Volume_Reference=properties[0, 6], ref_crystal_matrix=Ex.Lattice_parameters_to_Crystal_matrix(properties[0, 7:13]),
                                                    New_Volume=new_volume)
 
                 # Computing the properites
                 properties_out[count] = Pr.Properties('hold' + file_ending, wavenumbers, Temperature[j], Pressure,
-                                                      Program, Statistical_mechanics, molecules_in_coord,
+                                                      Program, Statistical_mechanics, molecules_in_coord, '',
                                                       Parameter_file=keyword_parameters['Parameter_file'])
 
                 # Moving new intermediate structure to the Cords directory for storage
@@ -289,7 +279,6 @@ def Spline_Intermediate_Points(Output, Method, Program, properties, Temperature,
                                  str(Temperature[j]) + file_ending])
 
                 count = count + 1
-                temp_strain = new_strain
 
     # Setting the last numerical step to the output matrix
     properties_out[-1] = properties[-1]
@@ -334,7 +323,7 @@ def Isotropic_Stepwise_Expansion(StepWise_Vol_StepFrac, StepWise_Vol_LowerFrac, 
         number_of_wavenumbers = Pr.Tinker_atoms_per_molecule(Coordinate_file, 1)*3
     elif Program == 'Test':
         file_ending = '.npy'
-        number_of_wavenumbers = len(Wvn.Test_Wavenumber(Coordinate_file, 0.))
+        number_of_wavenumbers = len(Wvn.Test_Wavenumber(Coordinate_file, True))
         keyword_parameters['Parameter_file'] = ''
     elif Program =='CP2L':
 	file_ending = '.pdb'
@@ -429,7 +418,8 @@ def Isotropic_Stepwise_Expansion(StepWise_Vol_StepFrac, StepWise_Vol_LowerFrac, 
             properties[i, :, :] = Pr.Properties_with_Temperature(Output + '_' + Method + str(volume_fraction[i]) +
                                                                  file_ending, wavenumbers[i, 1:], Temperature, Pressure,
                                                                  Program, Statistical_mechanics, molecules_in_coord,
-                                                                 Parameter_file=keyword_parameters['Parameter_file'], cp2kroot = keyword_parameters['cp2kroot'])
+                                                                 keyword_parameters['cp2kroot'],
+                                                                 Parameter_file=keyword_parameters['Parameter_file'])
         else:
             print "   ... WARNING: wavenumbers are lower than tolerance of: " + str(Wavenum_Tol) + " cm^-1"
             print "      ... Properties will be bypassed for this paricular strucutre."
@@ -483,7 +473,7 @@ def Isotropic_Gradient_Expansion(Coordinate_file, Program, molecules_in_coord, O
         number_of_wavenumbers = Pr.Tinker_atoms_per_molecule(Coordinate_file, 1)*3
     elif Program == 'Test':
         file_ending = '.npy'
-        number_of_wavenumbers = len(Wvn.Test_Wavenumber(Coordinate_file, 0.))
+        number_of_wavenumbers = len(Wvn.Test_Wavenumber(Coordinate_file, True))
         keyword_parameters['Parameter_file'] = ''
     elif Program =='CP2K':
         file_ending = '.pdb'
@@ -580,7 +570,8 @@ def Isotropic_Gradient_Expansion(Coordinate_file, Program, molecules_in_coord, O
         # Populating the properties for the current temperature
         properties[i, :] = Pr.Properties(Output + '_' + Method + 'T' + str(temperature[i]) + file_ending,
                                          wavenumbers[i, 1:], temperature[i], Pressure, Program, Statistical_mechanics,
-                                         molecules_in_coord, Parameter_file=keyword_parameters['Parameter_file'], cp2kroot=keywor_parameters['cp2kroot'])
+                                         molecules_in_coord, keyword_parameters['cp2kroot'],
+                                         Parameter_file=keyword_parameters['Parameter_file'])
 
         # Expanding to the next strucutre
         print "   Expanding to strucutre at: " + str(temperature[i + 1]) + " K"
@@ -602,7 +593,7 @@ def Isotropic_Gradient_Expansion(Coordinate_file, Program, molecules_in_coord, O
                                   Volume_Reference=Volume_Reference)
             properties[i+1, :] = Pr.Properties(Output + '_' + Method + 'T' + str(temperature[i + 1]) + file_ending,
                                                wavenumbers[i + 1, 1:], temperature[i + 1], Pressure, Program,
-                                               Statistical_mechanics, molecules_in_coord,
+                                               Statistical_mechanics, molecules_in_coord, keyword_parameters['cp2kroot'],
                                                Parameter_file=keyword_parameters['Parameter_file'])
             os.system('mv ' + Output + '_' + Method + 'T' + str(temperature[i + 1]) + file_ending + ' Cords/')
             if Method == 'GiQ':
@@ -720,7 +711,7 @@ def Anisotropic_Gradient_Expansion(Coordinate_file, Program, molecules_in_coord,
                                                           Wavenumber_Reference=Wavenumber_Reference, 
                                                           Coordinate_file=Output + '_' + Method + 'T' + 
                                                           str(temperature[i]) + file_ending,
-                                                          ref_crystal_matrix=ref_crystal_matrix)
+                                                          ref_crystal_matrix=ref_crystal_matrix, Program=Program)
 
         else:
             print "   Determining local gradient and thermal properties at: " + str(temperature[i]) + " K"
@@ -774,7 +765,8 @@ def Anisotropic_Gradient_Expansion(Coordinate_file, Program, molecules_in_coord,
         # Populating the properties for the current temperature
         properties[i, :] = Pr.Properties(Output + '_' + Method + 'T' + str(temperature[i]) + file_ending,
                                          wavenumbers[i, 1:], temperature[i], Pressure, Program, Statistical_mechanics,
-                                         molecules_in_coord, Parameter_file=keyword_parameters['Parameter_file'])
+                                         molecules_in_coord, keyword_parameters['cp2kroot'],
+                                         Parameter_file=keyword_parameters['Parameter_file'])
 
         # Moving the current strucutre to the Cords directory
         os.system('mv ' + Output + '_' + Method + 'T' + str(temperature[i]) + file_ending + ' Cords/')
@@ -807,7 +799,7 @@ def Anisotropic_Gradient_Expansion(Coordinate_file, Program, molecules_in_coord,
             # Computing the properties at the final temperature
             properties[i + 1, :] = Pr.Properties(Output + '_' + Method + 'T' + str(temperature[i + 1]) + file_ending,
                                                  wavenumbers[i + 1, 1:], temperature[i + 1], Pressure, Program,
-                                                 Statistical_mechanics, molecules_in_coord,
+                                                 Statistical_mechanics, molecules_in_coord, keyword_parameters['cp2kroot'],
                                                  Parameter_file=keyword_parameters['Parameter_file'])
 
             # Moving the final strucutre to the Cords directory
@@ -821,10 +813,10 @@ def Anisotropic_Gradient_Expansion(Coordinate_file, Program, molecules_in_coord,
             np.save(Output + '_dC_' + Method, crystal_matrix_gradient)
 
     # Calculatin the properties for intermediate points
-#    properties = Spline_Intermediate_Points(Output, Method, Program, properties, Temperature, molecules_in_coord,
-#                                            Pressure, Statistical_mechanics, min_RMS_gradient,
-#                                            Parameter_file=keyword_parameters['Parameter_file'],
-#                                            Gruneisen=Gruneisen, Wavenumber_Reference=Wavenumber_Reference,)
+    properties = Spline_Intermediate_Points(Output, Method, Program, properties, Temperature, molecules_in_coord,
+                                            Pressure, Statistical_mechanics, min_RMS_gradient,
+                                            Parameter_file=keyword_parameters['Parameter_file'],
+                                            Gruneisen=Gruneisen, Wavenumber_Reference=Wavenumber_Reference)
 
     # Saving the raw data before minimizing
     print "   All properties have been saved in " + Output + "_raw.npy"

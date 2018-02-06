@@ -51,8 +51,6 @@ def Call_Wavenumbers(Method, min_RMS_gradient, **keyword_parameters):
             if Method == 'GaQ':
                 wavenumbers = Test_Wavenumber(keyword_parameters['Coordinate_file'],
                                               keyword_parameters['ref_crystal_matrix'])
-            elif Method == 'HA':
-                wavenumbers = Test_Wavenumber(keyword_parameters['Coordinate_file'], 0.)
             else:
                 wavenumbers = Test_Wavenumber(keyword_parameters['Coordinate_file'], True)
         elif keyword_parameters['Program'] == 'CP2K':
@@ -129,16 +127,6 @@ def Call_Wavenumbers(Method, min_RMS_gradient, **keyword_parameters):
                 np.save(keyword_parameters['Output'] + '_GRU_' + Method, Gruneisen)
                 np.save(keyword_parameters['Output'] + '_GRUwvn_' + Method, Wavenumber_Reference)
             return Gruneisen, Wavenumber_Reference
-
-#### NATE FIX THIS
-#    elif (Method == 'SiQ') or (Method == 'GiQ') or (Method == 'GaQ') or (Method == 'HA'):
-#        # Directly computing the wavenumbers for a specific program, given a coordinate file
-#        if keyword_parameters['Program'] == 'Tinker':
-#            wavenumbers = Tinker_Wavenumber(keyword_parameters['Coordinate_file'], keyword_parameters['Parameter_file'])
-#
-#        elif keyword_parameters['Program'] == 'Test':
-#            wavenumbers = Test_Wavenumber(keyword_parameters['Coordinate_file'])
-#        return wavenumbers
 
 
 ##########################################
@@ -219,7 +207,7 @@ def Test_Wavenumber(Coordinate_file, ref_crystal_matrix, function='Test3'):
         if os.path.isfile('wvn0_test.npy') and os.path.isfile('wvnChange_test.npy'):
             if np.all(ref_crystal_matrix == True):
                 strain = np.zeros(6)
-                strain[:3] = (Pr.Volume(Program='Test', Coordinate_file=Coordinate_file)/ 686.024)**(1./3.)
+                strain[:3] = (Pr.Volume(Program='Test', Coordinate_file=Coordinate_file)/ 400.47001361725802)**(1./3.) - 1.
             else:
                 new_crystal_matrix = Ex.Lattice_parameters_to_Crystal_matrix(Pr.Lattice_parameters('Test', Coordinate_file))
                 strain = Pr.RotationFree_StrainArray_from_CrystalMatrix(ref_crystal_matrix, new_crystal_matrix)
@@ -228,7 +216,6 @@ def Test_Wavenumber(Coordinate_file, ref_crystal_matrix, function='Test3'):
             wavenumbers = np.zeros(len(wvn0))
             for i in range(3, len(wavenumbers)):
                 wavenumbers[i] = wvn0[i]*np.exp(-1.*np.sum(np.dot(strain, change[i]))) # + strain**2*(change[i]**2)))
-
         else:
             # Setting random wavenumbers
             wavenumbers = np.zeros(303)
@@ -371,12 +358,13 @@ def Setup_Anisotropic_Gruneisen(Coordinate_file, Program, strain, molecules_in_c
 
     elif Program == 'Test':
         file_ending = '.npy'
-        Wavenumber_Reference = Test_Wavenumber(Coordinate_file, 0.)
+        Wavenumber_Reference = Test_Wavenumber(Coordinate_file, True)
         Gruneisen = np.zeros((len(Wavenumber_Reference), 6))
         for i in range(6):
             applied_strain = np.zeros(6)
             applied_strain[i] = strain
-            Wavenumber_expand = Test_Wavenumber(expanded_coordinates[i] + file_ending, applied_strain)
+            Wavenumber_expand = Test_Wavenumber(expanded_coordinates[i] + file_ending,
+                                                Ex.Lattice_parameters_to_Crystal_matrix(Pr.Test_Lattice_Parameters(Coordinate_file)))
             Gruneisen[3:, i] = -(np.log(Wavenumber_expand[3:]) - np.log(Wavenumber_Reference[3:])) / strain
             os.system('rm ' + expanded_coordinates[i] + file_ending)
     return Gruneisen, Wavenumber_Reference

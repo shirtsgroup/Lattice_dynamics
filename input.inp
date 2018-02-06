@@ -86,8 +86,8 @@ NumAnalysis_step = 150.0
 # Isotropic volume fraction change
 LocGrd_Vol_FracStep = 1.5e-03
 # Anisotropic noraml and shear strains
-LocGrd_NormStrain = 2.0e-03
-LocGrd_ShearStrain = 1.0e-03
+LocGrd_Diag_FracStep = 2.0e-03
+LocGrd_OffDiag_FracStep = 1.0e-03
 
 ### Stepwise options ###
 # Stepwise thermal expansion is only set up for isotropic expansion

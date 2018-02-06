@@ -43,15 +43,12 @@ def start_RK(T_0, dT):
     write_out('//////////////// Runge-Kutta from ' + str(T_0) + ' to ' + str(T_0 + dT) + 'K ////////////////\n')
 
 
-def step_RK(index, T, Program, coordinate_file):
+def step_RK(index, T, Program, Coordinate_file):
     write_out('///   RUNGE-KUTTA Step ' + str(index + 1) + ' at T = ' + str(T)+ 'K   ///   \n')
-    if Program == 'Test':
-        lattice_parameters = Pr.Test_Lattice_Parameters(coordinate_file)
-    elif Program == 'Tinker':
-        lattice_parameters = Pr.Tinker_Lattice_Parameters(coordinate_file)
+    lattice_parameters = Pr.Lattice_parameters(Program, Coordinate_file)
     write_out('Lattice vectors [Ang.^3] = \n')
     numpy_write_out(lattice_parameters[:3])
-    write_out('Lattice angles = \n')
+    write_out('Lattice angles [Degrees] = \n')
     numpy_write_out(lattice_parameters[3:])
 
 def end_RK(k_values):
@@ -98,7 +95,7 @@ def iso_gradient(dG, ddG, dS, dV):
 ##############                                    Anisotropic Gradient                                    #############
 #######################################################################################################################
 
-def aniso_gradient(dG, ddG, dS, deta):
+def aniso_gradient(dG, ddG, dS, dC):
     # Setting output for dG/deta: the current structure should be at a minima. Therefore, dG/deta should be zero
     warning = False
     for i in range(6):
@@ -113,23 +110,23 @@ def aniso_gradient(dG, ddG, dS, deta):
             # Raising a flag if a strain is negative
             warning = True
 
-    write_out('dG/deta [kcal/mol] = \n')
+    write_out('dG/dC [kcal/(mol*Ang.)] = \n')
     write_out('   Backwards     Central     Forward \n')
     numpy_write_out(dG)
     if warning == True:
         write_out('WARNING: current structure is not the minimum free energy structure at this temperature!\n')
 
     # Outputting d^2G/deta^2
-    write_out('d^(2)G/deta^(2) [kcal/mol] = \n')
+    write_out('d^(2)G/dC^(2) [kcal/(mol*Ang.^2)] = \n')
     numpy_write_out(ddG)
 
     # Outputting dS/deta
-    write_out('dS/deta [kcal/(mol*K)] = \n')
+    write_out('dS/dC [kcal/(mol*K*Ang.)] = \n')
     numpy_write_out(np.matrix(dS))
 
     # Outputting deta/dT
-    write_out('deta/dT [1/K] = \n')
-    numpy_write_out_precision(deta)
+    write_out('dC/dT [Ang./K] = \n')
+    numpy_write_out_precision(dC)
     write_out('\n')
 
 
