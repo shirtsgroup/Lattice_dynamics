@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-
+from __future__ import print_function
 import os
 import sys
 import numpy as np
@@ -21,35 +21,35 @@ def Temperature_Lattice_Dynamics(Temperature=[0.,300.], Pressure=1., Method='HA'
 
     Temperature = np.array(Temperature).astype(float)
     if Method == 'HA':
-        print "Performing Harmonic Approximation"
+        print("Performing Harmonic Approximation")
         # Running the Harmonic Approximation
         if os.path.isfile(Output + '_' + Method + '_WVN.npy'):
             wavenumbers = np.load(Output + '_' + Method + '_WVN.npy')
-            print "   Importing wavenumbers from:" + Output + '_' + Method + '_WVN.npy'
+            print("   Importing wavenumbers from:" + Output + '_' + Method + '_WVN.npy')
         else:
-            print "   Computing wavenumbers of coordinate file"
+            print("   Computing wavenumbers of coordinate file")
             wavenumbers = Wvn.Call_Wavenumbers(Method, min_RMS_gradient, Program=Program, Coordinate_file=Coordinate_file,
                                                Parameter_file=Parameter_file, cp2kroot=cp2kroot)
             np.save(Output + '_' + Method + '_WVN', wavenumbers)
 
         if all(wavenumbers > Wavenum_Tol):
-            print "   All wavenumbers are greater than tolerance of: " + str(Wavenum_Tol) + " cm^-1"
+            print("   All wavenumbers are greater than tolerance of: " + str(Wavenum_Tol) + " cm^-1")
             properties = Pr.Properties_with_Temperature(Coordinate_file, wavenumbers, Temperature, Pressure, Program,
                                                         Statistical_mechanics, molecules_in_coord, cp2kroot=cp2kroot,
                                                         Parameter_file=Parameter_file)
-            print "   All properties have been saved in " + Output + "_raw.npy"
+            print("   All properties have been saved in " + Output + "_raw.npy")
             np.save(Output + '_raw', properties)
-            print "   Saving user specified properties in indipendent files:"
+            print("   Saving user specified properties in indipendent files:")
             Pr.Save_Properties(properties, properties_to_save, Output, Method, Statistical_mechanics)
-            print "Harmonic Approximation is complete!"
+            print("Harmonic Approximation is complete!")
     else:
         if os.path.isdir('Cords') != True:
-            print "Creating directory 'Cords/' to store structures along Gibbs free energy path"
+            print("Creating directory 'Cords/' to store structures along Gibbs free energy path")
             os.system('mkdir Cords')
 
     if (Method == 'SiQ') or (Method == 'SiQg'):
         # Stepwise Isotropic QHA
-        print "Performing Stepwise Isotropic Quasi-Harmonic Approximation"
+        print("Performing Stepwise Isotropic Quasi-Harmonic Approximation")
         properties = TNA.Isotropic_Stepwise_Expansion(StepWise_Vol_StepFrac, StepWise_Vol_LowerFrac,
                                                       StepWise_Vol_UpperFrac, Coordinate_file, Program, Temperature,
                                                       Pressure, Output, Method, molecules_in_coord, Wavenum_Tol,
@@ -57,13 +57,13 @@ def Temperature_Lattice_Dynamics(Temperature=[0.,300.], Pressure=1., Method='HA'
                                                       Parameter_file=Parameter_file,
                                                       Gruneisen_Vol_FracStep=Gruneisen_Vol_FracStep,
                                                       cp2kroot=cp2kroot)
-        print "   Saving user specified properties in indipendent files:"
+        print("   Saving user specified properties in indipendent files:")
         Pr.Save_Properties(properties, properties_to_save, Output, Method, Statistical_mechanics)
-        print "Stepwise Isotropic Quasi-Harmonic Approximation is complete!"
+        print("Stepwise Isotropic Quasi-Harmonic Approximation is complete!")
 
     if (Method == 'GiQ') or (Method == 'GiQg'):
         # Gradient Isotropic QHA
-        print "Performing Gradient Isotropic Quasi-Harmonic Approximation"
+        print("Performing Gradient Isotropic Quasi-Harmonic Approximation")
         properties = TNA.Isotropic_Gradient_Expansion(Coordinate_file, Program, molecules_in_coord, Output, Method,
                                                       Gradient_MaxTemp, Pressure, LocGrd_Vol_FracStep,
                                                       Statistical_mechanics, NumAnalysis_step, NumAnalysis_method,
@@ -71,21 +71,21 @@ def Temperature_Lattice_Dynamics(Temperature=[0.,300.], Pressure=1., Method='HA'
                                                       Parameter_file=Parameter_file,
                                                       Gruneisen_Vol_FracStep=Gruneisen_Vol_FracStep,
                                                       cp2kroot=cp2kroot)
-        print "   Saving user specified properties in indipendent files:"
+        print("   Saving user specified properties in indipendent files:")
         Pr.Save_Properties(properties, properties_to_save, Output, Method, Statistical_mechanics)
-        print "Gradient Isotropic Quasi-Harmonic Approximation is complete!"
+        print("Gradient Isotropic Quasi-Harmonic Approximation is complete!")
 
     if (Method == 'GaQ') or (Method == 'GaQg'):
-        print "Performing Gradient Anisotropic Quasi-Harmonic Approximation"
+        print("Performing Gradient Anisotropic Quasi-Harmonic Approximation")
         properties = TNA.Anisotropic_Gradient_Expansion(Coordinate_file, Program, molecules_in_coord, Output, Method,
                                                         Gradient_MaxTemp, Pressure, LocGrd_Diag_FracStep,
                                                         LocGrd_OffDiag_FracStep, Statistical_mechanics, NumAnalysis_step,
                                                         NumAnalysis_method, Aniso_LocGrad_Type, Temperature,
                                                         min_RMS_gradient, Gruneisen_Lat_FracStep=Gruneisen_Lat_FracStep, 
                                                         Parameter_file=Parameter_file, cp2kroot=cp2kroot)
-        print "   Saving user specified properties in indipendent files:"
+        print("   Saving user specified properties in indipendent files:")
         Pr.Save_Properties(properties, properties_to_save, Output, Method, Statistical_mechanics)
-        print "Gradient Anisotropic Quasi-Harmonic Approximation is complete!"
+        print("Gradient Anisotropic Quasi-Harmonic Approximation is complete!")
 
 
 def Pressure_setup(Temperature=[0.0, 25.0, 50.0, 75.0, 100.0], Pressure=1., Method='HA', Program='Test',
@@ -203,26 +203,26 @@ if __name__ == '__main__':
         Method = subprocess.check_output("less " + str(args.Input_file) + " | grep Method | grep = ", shell=True)
         Method = Method.split('=')[1].strip()
         if Method not in ['HA', 'SiQ', 'SiQg', 'GiQ', 'GiQg', 'GaQ', 'GaQg']:
-            print "Input method is not supported. Please select from the following:"
-            print "   HA, SiQ, SiQg, GiQ, GiQg, GaQ, GaQg"
-            print "Exiting code"
+            print("Input method is not supported. Please select from the following:")
+            print("   HA, SiQ, SiQg, GiQ, GiQg, GaQ, GaQg")
+            print("Exiting code")
             sys.exit()
     except subprocess.CalledProcessError as grepexc:
-        print "No method was selected"
-        print "Exiting code"
+        print("No method was selected")
+        print("Exiting code")
         sys.exit()
 
     try:
         Program = subprocess.check_output("less " + str(args.Input_file) + " | grep Program | grep = ", shell=True)
         Program = Program.split('=')[1].strip()
         if Program not in ['Tinker', 'Test', 'CP2K']:
-            print "Input program is not supported. Please select from the following:"
-            print "   Tinker, Test"
-            print "Exiting code"
+            print("Input program is not supported. Please select from the following:")
+            print("   Tinker, Test")
+            print("Exiting code")
             sys.exit()
     except subprocess.CalledProcessError as grepexc:
-        print "No program was selected"
-        print "Exiting code"
+        print("No program was selected")
+        print("Exiting code")
         sys.exit()
 
     try:
@@ -230,13 +230,13 @@ if __name__ == '__main__':
                                                                                          " | grep = ", shell=True)
         Statistical_mechanics = Statistical_mechanics.split('=')[1].strip()
         if Statistical_mechanics not in ['Classical', 'Quantum']:
-            print "Input statistical mechanics is not supported. Please select from the following:"
-            print "   Classical, Quantum"
-            print "Exiting code"
+            print("Input statistical mechanics is not supported. Please select from the following:")
+            print("   Classical, Quantum")
+            print("Exiting code")
             sys.exit()
     except subprocess.CalledProcessError as grepexc:
-        print "Statistical mechnics was not specified"
-        print "Exiting code"
+        print("Statistical mechnics was not specified")
+        print("Exiting code")
         sys.exit()
 
     try:
@@ -246,8 +246,8 @@ if __name__ == '__main__':
     except subprocess.CalledProcessError as grepexc:
         if Method in ['HA', 'SiQ', 'SiQg']:
             Temperature = [0.0, 25.0, 50.0, 75.0, 100.0]
-            print "No temperatures were selected, using default temperatures of:"
-            print "   " + str(Temperature)
+            print("No temperatures were selected, using default temperatures of:")
+            print("   " + str(Temperature))
         else:
             Temperature = []
 
@@ -260,7 +260,7 @@ if __name__ == '__main__':
         elif len(Pressure) > 1:
             pressure_scan = True
     except subprocess.CalledProcessError as grepexc:
-        print "No pressure was selected, using default pressure"
+        print("No pressure was selected, using default pressure")
         Pressure = 1.
 
     try:
@@ -274,8 +274,8 @@ if __name__ == '__main__':
                                                                                    " | grep = ", shell=True)
         Coordinate_file = Coordinate_file.split('=')[1].strip()
     except subprocess.CalledProcessError as grepexc:
-        print "Coordinate file was not provided"
-        print "Exiting code"
+        print("Coordinate file was not provided")
+        print("Exiting code")
         sys.exit()
 
     try:
@@ -285,8 +285,8 @@ if __name__ == '__main__':
     except subprocess.CalledProcessError as grepexc:
         Parameter_file = ''
         if Program == 'Tinker':
-            print "Parameter file was not provided for Tinker"
-            print "Exiting code"
+            print("Parameter file was not provided for Tinker")
+            print("Exiting code")
             sys.exit()
 
     try:
@@ -297,8 +297,8 @@ if __name__ == '__main__':
         if Program == 'Test':
             molecules_in_coord = 1
         else:
-            print "Number of molecules in system was not specified"
-            print "Exiting code"
+            print("Number of molecules in system was not specified")
+            print("Exiting code")
             sys.exit()
 
     try:
@@ -310,7 +310,7 @@ if __name__ == '__main__':
             if properties_to_save_temp[i] in ['G', 'S', 'T', 'P', 'Av', 'V', 'h', 'U']:
                 properties_to_save.append(properties_to_save_temp[i])
             else:
-                print "The following input is not a choice in properites: " + properties_to_save_temp[i]
+                print("The following input is not a choice in properites: " + properties_to_save_temp[i])
     except subprocess.CalledProcessError as grepexc:
         properties_to_save = ['G', 'T']
 
@@ -321,8 +321,8 @@ if __name__ == '__main__':
     except subprocess.CalledProcessError as grepexc:
         NumAnalysis_method = 'Euler'
         if Method in ['GiQ', 'GiQg', 'GaQ', 'GaQg']:
-            print "Numerical analysis method  was not specified"
-            print "... Using default method: Euler"
+            print("Numerical analysis method  was not specified")
+            print("... Using default method: Euler")
 
     try:
         NumAnalysis_step = subprocess.check_output("less " + str(args.Input_file) + " | grep NumAnalysis_step"
@@ -331,8 +331,8 @@ if __name__ == '__main__':
     except subprocess.CalledProcessError as grepexc:
         NumAnalysis_step = 150.
         if Method in ['GiQ', 'GiQg', 'GaQ', 'GaQg']:
-            print "Numerical analysis step size  was not specified"
-            print "... Using default step size: " + str(NumAnalysis_step)
+            print("Numerical analysis step size  was not specified")
+            print("... Using default step size: " + str(NumAnalysis_step))
 
     try:
         LocGrd_Vol_FracStep = subprocess.check_output("less " + str(args.Input_file) + " | grep LocGrd_Vol_FracStep"
@@ -457,8 +457,8 @@ if __name__ == '__main__':
     
     else:
         if Statistical_mechanics == 'Quantum':
-            print "Warning! The scanning of multiple pressures is not yet supported in this code for Qunantum Mechanics."
-            print "... Please contact Nate Abraham (nate.abraham@colorado.edu) with ways to perform this."
+            print("Warning! The scanning of multiple pressures is not yet supported in this code for Qunantum Mechanics.")
+            print("... Please contact Nate Abraham (nate.abraham@colorado.edu) with ways to perform this.")
         else:
             Pressure_setup(Temperature=Temperature,
                            Pressure=Pressure,
