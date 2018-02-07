@@ -17,14 +17,14 @@ def write_out(string):
 
 
 def numpy_write_out(array):
-    with open('numerical_checks.out', 'a') as myfile:
+    with open('numerical_checks.out', 'ab') as myfile:
         np.savetxt(myfile, array, '%16.10f')
-        myfile.write('\n')
+        myfile.write(b'\n')
 
 def numpy_write_out_precision(array):
-    with open('numerical_checks.out', 'a') as myfile:
+    with open('numerical_checks.out', 'ab') as myfile:
         np.savetxt(myfile, array, '%16.10f')
-        myfile.write('\n')
+        myfile.write(b'\n')
 
 
 
