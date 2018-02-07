@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+from __future__ import print_function
 import os
 import sys
 import itertools as it
@@ -198,14 +199,14 @@ def Tinker_minimization(Parameter_file, Coordinate_file, Output, min_RMS_gradien
         elif count == 10:
             run_min = False
             subprocess.call(['mv', 'Temp_min_10.xyz', Output + '.xyz'])
-            print "      Could not minimize strucutre to tolerance after 10 shake cycles"
+            print("      Could not minimize strucutre to tolerance after 10 shake cycles")
 #        elif np.absolute(U_hold- U) > 0.01:
 #            run_min = False
 #            subprocess.call(['mv', 'Temp_min_' + str(count - 1) + '.xyz', Output + '.xyz'])
 #            print "      Structure minimized into a different well, stopping minimization"
         else:
             if count == 1:
-                print "   ... Structure did not minimze to tolerance, shaking molecule and re-minimizing"
+                print("   ... Structure did not minimze to tolerance, shaking molecule and re-minimizing")
             coordinates = Return_Tinker_Coordinates('Temp_min_' + str(count) + '.xyz')
             coordinates = coordinates + np.random.randint(0, 10, size=(len(coordinates), 3)) * 10 ** (-7)
             lattice_parameters = Pr.Tinker_Lattice_Parameters('Temp_min_' + str(count) + '.xyz')
@@ -348,7 +349,7 @@ def assign_file_ending(program):
     elif program == 'Test':
         return '.npy'
     else:
-        print 'ERROR: Program is not supported!'
+        print('ERROR: Program is not supported!')
         sys.exit()
 
 

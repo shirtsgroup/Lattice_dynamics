@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+from __future__ import print_function
 import subprocess
 import numpy as np
 import itertools as it
@@ -115,31 +116,31 @@ def Save_Properties(properties, Properties_to_save, Output, Method, Statistical_
     """
     for i in Properties_to_save:
         if i == 'T':  # Temperature
-            print "   ... Saving temperature in: " + Output + "_T_" + Method + ".npy"
+            print("   ... Saving temperature in: " + Output + "_T_" + Method + ".npy")
             np.save(Output + '_T_' + Method, properties[:, 0])
         if i == 'P':  # Pressure
-            print "   ... Saving Pressure in: " + Output + "_P_" + Method + ".npy"
+            print("   ... Saving Pressure in: " + Output + "_P_" + Method + ".npy")
             np.save(Output + '_P_' + Method, properties[:, 1])
         if i == 'G':  # Gibbs free energy
-            print "   ... Saving Gibbs free energy in: " + Output + "_G" + Statistical_mechanics + "_" + Method +\
-                  ".npy"
+            print("   ... Saving Gibbs free energy in: " + Output + "_G" + Statistical_mechanics + "_" + Method +\
+                  ".npy")
             np.save(Output + '_G' + Statistical_mechanics + '_' + Method, properties[:, 2])
         if i == 'U':  # Potential energy
-            print "   ... Saving potential energy in: " + Output + "_U" + Statistical_mechanics + "_" + Method + ".npy"
+            print("   ... Saving potential energy in: " + Output + "_U" + Statistical_mechanics + "_" + Method + ".npy")
             np.save(Output + '_U' + Statistical_mechanics + '_' + Method, properties[:, 3])
         if i == 'Av':  # Helmholtz vibrational energy
-            print "   ... Saving vibrational Helmholtz free energy in: " + Output + "_Av" + Statistical_mechanics + "_"\
-                  + Method + ".npy"
+            print("   ... Saving vibrational Helmholtz free energy in: " + Output + "_Av" + Statistical_mechanics + "_"\
+                  + Method + ".npy")
             np.save(Output + '_Av' + Statistical_mechanics + '_' + Method, properties[:, 4])
         if i == 'V':  # Volume
-            print "   ... Saving volume in: " + Output + "_V" + Statistical_mechanics + "_" + Method + ".npy"
+            print("   ... Saving volume in: " + Output + "_V" + Statistical_mechanics + "_" + Method + ".npy")
             np.save(Output + '_V' + Statistical_mechanics + '_' + Method, properties[:, 6])
         if i == 'h':  # Lattice parameters
-            print "   ... Saving lattice parameters in: " + Output + "_h" + Statistical_mechanics + "_" + Method +\
-                  ".npy"
+            print("   ... Saving lattice parameters in: " + Output + "_h" + Statistical_mechanics + "_" + Method +\
+                  ".npy")
             np.save(Output + '_h' + Statistical_mechanics + '_' + Method, properties[:, 7:13])
         if i == 'S':  # Entropy
-            print "   ... Saving entropy in: " + Output + "_S" + Statistical_mechanics + "_" + Method + ".npy"
+            print("   ... Saving entropy in: " + Output + "_S" + Statistical_mechanics + "_" + Method + ".npy")
             np.save(Output + '_S' + Statistical_mechanics + '_' + Method, properties[:, 14])
 
 
@@ -211,7 +212,7 @@ def Test_U(Coordinate_file):
                                   [ -7.85675953e-05,   2.82845448e-02,  -3.66590698e+00,   2.01651921e+02,   -4.18251942e+03]])
 
     U = 0.
-    for i in xrange(6):
+    for i in range(6):
         p = np.poly1d(polynomial_normal[i])
         U = U + p(new_lp[i])
     return U
@@ -242,9 +243,8 @@ def CP2K_U(cp2kroot):
     l = open(cp2kroot+'-r-0.out')
     lines = l.readlines()
     for x in range(0,len(lines)):
-	if 'ENERGY| Total FORCE_EVAL ( QS ) energy (a.u.): ' in lines[x]:
-	    U = float(lines[x].split()[-1])*627.5
-	   
+        if 'ENERGY| Total FORCE_EVAL ( QS ) energy (a.u.): ' in lines[x]:
+            U = float(lines[x].split()[-1])*627.5	   
     return U
 
 
@@ -256,10 +256,8 @@ def CP2K_Lattice_Parameters(Coordinate_file):
     Coordinate_file = Tinker .xyz file for crystal structure
     """
     with open('%s' % Coordinate_file, 'r') as l:
-	lines = l.readlines()
+        lines = l.readlines()
         lattice_parameters = lines[1].split()[1:7]
-
-
     return lattice_parameters
 
 def CP2K_atoms_per_molecule(Coordinate_file, molecules_in_coord):

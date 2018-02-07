@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+from __future__ import print_function
 import os
 import sys
 import subprocess
@@ -71,8 +72,8 @@ def Call_Wavenumbers(Method, min_RMS_gradient, **keyword_parameters):
             # If there is a saved Gruneisen parameter and set of wavenumbers
             if os.path.isfile(keyword_parameters['Output'] + '_GRUwvn_' + Method + '.npy') and os.path.isfile(
                                             keyword_parameters['Output'] + '_GRU_' + Method + '.npy'):
-                print "   ...Using Gruneisen parameters from: " + keyword_parameters['Output'] + '_GRU_' \
-                      + Method + '.npy'
+                print("   ...Using Gruneisen parameters from: " + keyword_parameters['Output'] + '_GRU_' \
+                      + Method + '.npy')
                 Gruneisen = np.load(keyword_parameters['Output'] + '_GRU_' + Method + '.npy')
                 Wavenumber_Reference = np.load(keyword_parameters['Output'] + '_GRUwvn_' + Method + '.npy')
                 Volume_Reference = Pr.Volume(Coordinate_file=keyword_parameters['Coordinate_file'],
@@ -87,8 +88,8 @@ def Call_Wavenumbers(Method, min_RMS_gradient, **keyword_parameters):
                                               keyword_parameters['Gruneisen_Vol_FracStep'],
                                               keyword_parameters['molecules_in_coord'], min_RMS_gradient,
                                               Parameter_file=keyword_parameters['Parameter_file'])
-                print "   ... Saving reference wavenumbers and Gruneisen parameters to: " + \
-                      keyword_parameters['Output'] + '_GRU_' + Method + '.npy'
+                print("   ... Saving reference wavenumbers and Gruneisen parameters to: " + \
+                      keyword_parameters['Output'] + '_GRU_' + Method + '.npy')
                 np.save(keyword_parameters['Output'] + '_GRU_' + Method, Gruneisen)
                 np.save(keyword_parameters['Output'] + '_GRUwvn_' + Method, Wavenumber_Reference)
             return Gruneisen, Wavenumber_Reference, Volume_Reference
@@ -109,8 +110,8 @@ def Call_Wavenumbers(Method, min_RMS_gradient, **keyword_parameters):
             if os.path.isfile(keyword_parameters['Output'] + '_GRUwvn_' + Method + '.npy') and os.path.isfile(
                                             keyword_parameters['Output'] + '_GRU_' + Method + '.npy'):
                 # If the current directory has saved Gruneisen outputs, it will open those and use them
-                print "   ...Using Gruneisen parameters from: " + keyword_parameters['Output'] + '_GRU_' \
-                      + Method + '.npy'
+                print("   ...Using Gruneisen parameters from: " + keyword_parameters['Output'] + '_GRU_' \
+                      + Method + '.npy')
                 Gruneisen = np.load(keyword_parameters['Output'] + '_GRU_' + Method + '.npy')
                 Wavenumber_Reference = np.load(keyword_parameters['Output'] + '_GRUwvn_' + Method + '.npy')
             else:
@@ -122,8 +123,8 @@ def Call_Wavenumbers(Method, min_RMS_gradient, **keyword_parameters):
                                                 Parameter_file=keyword_parameters['Parameter_file'])
 
                 # Saving the wavenumbers for future use
-                print "   ... Saving reference wavenumbers and Gruneisen parameters to: " + \
-                      keyword_parameters['Output'] + '_GRU_/_GRUwvn' + Method + '.npy'
+                print("   ... Saving reference wavenumbers and Gruneisen parameters to: " + \
+                      keyword_parameters['Output'] + '_GRU_/_GRUwvn' + Method + '.npy')
                 np.save(keyword_parameters['Output'] + '_GRU_' + Method, Gruneisen)
                 np.save(keyword_parameters['Output'] + '_GRUwvn_' + Method, Wavenumber_Reference)
             return Gruneisen, Wavenumber_Reference
@@ -169,8 +170,7 @@ def CP2K_Wavenumber(coordinatefile, parameter_file, cp2kroot):
     while '[FR-COORD]' not in lines[iter]:
         wave = lines[iter].split()
         wavenumbers = np.append(wavenumbers, float(wave[0]))
-	iter = iter+1
-
+        iter = iter+1
     return wavenumbers
 
 	 

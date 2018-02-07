@@ -12,7 +12,7 @@ import Wavenumbers as Wvn
 #######################################################################################################################
 
 def write_out(string):
-    with open('numerical_checks.out', 'a') as myfile:
+    with open("numerical_checks.out", "a") as myfile:
         myfile.write(string)
 
 
