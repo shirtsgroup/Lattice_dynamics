@@ -114,7 +114,7 @@ def Return_Tinker_Coordinates(Coordinate_file):
     """
     with open(Coordinate_file) as f:
         # Opening xyz coordinate file to expand
-        coordinates = np.array(list(it.izip_longest(*[lines.split() for lines in f], fillvalue=' '))).T
+        coordinates = np.array(list(it.zip_longest(*[lines.split() for lines in f], fillvalue=' '))).T
     coordinates = coordinates[2:, 2:5].astype(float)
     return coordinates
 
@@ -153,7 +153,7 @@ def Ouput_Tinker_Coordinate_File(Coordinate_file, Parameter_file, coordinates, l
     """
     with open(Coordinate_file) as f:
         # Opening xyz coordinate file to expand
-        coordinates_template = np.array(list(it.izip_longest(*[lines.split() for lines in f], fillvalue=' '))).T
+        coordinates_template = np.array(list(it.zip_longest(*[lines.split() for lines in f], fillvalue=' '))).T
 
     coordinates_template[2:, 2:5] = np.around(coordinates, decimals=8).astype('str')
     coordinates_template[1, :6] = lattice_parameters.astype(str)
@@ -176,7 +176,7 @@ def Tinker_minimization(Parameter_file, Coordinate_file, Output, min_RMS_gradien
     while run_min == True:
         # Running minimization
         output = subprocess.check_output(['minimize', 'Temp_min_' + str(count) + '.xyz', '-k', Parameter_file, 
-                                          str(min_RMS_gradient)])
+                                          str(min_RMS_gradient)]).decode("utf-8")
         count = count + 1
 
         # Moving minimized structure to the next temporary file
@@ -212,7 +212,7 @@ def Tinker_minimization(Parameter_file, Coordinate_file, Output, min_RMS_gradien
             lattice_parameters = Pr.Tinker_Lattice_Parameters('Temp_min_' + str(count) + '.xyz')
             Ouput_Tinker_Coordinate_File('Temp_min_' + str(count) + '.xyz', Parameter_file, coordinates, 
                                          lattice_parameters, 'Temp_min_' + str(count))
-    for i in xrange(11):
+    for i in range(11):
         if os.path.isfile('Temp_min_' + str(i) + '.xyz'):
             subprocess.call(['rm', 'Temp_min_' + str(i) + '.xyz'])
 
@@ -247,7 +247,7 @@ def Return_CP2K_Coordinates(Coordinate_file):
     """
     with open(Coordinate_file) as f:
         # Opening xyz coordinate file to expand
-        coordinates = np.array(list(it.izip_longest(*[lines.split() for lines in f], fillvalue=' '))).T
+        coordinates = np.array(list(it.zip_longest(*[lines.split() for lines in f], fillvalue=' '))).T
     coords = np.zeros((len(coordinates)-3,3))
     coords[:,:] = coordinates[2:-1, 3:6].astype(float)
     return coords
@@ -492,7 +492,7 @@ def Expand_Structure(Coordinate_file, Program, Expansion_type, molecules_in_coor
         crystal_matrix = Lattice_parameters_to_Crystal_matrix(lattice_parameters)
 
         coordinate_center_of_mass = np.zeros((molecules_in_coord, 3))
-        atoms_per_molecule = len(coordinates[:, 0])/molecules_in_coord
+        atoms_per_molecule = len(coordinates[:, 0])//molecules_in_coord
 
         for i in range(int(molecules_in_coord)):
             coordinate_center_of_mass[i, :] = np.mean(coordinates[i*atoms_per_molecule:(i+1)*atoms_per_molecule],
@@ -685,9 +685,11 @@ def Anisotropic_Local_Gradient(Coordinate_file, Program, Temperature, Pressure, 
     numerical_crystal_matrix_step = np.absolute(triangle_crystal_matrix_to_array(crystal_matrix))
     numerical_crystal_matrix_step[:3] = LocGrd_NormStrain * numerical_crystal_matrix_step[:3]
     numerical_crystal_matrix_step[3:] = LocGrd_ShearStrain * numerical_crystal_matrix_step[3:]
-    for i in range(3,6):
-        if numerical_crystal_matrix_step[i] < 0.005:
-            numerical_crystal_matrix_step[i] = 0.005
+#    for i in range(3,6):
+#        min_grad_stepsize = 0.005
+#        if numerical_crystal_matrix_step[i] < min_grad_stepsize:
+#            print("   ... Error: Off-diagonal element is zero, setting gradient finite stepsize to ", min_grad_stepsize)
+#            numerical_crystal_matrix_step[i] = min_grad_stepsize
     # Determining the file ending of the coordinate files
     file_ending = assign_file_ending(Program)
 

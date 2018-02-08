@@ -78,9 +78,9 @@ NumAnalysis_step = 500.0
 # These options are tuned best for a wide array of options
 # Isotropic volume fraction change
 LocGrd_Vol_FracStep = 1.5e-03
-# Anisotropic noraml and shear strains
-LocGrd_NormStrain = 1e-03
-LocGrd_ShearStrain = 0.5e-03
+# Anisotropic fractional changes in the diagonal and off-diagonal elements of the cyrstal tensor
+ LocGrd_Diag_FracStep = 2.0e-03
+ LocGrd_OffDiag_FracStep = 1.0e-03
 
 ### Stepwise options ###
 # Stepwise thermal expansion is only set up for isotropic expansion

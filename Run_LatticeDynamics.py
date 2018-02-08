@@ -117,7 +117,7 @@ def Pressure_setup(Temperature=[0.0, 25.0, 50.0, 75.0, 100.0], Pressure=1., Meth
     U = np.zeros(len(V_frac))
     V = np.zeros(len(V_frac))
 
-    for i in xrange(len(V_frac)):
+    for i in range(len(V_frac)):
         # Expanding the structures and saving the required data
         Ex.Call_Expansion(Method, 'expand', Program, Coordinate_file, molecules_in_coord, min_RMS_gradient,
                           volume_fraction_change=V_frac[i], Output='temporary', Parameter_file=Parameter_file)
@@ -125,7 +125,7 @@ def Pressure_setup(Temperature=[0.0, 25.0, 50.0, 75.0, 100.0], Pressure=1., Meth
         V[i] = Pr.Volume(Program=Program, Coordinate_file='temporary' + file_ending)
         subprocess.call(['rm', 'temporary' + file_ending])
 
-    for i in xrange(len(Pressure)):
+    for i in range(len(Pressure)):
         # Fitting the U + PV energy to a 4th order polynomial
         U_fit = np.polyfit(V, U + Pr.PV_energy(Pressure[i], V), 4)
         U_fit = np.poly1d(U_fit)
@@ -162,7 +162,7 @@ def write_input_file(Temperature, Pressure, Method, Program, Output, Coordinate_
                      StepWise_Vol_UpperFrac, Statistical_mechanics, Gruneisen_Vol_FracStep, Gruneisen_Lat_FracStep,
                      Wavenum_Tol, Gradient_MaxTemp, Aniso_LocGrad_Type, min_RMS_gradient, input_file_location_and_name):
     properties_out = ''
-    for i in xrange(len(properties_to_save) - 1):
+    for i in range(len(properties_to_save) - 1):
         properties_out = properties_out + properties_to_save[i] + ','
     properties_out = properties_out + properties_to_save[-1]
 
@@ -198,6 +198,8 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Calculate free energies as a function of T using lattice dynamics')
     parser.add_argument('-i', '--input_file', dest='Input_file', default='input_test.py',
                         help='Input file containing all parameters for the run')
+    parser.add_argument('-D', '--Start_Fresh', action='store_true',
+                        help='Removes any files from previous runs')
 
     args = parser.parse_args()
 
@@ -271,6 +273,12 @@ if __name__ == '__main__':
     except subprocess.CalledProcessError as grepexc:
         Output = 'out'
 
+
+    # Removing all old files if flagged
+    if args.Start_Fresh:
+        subprocess.call(['rm -rf Cords numerical_checks.out minimization.out out_*'], shell=True)
+
+
     try:
         Coordinate_file = subprocess.check_output("less " + str(args.Input_file) + " | grep Coordinate_file"
                                                                                    " | grep = ", shell=True).decode("utf-8")
@@ -294,7 +302,7 @@ if __name__ == '__main__':
     try:
         molecules_in_coord = subprocess.check_output("less " + str(args.Input_file) + " | grep molecules_in_coord"
                                                                                       " | grep = ", shell=True).decode("utf-8")
-        molecules_in_coord = float(molecules_in_coord.split('=')[1].strip())
+        molecules_in_coord = int(molecules_in_coord.split('=')[1].strip())
     except subprocess.CalledProcessError as grepexc:
         if Program == 'Test':
             molecules_in_coord = 1

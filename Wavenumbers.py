@@ -144,7 +144,7 @@ def Tinker_Wavenumber(Coordinate_file, Parameter_file):
     # Calling Tinker's vibrate executable and extracting the eigenvalues and wavenumbers of the respective
     # Hessian and mass-weighted Hessian
     eigenvalues_and_wavenumbers = subprocess.check_output("vibrate %s -k %s  CR |  grep -oP '[-+]*[0-9]*\.[0-9]{2,9}'"
-                                                          % (Coordinate_file, Parameter_file), shell=True)
+                                                          % (Coordinate_file, Parameter_file), shell=True).decode("utf-8")
     # Splitting the outputs into array form
     eigenvalues_and_wavenumbers = eigenvalues_and_wavenumbers.split('\n')
     eigenvalues_and_wavenumbers_hold = []
@@ -155,7 +155,7 @@ def Tinker_Wavenumber(Coordinate_file, Parameter_file):
             eigenvalues_and_wavenumbers_hold.append(float(i))
 
     # Extracting the wavenumbers and assuring they're sorted from lowest to highest
-    wavenumbers = np.sort(np.array(eigenvalues_and_wavenumbers_hold[len(eigenvalues_and_wavenumbers_hold)/2:]))
+    wavenumbers = np.sort(np.array(eigenvalues_and_wavenumbers_hold[len(eigenvalues_and_wavenumbers_hold)//2:]))
     return wavenumbers
 
 ##########################################
@@ -403,21 +403,21 @@ def Tinker_Gru_organized_wavenumbers(Expansion_type, Coordinate_file, Expanded_C
         wavenumbers = np.zeros((7, number_of_modes))
         eigenvectors = np.zeros((7, number_of_modes, number_of_modes))
         wavenumbers[0], eigenvectors[0] = Tinker_Wavenumber_and_Vectors(Coordinate_file, Parameter_file)
-        for i in xrange(1,7):
+        for i in range(1,7):
             wavenumbers[i], eigenvectors[i] = Tinker_Wavenumber_and_Vectors(Expanded_Coordinate_file[i-1], Parameter_file)
 
     # Weighting the modes matched together
     wavenumbers_out = np.zeros((len(wavenumbers[:, 0]), number_of_modes))
     wavenumbers_out[0] = wavenumbers[0]
-    for k in xrange(1, len(wavenumbers[:, 0])):
+    for k in range(1, len(wavenumbers[:, 0])):
         weight = np.zeros((number_of_modes - 3, number_of_modes - 3))
-        for i in xrange(3, number_of_modes):
+        for i in range(3, number_of_modes):
             diff = np.dot(eigenvectors[0, i], eigenvectors[k, i])/(np.linalg.norm(eigenvectors[0, i])*np.linalg.norm(eigenvectors[k, i]))
             if np.absolute(diff) > 0.95:
                 weight[i - 3] = 10000000.
                 weight[i - 3, i - 3] = 1. - diff
             else:
-                for j in xrange(3, number_of_modes):
+                for j in range(3, number_of_modes):
                     hold_weight = np.zeros(4)
                     hold_weight[0] = 1 - np.dot(-1*eigenvectors[0, i], eigenvectors[k, j])/(np.linalg.norm(-1*eigenvectors[0, i])*np.linalg.norm(eigenvectors[k, j]))
                     hold_weight[1] = 1 - np.dot(eigenvectors[0, i], -1*eigenvectors[k, j])/(np.linalg.norm(eigenvectors[0, i])*np.linalg.norm(-1*eigenvectors[k, j]))
@@ -451,22 +451,22 @@ def CP2K_Gru_organized_wavenumbers(Expansion_type, Coordinate_file, Expanded_Coo
         wavenumbers = np.zeros((7, number_of_modes))
         eigenvectors = np.zeros((7, number_of_modes, number_of_modes))
         wavenumbers[0], eigenvectors[0] = CP2K_Wavenumber_and_Vectors(Coordinate_file, Parameter_file)
-        for i in xrange(1,7):
+        for i in range(1,7):
             wavenumbers[i], eigenvectors[i] = CP2K_Wavenumber_and_Vectors(Expanded_Coordinate_file[i-1], Parameter_file)
 
 
     # Weighting the modes matched together
     wavenumbers_out = np.zeros((len(wavenumbers[:, 0]), number_of_modes))
     wavenumbers_out[0] = wavenumbers[0]
-    for k in xrange(1, len(wavenumbers[:, 0])):
+    for k in range(1, len(wavenumbers[:, 0])):
         weight = np.zeros((number_of_modes - 3, number_of_modes - 3))
-        for i in xrange(3, number_of_modes):
+        for i in range(3, number_of_modes):
             diff = np.linalg.norm(np.dot(eigenvectors[0, i], eigenvectors[k, i]))/(np.linalg.norm(eigenvectors[0, i])*np.linalg.norm(eigenvectors[k, i]))
             if diff > 0.95:
                 weight[i - 3] = 10000000.
                 weight[i - 3, i - 3] = 1. - diff
             else:
-                for j in xrange(3, number_of_modes):
+                for j in range(3, number_of_modes):
                     weight[i - 3, j - 3] = 1 - np.linalg.norm(np.dot(eigenvectors[0, i], eigenvectors[k, j]))/(np.linalg.norm(eigenvectors[0, i])*np.linalg.norm(eigenvectors[k, j]))
 
         # Using the Hungarian algorithm to match wavenumbers

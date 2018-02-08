@@ -669,7 +669,7 @@ def Anisotropic_Gradient_Expansion(Coordinate_file, Program, molecules_in_coord,
                 crystal_matrix_gradient[:len(crystal_matrix_gradient_hold[:, 0, 0]), :, :] = crystal_matrix_gradient_hold
 
     # Setting up a matrix to store the wavenumbers in
-    wavenumbers = np.zeros((len(temperature), number_of_wavenumbers + 1))
+    wavenumbers = np.zeros((len(temperature), int(number_of_wavenumbers) + 1))
     wavenumbers[:, 0] = temperature
 
     if Method == 'GaQg':
