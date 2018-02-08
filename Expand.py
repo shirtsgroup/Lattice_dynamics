@@ -212,7 +212,7 @@ def Tinker_minimization(Parameter_file, Coordinate_file, Output, min_RMS_gradien
             lattice_parameters = Pr.Tinker_Lattice_Parameters('Temp_min_' + str(count) + '.xyz')
             Ouput_Tinker_Coordinate_File('Temp_min_' + str(count) + '.xyz', Parameter_file, coordinates, 
                                          lattice_parameters, 'Temp_min_' + str(count))
-    for i in xrange(11):
+    for i in range(11):
         if os.path.isfile('Temp_min_' + str(i) + '.xyz'):
             subprocess.call(['rm', 'Temp_min_' + str(i) + '.xyz'])
 
