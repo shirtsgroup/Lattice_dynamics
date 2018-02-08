@@ -294,7 +294,7 @@ if __name__ == '__main__':
     try:
         molecules_in_coord = subprocess.check_output("less " + str(args.Input_file) + " | grep molecules_in_coord"
                                                                                       " | grep = ", shell=True).decode("utf-8")
-        molecules_in_coord = float(molecules_in_coord.split('=')[1].strip())
+        molecules_in_coord = int(molecules_in_coord.split('=')[1].strip())
     except subprocess.CalledProcessError as grepexc:
         if Program == 'Test':
             molecules_in_coord = 1

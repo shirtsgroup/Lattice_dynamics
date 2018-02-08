@@ -114,7 +114,7 @@ def Return_Tinker_Coordinates(Coordinate_file):
     """
     with open(Coordinate_file) as f:
         # Opening xyz coordinate file to expand
-        coordinates = np.array(list(it.izip_longest(*[lines.split() for lines in f], fillvalue=' '))).T
+        coordinates = np.array(list(it.zip_longest(*[lines.split() for lines in f], fillvalue=' '))).T
     coordinates = coordinates[2:, 2:5].astype(float)
     return coordinates
 
@@ -492,7 +492,7 @@ def Expand_Structure(Coordinate_file, Program, Expansion_type, molecules_in_coor
         crystal_matrix = Lattice_parameters_to_Crystal_matrix(lattice_parameters)
 
         coordinate_center_of_mass = np.zeros((molecules_in_coord, 3))
-        atoms_per_molecule = len(coordinates[:, 0])/molecules_in_coord
+        atoms_per_molecule = len(coordinates[:, 0])//molecules_in_coord
 
         for i in range(int(molecules_in_coord)):
             coordinate_center_of_mass[i, :] = np.mean(coordinates[i*atoms_per_molecule:(i+1)*atoms_per_molecule],

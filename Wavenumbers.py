@@ -155,7 +155,7 @@ def Tinker_Wavenumber(Coordinate_file, Parameter_file):
             eigenvalues_and_wavenumbers_hold.append(float(i))
 
     # Extracting the wavenumbers and assuring they're sorted from lowest to highest
-    wavenumbers = np.sort(np.array(eigenvalues_and_wavenumbers_hold[len(eigenvalues_and_wavenumbers_hold)/2:]))
+    wavenumbers = np.sort(np.array(eigenvalues_and_wavenumbers_hold[len(eigenvalues_and_wavenumbers_hold)//2:]))
     return wavenumbers
 
 ##########################################
