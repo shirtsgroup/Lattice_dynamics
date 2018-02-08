@@ -273,10 +273,12 @@ if __name__ == '__main__':
     except subprocess.CalledProcessError as grepexc:
         Output = 'out'
 
+
     # Removing all old files if flagged
     if args.Start_Fresh:
-        subprocess.call(['rm -rf Cords numerical_checks.out out_*'], shell=True)
-    sys.exit()
+        subprocess.call(['rm -rf Cords numerical_checks.out minimization.out out_*'], shell=True)
+
+
     try:
         Coordinate_file = subprocess.check_output("less " + str(args.Input_file) + " | grep Coordinate_file"
                                                                                    " | grep = ", shell=True).decode("utf-8")

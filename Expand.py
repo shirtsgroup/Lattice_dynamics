@@ -686,8 +686,10 @@ def Anisotropic_Local_Gradient(Coordinate_file, Program, Temperature, Pressure, 
     numerical_crystal_matrix_step[:3] = LocGrd_NormStrain * numerical_crystal_matrix_step[:3]
     numerical_crystal_matrix_step[3:] = LocGrd_ShearStrain * numerical_crystal_matrix_step[3:]
 #    for i in range(3,6):
-#        if numerical_crystal_matrix_step[i] < 0.005:
-#            numerical_crystal_matrix_step[i] = 0.005
+#        min_grad_stepsize = 0.005
+#        if numerical_crystal_matrix_step[i] < min_grad_stepsize:
+#            print("   ... Error: Off-diagonal element is zero, setting gradient finite stepsize to ", min_grad_stepsize)
+#            numerical_crystal_matrix_step[i] = min_grad_stepsize
     # Determining the file ending of the coordinate files
     file_ending = assign_file_ending(Program)
 
