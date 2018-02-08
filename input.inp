@@ -85,7 +85,7 @@ NumAnalysis_step = 150.0
 # These options are tuned best for a wide array of options
 # Isotropic volume fraction change
 LocGrd_Vol_FracStep = 1.5e-03
-# Anisotropic noraml and shear strains
+# Anisotropic fractional changes in the diagonal and off-diagonal elements of the cyrstal tensor
 LocGrd_Diag_FracStep = 2.0e-03
 LocGrd_OffDiag_FracStep = 1.0e-03
 
