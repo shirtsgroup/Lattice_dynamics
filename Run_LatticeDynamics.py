@@ -198,6 +198,8 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Calculate free energies as a function of T using lattice dynamics')
     parser.add_argument('-i', '--input_file', dest='Input_file', default='input_test.py',
                         help='Input file containing all parameters for the run')
+    parser.add_argument('-D', '--Start_Fresh', action='store_true',
+                        help='Removes any files from previous runs')
 
     args = parser.parse_args()
 
@@ -271,6 +273,10 @@ if __name__ == '__main__':
     except subprocess.CalledProcessError as grepexc:
         Output = 'out'
 
+    # Removing all old files if flagged
+    if args.Start_Fresh:
+        subprocess.call(['rm -rf Cords numerical_checks.out out_*'], shell=True)
+    sys.exit()
     try:
         Coordinate_file = subprocess.check_output("less " + str(args.Input_file) + " | grep Coordinate_file"
                                                                                    " | grep = ", shell=True).decode("utf-8")
