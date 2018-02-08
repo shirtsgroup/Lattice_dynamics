@@ -176,7 +176,7 @@ def Tinker_minimization(Parameter_file, Coordinate_file, Output, min_RMS_gradien
     while run_min == True:
         # Running minimization
         output = subprocess.check_output(['minimize', 'Temp_min_' + str(count) + '.xyz', '-k', Parameter_file, 
-                                          str(min_RMS_gradient)])
+                                          str(min_RMS_gradient)]).decode("utf-8")
         count = count + 1
 
         # Moving minimized structure to the next temporary file
