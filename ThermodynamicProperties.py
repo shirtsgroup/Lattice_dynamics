@@ -172,7 +172,7 @@ def Tinker_atoms_per_molecule(Coordinate_file, molecules_in_coord):
     """
     with open('%s' % Coordinate_file, 'r') as l:
         coordinates = [lines.split() for lines in l]
-        coordinates = np.array(list(it.izip_longest(*coordinates, fillvalue=' '))).T
+        coordinates = np.array(list(it.zip_longest(*coordinates, fillvalue=' '))).T
     atoms_per_molecule = int(coordinates[0, 0]) / molecules_in_coord
     return atoms_per_molecule
 
@@ -186,7 +186,7 @@ def Tinker_Lattice_Parameters(Coordinate_file):
     """
     with open('%s' % Coordinate_file, 'r') as l:
         lattice_parameters = [lines.split() for lines in l]
-        lattice_parameters = np.array(list(it.izip_longest(*lattice_parameters, fillvalue=' '))).T
+        lattice_parameters = np.array(list(it.zip_longest(*lattice_parameters, fillvalue=' '))).T
         lattice_parameters = lattice_parameters[1, :6].astype(float)
     return lattice_parameters
 
@@ -277,7 +277,7 @@ def CP2K_atoms_per_molecule(Coordinate_file, molecules_in_coord):
     """
     with open('%s' % Coordinate_file, 'r') as l:
         coordinates = [lines.split() for lines in l]
-        coordinates = np.array(list(it.izip_longest(*coordinates, fillvalue=' '))).T
+        coordinates = np.array(list(it.zip_longest(*coordinates, fillvalue=' '))).T
     atoms_per_molecule = int(coordinates[0, 0]) / molecules_in_coord
     return atoms_per_molecule
 

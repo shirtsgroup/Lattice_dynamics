@@ -144,7 +144,7 @@ def Tinker_Wavenumber(Coordinate_file, Parameter_file):
     # Calling Tinker's vibrate executable and extracting the eigenvalues and wavenumbers of the respective
     # Hessian and mass-weighted Hessian
     eigenvalues_and_wavenumbers = subprocess.check_output("vibrate %s -k %s  CR |  grep -oP '[-+]*[0-9]*\.[0-9]{2,9}'"
-                                                          % (Coordinate_file, Parameter_file), shell=True)
+                                                          % (Coordinate_file, Parameter_file), shell=True).decode("utf-8")
     # Splitting the outputs into array form
     eigenvalues_and_wavenumbers = eigenvalues_and_wavenumbers.split('\n')
     eigenvalues_and_wavenumbers_hold = []

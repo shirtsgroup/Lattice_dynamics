@@ -153,7 +153,7 @@ def Ouput_Tinker_Coordinate_File(Coordinate_file, Parameter_file, coordinates, l
     """
     with open(Coordinate_file) as f:
         # Opening xyz coordinate file to expand
-        coordinates_template = np.array(list(it.izip_longest(*[lines.split() for lines in f], fillvalue=' '))).T
+        coordinates_template = np.array(list(it.zip_longest(*[lines.split() for lines in f], fillvalue=' '))).T
 
     coordinates_template[2:, 2:5] = np.around(coordinates, decimals=8).astype('str')
     coordinates_template[1, :6] = lattice_parameters.astype(str)
@@ -247,7 +247,7 @@ def Return_CP2K_Coordinates(Coordinate_file):
     """
     with open(Coordinate_file) as f:
         # Opening xyz coordinate file to expand
-        coordinates = np.array(list(it.izip_longest(*[lines.split() for lines in f], fillvalue=' '))).T
+        coordinates = np.array(list(it.zip_longest(*[lines.split() for lines in f], fillvalue=' '))).T
     coords = np.zeros((len(coordinates)-3,3))
     coords[:,:] = coordinates[2:-1, 3:6].astype(float)
     return coords
