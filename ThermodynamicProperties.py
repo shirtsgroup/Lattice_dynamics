@@ -203,18 +203,25 @@ def Test_U(Coordinate_file):
     Coordinate_file = File containing lattice parameters
     """
     new_lp = np.load(Coordinate_file)
+    U = Test_U_poly(new_lp)
+    return U
 
+def Test_U_poly(array):
+    # 4th order polynomial to describe how the potential energy changes as a function of the lattice parameters
+    # Given as [A, B, C, D, E]: A*x**4 + B*x**3 + C*x**2 + D*x + E
+                                  # Lattice vectors [Ang.]
     polynomial_normal = np.array([[  1.32967100e+01,  -3.86230306e+02,   4.21859038e+03,  -2.05171077e+04,    3.71986258e+04],
                                   [  5.96012607e-00,  -3.29643734e+01,   6.87371706e+02,  -6.39222328e+03,    2.20706869e+04],
                                   [  6.54309591e-01,  -2.95928106e+01,   4.82192443e+02,  -3.37907613e+03,    8.38105955e+03],
+                                  # Lattice Angles [Degrees]
                                   [  1.73101682e-04,  -6.23169023e-02,   8.53269922e+00,  -5.26349633e+02,    1.20653441e+04],
                                   [  1.87342875e-04,  -6.45384256e-02,   8.09885843e+00,  -4.58100859e+02,    1.27492294e+04],
                                   [ -7.85675953e-05,   2.82845448e-02,  -3.66590698e+00,   2.01651921e+02,   -4.18251942e+03]])
-
     U = 0.
     for i in range(6):
         p = np.poly1d(polynomial_normal[i])
-        U = U + p(new_lp[i])
+        U = U + p(array[i])
+    # Energy returned in kcal/mol
     return U
 
 

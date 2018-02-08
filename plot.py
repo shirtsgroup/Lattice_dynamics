@@ -6,10 +6,10 @@ import pylab as plt
 from optparse import OptionParser
 
 parser = OptionParser()
-parser.add_option('-L', dest = 'lattice_parameters', help = '.npy files containing lattice parameters', default = '')
-parser.add_option('-V', dest = 'volume', help = '.npy files containing volume', default = '')
-parser.add_option('-G', dest = 'Gibbs', help = '.npy files containing gibbs free energy', default = '')
-parser.add_option('-T', dest = 'temperature', help = '.npy file containing temperature array', default = '')
+parser.add_option('-L', dest = 'lattice_parameters', help = '<output>_h<StatMech>_<Method>.npy files containing lattice parameters', default = '')
+parser.add_option('-V', dest = 'volume', help = '<output>_V<StatMech>_<Method>.npy files containing volume', default = '')
+parser.add_option('-G', dest = 'Gibbs', help = '<output>_G<StatMech>_<Method>.npy files containing gibbs free energy', default = '')
+parser.add_option('-T', dest = 'temperature', help = '<output>_T_<Method>.npy file containing temperature array', default = '')
 parser.add_option('-l', dest = 'Labels', help = 'list of label names for input files', default = '')
 
 (options, args) = parser.parse_args()
