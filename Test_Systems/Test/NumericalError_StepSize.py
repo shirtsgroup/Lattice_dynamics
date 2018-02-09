@@ -7,7 +7,7 @@ import pylab as plt
 sys.path.insert(0,'/Users/mrshirts/work/papers/CRYSTALMAPPING/Lattice_dynamics')
 from Run_LatticeDynamics import Temperature_Lattice_Dynamics
 
-steps = np.array([30.,50.,60.,75.,100.,150.,300.])
+steps = np.array([100.,300.,500.,600.,750.,1000.,1500.,3000.])
 G_300 = np.zeros((len(steps), 2))
 #V_300 = np.zeros((len(steps), 2))
 
