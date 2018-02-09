@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+from __future__ import print_function
 import os
 import sys
 import subprocess
@@ -15,6 +16,7 @@ V_max = np.zeros((len(steps), 2))
 # Inputs for code
 Method = 'GaQ'
 Aniso_LocGrad_type=73
+
 maxT = steps[-1]
 for i in range(len(steps-1)): # 2000 degrees in one step is a bit much.
     Temperature_Lattice_Dynamics(Method=Method, Temperature=[0,maxT],NumAnalysis_method='RK4', NumAnalysis_step=steps[i],Aniso_LocGrad_Type=Aniso_LocGrad_type,Gradient_MaxTemp=maxT)
@@ -44,6 +46,7 @@ plt.ylabel('$k_{frac}$', fontsize=24)
 plt.tight_layout()
 plt.show()
 plt.savefig('Vplot.pdf')
+
 
 plt.figure(2)
 plt.scatter(x, y_G[:, 0], c='r', label='RK4')
