@@ -728,16 +728,16 @@ def Anisotropic_Local_Gradient(Coordinate_file, Program, Temperature, Pressure, 
     dG_dict = dict()
     wavenumbers_dict = dict()
 
-    dG_dict['0'] = Pr.Gibbs_Free_Energy(Temperature, Pressure, Program, wavenumbers, Coordinate_file,
-                                        Statistical_mechanics, molecules_in_coord,
-                                        Parameter_file=keyword_parameters['Parameter_file']) 
-
     # Making array for dG/dC
     dG_dC = np.zeros((6, 3))
 
     if Temperature == 0.:
         # If temperature is zero, we assume that the local gradient is the same at 0.1K
         Temperature = 0.1
+
+    dG_dict['0'] = Pr.Gibbs_Free_Energy(Temperature, Pressure, Program, wavenumbers, Coordinate_file,
+                                        Statistical_mechanics, molecules_in_coord,
+                                        Parameter_file=keyword_parameters['Parameter_file']) 
 
     for i in range(diag_limit):
         # Calculating the diagonals of ddG_ddeta and the vector dS_deta
@@ -750,8 +750,6 @@ def Anisotropic_Local_Gradient(Coordinate_file, Program, Temperature, Pressure, 
         cm_array[i] = numerical_crystal_matrix_step[i]
 
         # Straining the input structure by the current diagonal
-        #import pdb
-        #pdb.set_trace()
         delta1 = ('p', 'm')
         for d in delta1:
             if d == 'm':
@@ -827,14 +825,14 @@ def Anisotropic_Local_Gradient(Coordinate_file, Program, Temperature, Pressure, 
 
     crystal_matrix_array = np.absolute(triangle_crystal_matrix_to_array(crystal_matrix))
 
-    # Do we really want to set to zero at these tolerances.
-    #pdb.set_trace()
-    for i in range(3,6):
+    # Do we really want to set to zero at these tolerances?
+    #print(crystal_matrix_array)
+    #for i in range(3,6):
         #if crystal_matrix_array[i] < 1.e-02:
-        if crystal_matrix_array[i] < 1.e-04:
-            for j in [k for k in range(6) if k != i]:
-                ddG_ddC[i, j] = 0.
-                ddG_ddC[j, i] = 0.
+        #if crystal_matrix_array[i] < 1.e-04:
+        #    for j in [k for k in range(6) if k != i]:
+        #        ddG_ddC[i, j] = 0.
+        #        ddG_ddC[j, i] = 0.
 
     # Calculating deta/dT for all strains
     dC_dT = np.linalg.lstsq(ddG_ddC, dS_dC)[0]

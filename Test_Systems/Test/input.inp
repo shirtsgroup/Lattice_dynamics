@@ -72,15 +72,15 @@ NumAnalysis_method = RK4
 
 ## Stepsize numerical analysis
 # Right now only temperature is the only input option
-NumAnalysis_step = 200.0
+NumAnalysis_step = 100.0
 
 ## Local gradient presets
 # These options are tuned best for a wide array of options
 # Isotropic volume fraction change
 LocGrd_Vol_FracStep = 1.5e-03
 # Anisotropic fractional changes in the diagonal and off-diagonal elements of the cyrstal tensor
-LocGrd_Diag_FracStep = 2.0e-04
-LocGrd_OffDiag_FracStep = 1.0e-04
+LocGrd_Diag_FracStep = 2.0e-05
+LocGrd_OffDiag_FracStep = 1.0e-05
 
 ### Stepwise options ###
 # Stepwise thermal expansion is only set up for isotropic expansion
