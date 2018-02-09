@@ -7,7 +7,7 @@ import pylab as plt
 sys.path.insert(0,'/Users/mrshirts/work/papers/CRYSTALMAPPING/Lattice_dynamics')
 from Run_LatticeDynamics import Temperature_Lattice_Dynamics
 
-steps = np.array([5.,30.,50.,60.,75.,100.,150.,300.])
+steps = np.array([30.,50.,60.,75.,100.,150.,300.])
 G_300 = np.zeros((len(steps), 2))
 #V_300 = np.zeros((len(steps), 2))
 
@@ -40,13 +40,15 @@ y_G = np.absolute((G_300 - G_300[0])/(G_300[-1] - G_300[0]))
 #plt.ylabel('$k_{frac}$', fontsize=24)
 #plt.tight_layout()
 #plt.show()
-
 plt.scatter(x, y_G[:, 0], c='r', label='RK4')
 plt.plot(x, (1/x)**4, c='r', label='$(1/n)^{4}$')
 plt.scatter(x, y_G[:, 1], c='b', label='Euler')
 plt.plot(x, (1/x)**1, c='b', label='$1/n$')
 plt.legend()
+import pdb
+pdb.set_trace()
 plt.show()
+plt.savefig('saveplot.pdf')
 
 
 
