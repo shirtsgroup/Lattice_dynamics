@@ -682,14 +682,17 @@ def Anisotropic_Local_Gradient(Coordinate_file, Program, Temperature, Pressure, 
     """
     # Setting up an array for changes in the crystal matrix
     crystal_matrix = Lattice_parameters_to_Crystal_matrix(Pr.Lattice_parameters(Program, Coordinate_file))
-    numerical_crystal_matrix_step = np.absolute(triangle_crystal_matrix_to_array(crystal_matrix))
+    crystal_matrix_array = triangle_crystal_matrix_to_array(crystal_matrix)
+    numerical_crystal_matrix_step = np.absolute(crystal_matrix_array)
     numerical_crystal_matrix_step[:3] = LocGrd_NormStrain * numerical_crystal_matrix_step[:3]
     numerical_crystal_matrix_step[3:] = LocGrd_ShearStrain * numerical_crystal_matrix_step[3:]
     for i in range(3,6):
-        min_grad_stepsize = LocGrd_ShearStrain*10.
-        if numerical_crystal_matrix_step[i] < min_grad_stepsize:
+        min_grad_stepsize = LocGrd_ShearStrain
+        if np.absolute(crystal_matrix_array[i]) < 1e-05:
             print("   ... Error: Off-diagonal element is zero, setting gradient finite stepsize to ", min_grad_stepsize)
             numerical_crystal_matrix_step[i] = min_grad_stepsize
+
+    print(numerical_crystal_matrix_step)
 
     # Determining the file ending of the coordinate files
     file_ending = assign_file_ending(Program)

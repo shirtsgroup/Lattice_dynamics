@@ -16,8 +16,21 @@ x0 = np.array([10.,10.,10.,
               # Lattice Angles [Degrees]
                90.,90.,90.])
 
+P = 1.
+
+# PV + U energy
+def U_PV(lp):
+    V = Pr.Volume(lattice_parameters=lp)
+    return Pr.Test_U_poly(lp) + Pr.PV_energy(P, V)
+
 # Running the minimization
-minimization_output = scipy.optimize.minimize(Pr.Test_U_poly, x0, method='Nelder-Mead', tol=1e-6)
+def run_minimization(X0):
+    return scipy.optimize.minimize(U_PV, X0, method='CG', tol=1.e-16)
+
+for i in range(100):
+    minimization_output = run_minimization(x0)
+    x0 = minimization_output.x
+    
 
 # Saving the minimum energy lattice parameters
 np.save('test.npy', minimization_output.x)
