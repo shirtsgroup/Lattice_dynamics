@@ -12,22 +12,23 @@ import scipy.optimize
 
 # Setting a general starting point to run minimization of Test potential energy function
               # Lattice Vectors [Ang.]
-x0 = np.array([10.,10.,10.,
+x0 = np.array([7.,7.,11.,
               # Lattice Angles [Degrees]
-               90.,90.,90.])
+               90.,108.,90.])
 
 P = 1.
+n = 4.
 
 # PV + U energy
 def U_PV(lp):
     V = Pr.Volume(lattice_parameters=lp)
-    return Pr.Test_U_poly(lp) + Pr.PV_energy(P, V)
+    return (Pr.Test_U_poly(lp)) #+ Pr.PV_energy(P, V))/ n
 
 # Running the minimization
 def run_minimization(X0):
     return scipy.optimize.minimize(U_PV, X0, method='CG', tol=1.e-16)
 
-for i in range(100):
+for i in range(5):
     minimization_output = run_minimization(x0)
     x0 = minimization_output.x
     

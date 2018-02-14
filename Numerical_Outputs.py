@@ -34,6 +34,19 @@ def tolerance_of_wavenumbers(wavenumbers, Wavenum_Tol):
             myfile.write('Wavenumbers [cm^-1]: ' + str(wavenumbers[0]) + ' ' + str(wavenumbers[1]) + ' ' + 
                          str(wavenumbers[2]))
 
+def raw_energies(U_0, Av_0, U, Av):
+    write_out('U (Potential Energy) [kcal/mol] = \n')
+    write_out('    U_0 = \n')
+    numpy_write_out(U_0)
+    write_out('     -dC    +dC   \n')
+    numpy_write_out(U)
+
+    write_out('Av (Vibational Energy) [kcal/mol] = \n')
+    write_out('    Av_0 = \n')
+    numpy_write_out(Av_0)
+    write_out('     -dC    +dC   \n')
+    numpy_write_out(Av)
+
 
 #######################################################################################################################
 ##############                                    4th Order Runge-Kutta                                   #############
@@ -54,6 +67,21 @@ def step_RK(index, T, Program, Coordinate_file):
 def end_RK(k_values):
     write_out('///   RUNGE-KUTTA summary   ///   \n')
     numpy_write_out(k_values)
+
+
+
+#######################################################################################################################
+##############                                    General Gradient                                        #############
+#######################################################################################################################
+
+def gradient_output(T, Program, Coordinate_file):
+    write_out('//////////////// Gradient at ' + str(T) + 'K ////////////////\n')
+    lattice_parameters = Pr.Lattice_parameters(Program, Coordinate_file)
+    write_out('Lattice vectors [Ang.^3] = \n')
+    numpy_write_out(lattice_parameters[:3])
+    write_out('Lattice angles [Degrees] = \n')
+    numpy_write_out(lattice_parameters[3:])
+
 
 #######################################################################################################################
 ##############                                     Isotropic Gradient                                     #############

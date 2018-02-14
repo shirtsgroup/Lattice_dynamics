@@ -551,6 +551,7 @@ def Isotropic_Gradient_Expansion(Coordinate_file, Program, molecules_in_coord, O
                                              Gruneisen=Gruneisen, Wavenumber_Reference=Wavenumber_Reference,
                                              Volume_Reference=Volume_Reference, LocGrd_Vol_FracStep=LocGrd_Vol_FracStep)
             elif NumAnalysis_method == 'Euler':
+                NO.gradient_output(temperature[i], Program,  Output + '_' + Method + 'T' + str(temperature[i]) + file_ending)
                 volume_gradient[i, 1], wavenumbers[i, 1:], volume = \
                     Ex.Call_Expansion(Method, 'local_gradient', Program, Output + '_' + Method + 'T' +
                                       str(temperature[i]) + file_ending, molecules_in_coord, min_RMS_gradient,
@@ -583,6 +584,7 @@ def Isotropic_Gradient_Expansion(Coordinate_file, Program, molecules_in_coord, O
         os.system('mv ' + Output + '_' + Method + 'T' + str(temperature[i]) + file_ending + ' Cords/')
         if temperature[i + 1] == temperature[-1]:
             print("   Determining local gradient and thermal properties at: " + str(temperature[i+1]) + " K")
+            NO.gradient_output(temperature[i + 1], Program, Output + '_' + Method + 'T' + str(temperature[i + 1]) + file_ending)
             volume_gradient[i + 1, 2], wavenumbers[i+1, 1:], volume = \
                 Ex.Call_Expansion(Method, 'local_gradient', Program, Output + '_' + Method + 'T' +
                                   str(temperature[i + 1]) + file_ending, molecules_in_coord, min_RMS_gradient,
@@ -730,6 +732,7 @@ def Anisotropic_Gradient_Expansion(Coordinate_file, Program, molecules_in_coord,
                                                  ref_crystal_matrix=ref_crystal_matrix)
 
             elif NumAnalysis_method == 'Euler':
+                NO.gradient_output(temperature[i], Program, Output + '_' + Method + 'T' + str(temperature[i]) + file_ending)
                 crystal_matrix_gradient[i, 0, 1:], wavenumbers[i, 1:] = \
                         Ex.Call_Expansion(Method, 'local_gradient', Program,
                                           Output + '_' + Method + 'T' + str(temperature[i]) + file_ending,
@@ -785,7 +788,7 @@ def Anisotropic_Gradient_Expansion(Coordinate_file, Program, molecules_in_coord,
 
             else:
                 print("   Determining local gradient and thermal properties at: " + str(temperature[i + 1]) + " K")
-
+                NO.gradient_output(temperature[i + 1], Program, Output + '_' + Method + 'T' + str(temperature[i + 1]) + file_ending)
                 # Determinin the local gradient at the final structure (Used for finding intermediate temperatures)
                 crystal_matrix_gradient[i + 1, 1, 1:], wavenumbers[i + 1, 1:] = \
                     Ex.Call_Expansion(Method, 'local_gradient', Program, Output + '_' + Method + 'T' +

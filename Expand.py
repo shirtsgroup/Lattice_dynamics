@@ -606,39 +606,39 @@ def Isotropic_Local_Gradient(Coordinate_file, Program, Temperature, Pressure, Lo
     # Calculating the denominator of the local gradient d**2G/dV**2
     ddG = (Pr.Gibbs_Free_Energy(Temperature, Pressure, Program, wavenumbers_plus, coordinate_plus,
                                 Statistical_mechanics, molecules_in_coord,
-                                Parameter_file=keyword_parameters['Parameter_file']) -
+                                Parameter_file=keyword_parameters['Parameter_file'])[0] -
            2*Pr.Gibbs_Free_Energy(Temperature, Pressure, Program, wavenumbers, Coordinate_file,
                                   Statistical_mechanics, molecules_in_coord,
-                                  Parameter_file=keyword_parameters['Parameter_file']) +
+                                  Parameter_file=keyword_parameters['Parameter_file'])[0] +
            Pr.Gibbs_Free_Energy(Temperature, Pressure, Program, wavenumbers_minus, coordinate_minus,
                                 Statistical_mechanics, molecules_in_coord,
-                                Parameter_file=keyword_parameters['Parameter_file'])) / \
+                                Parameter_file=keyword_parameters['Parameter_file'])[0]) / \
           ((volume*LocGrd_Vol_FracStep)**2)
 
     # Computing the backward, central, and forward finite difference of dG/dV
     dG = np.zeros(3)
     dG[0] = (Pr.Gibbs_Free_Energy(Temperature, Pressure, Program, wavenumbers, Coordinate_file,
                                   Statistical_mechanics, molecules_in_coord,
-                                  Parameter_file=keyword_parameters['Parameter_file']) -
+                                  Parameter_file=keyword_parameters['Parameter_file'])[0] -
              Pr.Gibbs_Free_Energy(Temperature, Pressure, Program, wavenumbers_minus, coordinate_minus,
                                   Statistical_mechanics, molecules_in_coord,
-                                  Parameter_file=keyword_parameters['Parameter_file'])) / \
+                                  Parameter_file=keyword_parameters['Parameter_file'])[0]) / \
             (volume*LocGrd_Vol_FracStep)
 
     dG[1] = (Pr.Gibbs_Free_Energy(Temperature, Pressure, Program, wavenumbers_plus, coordinate_plus,
                                   Statistical_mechanics, molecules_in_coord,
-                                  Parameter_file=keyword_parameters['Parameter_file']) -
+                                  Parameter_file=keyword_parameters['Parameter_file'])[0] -
              Pr.Gibbs_Free_Energy(Temperature, Pressure, Program, wavenumbers_minus, coordinate_minus,
                                   Statistical_mechanics, molecules_in_coord,
-                                  Parameter_file=keyword_parameters['Parameter_file'])) / \
+                                  Parameter_file=keyword_parameters['Parameter_file'])[0]) / \
             (2*volume*LocGrd_Vol_FracStep)
 
     dG[2] = (Pr.Gibbs_Free_Energy(Temperature, Pressure, Program, wavenumbers_plus, coordinate_plus,
                                   Statistical_mechanics, molecules_in_coord,
-                                  Parameter_file=keyword_parameters['Parameter_file']) -
+                                  Parameter_file=keyword_parameters['Parameter_file'])[0] -
              Pr.Gibbs_Free_Energy(Temperature, Pressure, Program, wavenumbers, Coordinate_file,
                                   Statistical_mechanics, molecules_in_coord,
-                                  Parameter_file=keyword_parameters['Parameter_file'])) / \
+                                  Parameter_file=keyword_parameters['Parameter_file'])[0]) / \
             (volume*LocGrd_Vol_FracStep)
 
 
@@ -690,8 +690,6 @@ def Anisotropic_Local_Gradient(Coordinate_file, Program, Temperature, Pressure, 
     numerical_crystal_matrix_step[:3] = LocGrd_NormStrain * numerical_crystal_matrix_step[:3]
     numerical_crystal_matrix_step[3:] = LocGrd_ShearStrain * numerical_crystal_matrix_step[3:]
 
-    print(numerical_crystal_matrix_step)
-
     # Determining the file ending of the coordinate files
     file_ending = assign_file_ending(Program)
 
@@ -700,6 +698,22 @@ def Anisotropic_Local_Gradient(Coordinate_file, Program, Temperature, Pressure, 
 
     # Preparing the vector with each entry as d*S/dC
     dS_dC = np.zeros(6)
+
+    # A place to save potential and helmhotl vibrational energies to output
+    U = np.zeros((6, 2))
+    Av = np.zeros((6, 2))
+
+    # dictionaries for saved intermediate data
+    dG_dict = dict()
+    wavenumbers_dict = dict()
+
+    # Making array for dG/dC
+    dG_dC = np.zeros((6, 3))
+
+    if Temperature == 0.:
+        # If temperature is zero, we assume that the local gradient is the same at 0.1K
+        Temperature = 1e-3
+
 
     # Modified anisotropic Local Gradient
 # This needs to be re-thought
@@ -728,20 +742,9 @@ def Anisotropic_Local_Gradient(Coordinate_file, Program, Temperature, Pressure, 
                             'Program': Program}
     wavenumbers = Wvn.Call_Wavenumbers(Method, min_RMS_gradient, **wavenumber_keywords)
 
-    # dictionaries for saved intermediate data
-    dG_dict = dict()
-    wavenumbers_dict = dict()
-
-    # Making array for dG/dC
-    dG_dC = np.zeros((6, 3))
-
-    if Temperature == 0.:
-        # If temperature is zero, we assume that the local gradient is the same at 0.1K
-        Temperature = 0.1
-
-    dG_dict['0'] = Pr.Gibbs_Free_Energy(Temperature, Pressure, Program, wavenumbers, Coordinate_file,
-                                        Statistical_mechanics, molecules_in_coord,
-                                        Parameter_file=keyword_parameters['Parameter_file']) 
+    dG_dict['0'], U_0, Av_0 = Pr.Gibbs_Free_Energy(Temperature, Pressure, Program, wavenumbers, Coordinate_file,
+                                                   Statistical_mechanics, molecules_in_coord,
+                                                   Parameter_file=keyword_parameters['Parameter_file']) 
 
     for i in range(diag_limit):
         # Calculating the diagonals of ddG_ddeta and the vector dS_deta
@@ -758,17 +761,19 @@ def Anisotropic_Local_Gradient(Coordinate_file, Program, Temperature, Pressure, 
         for d in delta1:
             if d == 'm':
                 cm_factor = -1.0
+                out_factor = 0
             else:
                 cm_factor = 1.0
+                out_factor = 1
             Expand_Structure(Coordinate_file, Program, 'crystal_matrix', molecules_in_coord, d, min_RMS_gradient,
                              dcrystal_matrix=array_to_triangle_crystal_matrix(cm_factor*cm_array),
                              Parameter_file=keyword_parameters['Parameter_file'])
 
             wavenumber_keywords['Coordinate_file'] = d + file_ending
             wavenumbers_dict[d] = Wvn.Call_Wavenumbers(Method, min_RMS_gradient, **wavenumber_keywords)
-            dG_dict[d] = Pr.Gibbs_Free_Energy(Temperature, Pressure, Program, wavenumbers_dict[d], d + file_ending,
-                                              Statistical_mechanics, molecules_in_coord,
-                                              Parameter_file=keyword_parameters['Parameter_file'])
+            dG_dict[d], U[i, out_factor], Av[i, out_factor] = Pr.Gibbs_Free_Energy(Temperature, Pressure, Program, wavenumbers_dict[d], d + file_ending,
+                                                         Statistical_mechanics, molecules_in_coord,
+                                                         Parameter_file=keyword_parameters['Parameter_file'])
 
         # Computing the derivative of entropy as a funciton of strain using a finite difference approach
         Sp = Pr.Vibrational_Entropy(Temperature, wavenumbers_dict['p'], Statistical_mechanics) / molecules_in_coord
@@ -811,10 +816,10 @@ def Anisotropic_Local_Gradient(Coordinate_file, Program, Temperature, Pressure, 
                 for d in delta2:
                     wavenumber_keywords['Coordinate_file'] = d + file_ending
                     wavenumbers_dict[d] = Wvn.Call_Wavenumbers(Method, min_RMS_gradient,**wavenumber_keywords)
-                    dG_dict[d] = Pr.Gibbs_Free_Energy(Temperature, Pressure, Program, wavenumbers_dict[d],
+                    dG_dict[d], ignore, ignore = Pr.Gibbs_Free_Energy(Temperature, Pressure, Program, wavenumbers_dict[d],
                                                       d + file_ending, Statistical_mechanics, molecules_in_coord,
                                                       Parameter_file=keyword_parameters['Parameter_file'])
-                
+
                 # Calculating the diagonal elements of d**2 G/(deta*deta)
                 ddG_ddC[i, j] = (dG_dict['pp'] - dG_dict['pm'] - dG_dict['mp'] + dG_dict['mm']) / (4 * numerical_crystal_matrix_step[i] * numerical_crystal_matrix_step[j])
 
@@ -827,20 +832,10 @@ def Anisotropic_Local_Gradient(Coordinate_file, Program, Temperature, Pressure, 
         for d in delta1:
             os.system('rm ' + d + file_ending)
 
-    crystal_matrix_array = np.absolute(triangle_crystal_matrix_to_array(crystal_matrix))
-
-    # Do we really want to set to zero at these tolerances?
-    #print(crystal_matrix_array)
-    #for i in range(3,6):
-        #if crystal_matrix_array[i] < 1.e-02:
-        #if crystal_matrix_array[i] < 1.e-04:
-        #    for j in [k for k in range(6) if k != i]:
-        #        ddG_ddC[i, j] = 0.
-        #        ddG_ddC[j, i] = 0.
-
     # Calculating deta/dT for all strains
     dC_dT = np.linalg.lstsq(ddG_ddC, dS_dC)[0]
 
     # Saving numerical outputs
+    NO.raw_energies(np.array([U_0]), np.array([Av_0]), U, Av)
     NO.aniso_gradient(dG_dC, ddG_ddC, dS_dC, dC_dT)
     return dC_dT, wavenumbers

@@ -179,7 +179,7 @@ def CP2K_Wavenumber(coordinatefile, parameter_file, cp2kroot):
 ##########################################
 #                  Test                  #
 ##########################################
-def Test_Wavenumber(Coordinate_file, ref_crystal_matrix, function='Test3'):
+def Test_Wavenumber(Coordinate_file, ref_crystal_matrix, function='Test3', Gru=False):
     """
     This function takes a set of lattice parameters in a .npy file and returns a set of wavenumbers
     Random functions can be input here to run different tests and implimented new methods efficiently
@@ -207,10 +207,16 @@ def Test_Wavenumber(Coordinate_file, ref_crystal_matrix, function='Test3'):
         if os.path.isfile('wvn0_test.npy') and os.path.isfile('wvnChange_test.npy'):
             if np.all(ref_crystal_matrix == True):
                 strain = np.zeros(6)
-                strain[:3] = (Pr.Volume(Program='Test', Coordinate_file=Coordinate_file)/ 400.49342027)**(1./3.) - 1.
+                strain[:3] = (Pr.Volume(Program='Test', Coordinate_file=Coordinate_file)/ 400.49291723)**(1./3.) - 1.
+            elif np.all(ref_crystal_matrix == False):
+                strain = np.zeros(6)
             else:
                 new_crystal_matrix = Ex.Lattice_parameters_to_Crystal_matrix(Pr.Lattice_parameters('Test', Coordinate_file))
                 strain = Pr.RotationFree_StrainArray_from_CrystalMatrix(ref_crystal_matrix, new_crystal_matrix)
+                if Gru == True:
+                    for i in range(6):
+                        if strain[i] != max(strain):
+                            strain[i] = 0.
             wvn0 = np.load('wvn0_test.npy')
             change = np.load('wvnChange_test.npy')
             wavenumbers = np.zeros(len(wvn0))
@@ -358,13 +364,14 @@ def Setup_Anisotropic_Gruneisen(Coordinate_file, Program, strain, molecules_in_c
 
     elif Program == 'Test':
         file_ending = '.npy'
-        Wavenumber_Reference = Test_Wavenumber(Coordinate_file, True)
+        Wavenumber_Reference = Test_Wavenumber(Coordinate_file, False)
         Gruneisen = np.zeros((len(Wavenumber_Reference), 6))
+#        Gruneisen = np.load('wvnChange_test.npy')
         for i in range(6):
             applied_strain = np.zeros(6)
             applied_strain[i] = strain
             Wavenumber_expand = Test_Wavenumber(expanded_coordinates[i] + file_ending,
-                                                Ex.Lattice_parameters_to_Crystal_matrix(Pr.Test_Lattice_Parameters(Coordinate_file)))
+                                                Ex.Lattice_parameters_to_Crystal_matrix(Pr.Test_Lattice_Parameters(Coordinate_file)), Gru=True)
             Gruneisen[3:, i] = -(np.log(Wavenumber_expand[3:]) - np.log(Wavenumber_Reference[3:])) / strain
             os.system('rm ' + expanded_coordinates[i] + file_ending)
     return Gruneisen, Wavenumber_Reference
@@ -379,10 +386,11 @@ def Get_Aniso_Gruneisen_Wavenumbers(Gruneisen, Wavenumber_Reference, ref_crystal
 
     for i in np.arange(3, len(wavenumbers), 1):
         # Computing the change to each wavenumber due to the curren strain
-        hold = 0
-        for j in range(6):
-            hold = hold + -1 * applied_strain[j] * Gruneisen[i, j]
-        wavenumbers[i] = Wavenumber_Reference[i] * np.exp(hold)
+#        hold = 0
+#        for j in range(6):
+#            hold = hold + -1 * applied_strain[j] * Gruneisen[i, j]
+        wavenumbers[i] = Wavenumber_Reference[i]*np.exp(-1.*np.sum(np.dot(applied_strain, Gruneisen[i])))
+#        wavenumbers[i] = Wavenumber_Reference[i] * np.exp(hold)
     return wavenumbers
 
 ##########################################
