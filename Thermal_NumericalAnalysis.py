@@ -94,7 +94,7 @@ def Runge_Kutta_Fourth_Order(Method, Coordinate_file, Program, Temperature, Pres
             RK_grad[i], wavenumbers_hold, volume_hold = \
                 Ex.Call_Expansion(Method, 'local_gradient', Program, 'RK4' + file_ending, molecules_in_coord,
                                   min_RMS_gradient, Temperature=Temperature + temperature_steps[i], Pressure=Pressure,
-                                  volume_fraction_change=keyword_parameters['LocGrd_Vol_FracStep'],
+                                  LocGrd_dV=keyword_parameters['LocGrd_dV'],
                                   Statistical_mechanics=Statistical_mechanics,
                                   Parameter_file=keyword_parameters['Parameter_file'],
                                   Gruneisen=keyword_parameters['Gruneisen'],
@@ -105,8 +105,7 @@ def Runge_Kutta_Fourth_Order(Method, Coordinate_file, Program, Temperature, Pres
             RK_grad[i], wavenumbers_hold = \
                 Ex.Call_Expansion(Method, 'local_gradient', Program, 'RK4' + file_ending, molecules_in_coord,
                                   min_RMS_gradient, Temperature=Temperature + temperature_steps[i], Pressure=Pressure,
-                                  LocGrd_NormStrain=keyword_parameters['LocGrd_NormStrain'],
-                                  LocGrd_ShearStrain=keyword_parameters['LocGrd_ShearStrain'],
+                                  LocGrd_dC=keyword_parameters['LocGrd_dC'],
                                   Statistical_mechanics=Statistical_mechanics,
                                   Parameter_file=keyword_parameters['Parameter_file'],
                                   Gruneisen=keyword_parameters['Gruneisen'],
@@ -220,6 +219,7 @@ def Spline_Intermediate_Points(Output, Method, Program, properties, Temperature,
 
     # Setting variables for loop
     new_volume = 1.
+    new_cm_array = np.ones(6)
 
     for i in range(len(properties[:, 0]) - 1):
         # Pulling up structure to expand from
@@ -267,7 +267,8 @@ def Spline_Intermediate_Points(Output, Method, Program, properties, Temperature,
                                                    Parameter_file=keyword_parameters['Parameter_file'],
                                                    Gruneisen=keyword_parameters['Gruneisen'],
                                                    Wavenumber_Reference=keyword_parameters['Wavenumber_Reference'],
-                                                   Volume_Reference=properties[0, 6], ref_crystal_matrix=Ex.Lattice_parameters_to_Crystal_matrix(properties[0, 7:13]),
+                                                   Volume_Reference=properties[0, 6], 
+                                                   ref_crystal_matrix=Ex.Lattice_parameters_to_Crystal_matrix(properties[0, 7:13]),
                                                    New_Volume=new_volume)
 
                 # Computing the properites
@@ -444,7 +445,7 @@ def Isotropic_Stepwise_Expansion(StepWise_Vol_StepFrac, StepWise_Vol_LowerFrac, 
 #      Gradient Isotropic Expansion      #
 ##########################################
 def Isotropic_Gradient_Expansion(Coordinate_file, Program, molecules_in_coord, Output, Method, Gradient_MaxTemp,
-                                 Pressure, LocGrd_Vol_FracStep, Statistical_mechanics,
+                                 Pressure, LocGrd_dV, Statistical_mechanics,
                                  NumAnalysis_step, NumAnalysis_method, Temperature, min_RMS_gradient, **keyword_parameters):
     """
     This function calculated the isotropic gradient for thermal expansion and returns the properties along that path
@@ -471,14 +472,14 @@ def Isotropic_Gradient_Expansion(Coordinate_file, Program, molecules_in_coord, O
     # Setting file endings and determining how many wavenumbers there will be
     if Program == 'Tinker':
         file_ending = '.xyz'
-        number_of_wavenumbers = Pr.Tinker_atoms_per_molecule(Coordinate_file, 1)*3
+        number_of_wavenumbers = int(Pr.Tinker_atoms_per_molecule(Coordinate_file, 1)*3)
     elif Program == 'Test':
         file_ending = '.npy'
         number_of_wavenumbers = len(Wvn.Test_Wavenumber(Coordinate_file, True))
         keyword_parameters['Parameter_file'] = ''
     elif Program =='CP2K':
         file_ending = '.pdb'
-        number_of_wavenumbers = PR.CP2K_atoms_per_molecule(Coordinate_file, 1)*3
+        number_of_wavenumbers = int(Pr.CP2K_atoms_per_molecule(Coordinate_file, 1)*3)
     # Setting the temperature array
     temperature = np.arange(0, Gradient_MaxTemp + 1., NumAnalysis_step)
 
@@ -500,7 +501,8 @@ def Isotropic_Gradient_Expansion(Coordinate_file, Program, molecules_in_coord, O
     # Setting parameters for the Gruneisen parameter and loading in previously found wavenumbers for SiQ
     if Method == 'GiQg':
         print("   Calculating the isotropic Gruneisen parameter")
-        Gruneisen, Wavenumber_Reference, Volume_Reference = Wvn.Call_Wavenumbers(Method, min_RMS_gradient, Output=Output,
+        Gruneisen, Wavenumber_Reference, Volume_Reference = Wvn.Call_Wavenumbers(Method, min_RMS_gradient,
+                                                                                 Output=Output,
                                                                                  Coordinate_file=Coordinate_file,
                                                                                  Program=Program,
                                                                                  Gruneisen_Vol_FracStep=
@@ -508,7 +510,9 @@ def Isotropic_Gradient_Expansion(Coordinate_file, Program, molecules_in_coord, O
                                                                                      'Gruneisen_Vol_FracStep'],
                                                                                  molecules_in_coord=molecules_in_coord,
                                                                                  Parameter_file=
-                                                                                 keyword_parameters['Parameter_file'], cp2kroot=keyword_parameters['cp2kroot'])
+                                                                                 keyword_parameters['Parameter_file'],
+                                                                                 cp2kroot=
+                                                                                 keyword_parameters['cp2kroot'])
     elif Method == 'GiQ':
         Gruneisen = 0.
         Wavenumber_Reference = 0.
@@ -549,14 +553,13 @@ def Isotropic_Gradient_Expansion(Coordinate_file, Program, molecules_in_coord, O
                                              molecules_in_coord, Statistical_mechanics, NumAnalysis_step, min_RMS_gradient,
                                              Parameter_file=keyword_parameters['Parameter_file'],
                                              Gruneisen=Gruneisen, Wavenumber_Reference=Wavenumber_Reference,
-                                             Volume_Reference=Volume_Reference, LocGrd_Vol_FracStep=LocGrd_Vol_FracStep)
+                                             Volume_Reference=Volume_Reference, LocGrd_dV=LocGrd_dV)
             elif NumAnalysis_method == 'Euler':
                 NO.gradient_output(temperature[i], Program,  Output + '_' + Method + 'T' + str(temperature[i]) + file_ending)
                 volume_gradient[i, 1], wavenumbers[i, 1:], volume = \
                     Ex.Call_Expansion(Method, 'local_gradient', Program, Output + '_' + Method + 'T' +
                                       str(temperature[i]) + file_ending, molecules_in_coord, min_RMS_gradient,
-                                      Temperature=temperature[i], Pressure=Pressure,
-                                      volume_fraction_change=LocGrd_Vol_FracStep,
+                                      Temperature=temperature[i], Pressure=Pressure, LocGrd_dV=LocGrd_dV,
                                       Statistical_mechanics=Statistical_mechanics,
                                       Parameter_file=keyword_parameters['Parameter_file'],
                                       Gruneisen=Gruneisen, Wavenumber_Reference=Wavenumber_Reference,
@@ -588,8 +591,7 @@ def Isotropic_Gradient_Expansion(Coordinate_file, Program, molecules_in_coord, O
             volume_gradient[i + 1, 2], wavenumbers[i+1, 1:], volume = \
                 Ex.Call_Expansion(Method, 'local_gradient', Program, Output + '_' + Method + 'T' +
                                   str(temperature[i + 1]) + file_ending, molecules_in_coord, min_RMS_gradient,
-                                  Temperature=temperature[i + 1], Pressure=Pressure,
-                                  volume_fraction_change=LocGrd_Vol_FracStep,
+                                  Temperature=temperature[i + 1], Pressure=Pressure, LocGrd_dV=LocGrd_dV,
                                   Statistical_mechanics=Statistical_mechanics,
                                   Parameter_file=keyword_parameters['Parameter_file'],
                                   Gruneisen=Gruneisen, Wavenumber_Reference=Wavenumber_Reference,
@@ -617,10 +619,8 @@ def Isotropic_Gradient_Expansion(Coordinate_file, Program, molecules_in_coord, O
 #     Gradient Anisotropic Expansion Due to Strain     #
 ########################################################
 def Anisotropic_Gradient_Expansion(Coordinate_file, Program, molecules_in_coord, Output, Method, Gradient_MaxTemp,
-                                   Pressure, LocGrd_NormStrain, LocGrd_ShearStrain, Statistical_mechanics,
-                                   NumAnalysis_step, NumAnalysis_method, Aniso_LocGrad_Type, Temperature,
-                                   min_RMS_gradient,
-                                   **keyword_parameters):
+                                   Pressure, LocGrd_dC, Statistical_mechanics, NumAnalysis_step, NumAnalysis_method, 
+                                   Aniso_LocGrad_Type, Temperature, min_RMS_gradient, **keyword_parameters):
     """
     This function calculated the anisotropic gradient for thermal expansion and returns the properties along that path
     :param Coordinate_file: file containing the lattice parameters (and coordinates)
@@ -725,8 +725,7 @@ def Anisotropic_Gradient_Expansion(Coordinate_file, Program, molecules_in_coord,
                                                  file_ending, Program, temperature[i], Pressure,
                                                  molecules_in_coord, Statistical_mechanics, NumAnalysis_step,
                                                  min_RMS_gradient, Parameter_file=keyword_parameters['Parameter_file'],
-                                                 LocGrd_NormStrain=LocGrd_NormStrain,
-                                                 LocGrd_ShearStrain=LocGrd_ShearStrain,
+                                                 LocGrd_dC=LocGrd_dC,
                                                  Aniso_LocGrad_Type=Aniso_LocGrad_Type, Gruneisen=Gruneisen,
                                                  Wavenumber_Reference=Wavenumber_Reference,
                                                  ref_crystal_matrix=ref_crystal_matrix)
@@ -737,8 +736,7 @@ def Anisotropic_Gradient_Expansion(Coordinate_file, Program, molecules_in_coord,
                         Ex.Call_Expansion(Method, 'local_gradient', Program,
                                           Output + '_' + Method + 'T' + str(temperature[i]) + file_ending,
                                           molecules_in_coord, min_RMS_gradient, Temperature=temperature[i],
-                                          Pressure=Pressure, LocGrd_NormStrain=LocGrd_NormStrain,
-                                          LocGrd_ShearStrain=LocGrd_ShearStrain,
+                                          Pressure=Pressure, LocGrd_dC=LocGrd_dC,
                                           Statistical_mechanics=Statistical_mechanics,
                                           Parameter_file=keyword_parameters['Parameter_file'], Gruneisen=Gruneisen,
                                           Wavenumber_Reference=Wavenumber_Reference,
@@ -794,7 +792,7 @@ def Anisotropic_Gradient_Expansion(Coordinate_file, Program, molecules_in_coord,
                     Ex.Call_Expansion(Method, 'local_gradient', Program, Output + '_' + Method + 'T' +
                                       str(temperature[i + 1]) + file_ending, molecules_in_coord, min_RMS_gradient,
                                       Temperature=temperature[i + 1], Pressure=Pressure,
-                                      LocGrd_NormStrain=LocGrd_NormStrain, LocGrd_ShearStrain=LocGrd_ShearStrain,
+                                      LocGrd_dC=LocGrd_dC,
                                       Statistical_mechanics=Statistical_mechanics,
                                       Parameter_file=keyword_parameters['Parameter_file'], Gruneisen=Gruneisen,
                                       Wavenumber_Reference=Wavenumber_Reference, ref_crystal_matrix=ref_crystal_matrix,

@@ -83,11 +83,12 @@ NumAnalysis_step = 150.0
 
 ## Local gradient presets
 # These options are tuned best for a wide array of options
+# Remove these variables if you want the code to pre-set these for you
 # Isotropic volume fraction change
 LocGrd_Vol_FracStep = 1.5e-03
-# Anisotropic fractional changes in the diagonal and off-diagonal elements of the cyrstal tensor
-LocGrd_Diag_FracStep = 2.0e-03
-LocGrd_OffDiag_FracStep = 1.0e-03
+# Anisotropic fractional changes in the diagonal (C_i; i=1,2,3) and off-diagonal(C_i; i=4,5,6) elements of the cyrstal tensor
+#                       = dC1,dC2,dC3,dC4,dC5,dC6
+LocGrd_CMatrix_FracStep = False
 
 ### Stepwise options ###
 # Stepwise thermal expansion is only set up for isotropic expansion
@@ -112,10 +113,11 @@ Wavenum_Tol = -1.0
 ### Maximum temperature for gradient method
 Gradient_MaxTemp = 300.0
 
-### Number of Hessians for anistropic local gradient
+### Type of anisotropic expansion
 # Option - Description
-# 73   - Compute every vibrational spectra for local gradient
-# 25   - For d**2G/dUdU compute vibrational spectra for the diagonal and the off diagonals for the upper left 3x3
+# 1D - NOT YET AN OPTION!
+# 3D - Only considers the diagonals of the crystal matrix tensor
+# 6D - Performs full anisotropic expansion
 # matrix
 Aniso_LocGrad_Type = 73
 

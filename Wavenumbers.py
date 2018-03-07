@@ -400,7 +400,7 @@ def Tinker_Gru_organized_wavenumbers(Expansion_type, Coordinate_file, Expanded_C
     from munkres import Munkres, print_matrix
     m = Munkres()
 
-    number_of_modes = 3*Pr.Tinker_atoms_per_molecule(Coordinate_file, 1)
+    number_of_modes = int(3*Pr.Tinker_atoms_per_molecule(Coordinate_file, 1))
 
     if Expansion_type == 'Isotropic':
         wavenumbers = np.zeros((2, number_of_modes))
@@ -494,12 +494,12 @@ def Tinker_Wavenumber_and_Vectors(Coordinate_file, Parameter_file):
     # Hessian and mass-weighted Hessian
     os.system('cp ' + Coordinate_file + ' vector_temp.xyz')
     output = subprocess.check_output("vibrate vector_temp.xyz -k %s  A |  grep -oP '[-+]*[0-9]*\.[0-9]{2,9}'"
-                                                          % (Parameter_file), shell=True)
+                                                          % (Parameter_file), shell=True).decode("utf-8")
 
     os.system('rm vector_temp.*')
 
     # Finding the number modes in the system
-    number_of_modes = 3*Pr.Tinker_atoms_per_molecule(Coordinate_file, 1)
+    number_of_modes = int(3*Pr.Tinker_atoms_per_molecule(Coordinate_file, 1))
 
     # Splitting the outputs into array form
     output = output.split('\n')

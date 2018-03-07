@@ -28,7 +28,7 @@ def U_PV(lp):
 def run_minimization(X0):
     return scipy.optimize.minimize(U_PV, X0, method='CG', tol=1.e-16)
 
-for i in range(5):
+for i in range(10):
     minimization_output = run_minimization(x0)
     x0 = minimization_output.x
     

@@ -11,6 +11,7 @@ parser.add_option('-V', dest = 'volume', help = '<output>_V<StatMech>_<Method>.n
 parser.add_option('-G', dest = 'Gibbs', help = '<output>_G<StatMech>_<Method>.npy files containing gibbs free energy', default = '')
 parser.add_option('-T', dest = 'temperature', help = '<output>_T_<Method>.npy file containing temperature array', default = '')
 parser.add_option('-l', dest = 'Labels', help = 'list of label names for input files', default = '')
+parser.add_option('-U', dest = 'potential_energy', help = '<output>_U<StatMech>_<Method>.npy file containing potential energy array', default = '')
 
 (options, args) = parser.parse_args()
 lattice_parameters = (options.lattice_parameters).split(',')
@@ -18,6 +19,7 @@ volume = (options.volume).split(',')
 Gibbs = (options.Gibbs).split(',')
 temperature = (options.temperature).split(',')
 Labels = (options.Labels).split(',')
+potential_energy = (options.potential_energy).split(',')
 
 
 if (Labels == '') and (len(temperature) >= 2):
@@ -53,7 +55,7 @@ if (lattice_parameters[0] != '') and (len(lattice_parameters) == len(temperature
 
 # Plotting Gibbs free energy difference
 if (Gibbs[0] != '') and (len(Gibbs) == len(temperature)):
-    Gibbs_reference = np.load(Gibbs[0])/2
+    Gibbs_reference = np.load(Gibbs[0])
     temperature_reference = np.load(temperature[0])
     for i in np.arange(1, len(Gibbs)):
         if len(np.load(temperature[i])) == len(temperature_reference):
@@ -83,6 +85,17 @@ if (volume[0] != '') and (len(volume) == len(temperature)):
     plt.xlabel('Temperature [K]', fontsize=18)
     plt.legend(loc='upper left', fontsize=18)
     plt.show()
+
+# Plotting potential energy
+if (potential_energy[0] != '') and (len(potential_energy) == len(temperature)):
+    for i in range(len(potential_energy)):
+        plt.plot(np.load(temperature[i]), np.load(potential_energy[i]), c=color[i], linestyle=line_style[i], label=Labels[i])
+    plt.ylabel('Potential Energy [kcal/mol]', fontsize=18)
+    plt.xlabel('Temperature [K]', fontsize=18)
+    plt.legend(loc='upper left', fontsize=18)
+    plt.tight_layout()
+    plt.show()
+
 
 
 

@@ -20,13 +20,13 @@ molecules_in_coord = 4
 min_RMS_gradient = 0.00001
 Output = 'out'
 
-n_samples = 100
+n_samples = 200
 
 file_ending = Ex.assign_file_ending(Program)
 
 
 lattice_parameters = Pr.Lattice_parameters(Program, Coordinate_file)
-fractional_change = np.random.normal(0., 0.05, (n_samples,6))
+fractional_change = np.random.normal(0., 0.02, (n_samples,6))
 
 dlattice_parameters = (fractional_change * lattice_parameters)
 

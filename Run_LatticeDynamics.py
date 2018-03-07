@@ -9,17 +9,16 @@ import ThermodynamicProperties as Pr
 import Wavenumbers as Wvn
 import Thermal_NumericalAnalysis as TNA
 import Expand as Ex
+import System_sensativity as Ss
 
 def Temperature_Lattice_Dynamics(Temperature=[0.,300.], Pressure=1., Method='HA', Program='Test',
                                  Output='out', Coordinate_file='test.npy', Parameter_file='keyfile.key',
                                  molecules_in_coord=1, properties_to_save=['G', 'T', 'V'], NumAnalysis_method='RK4',
-                                 NumAnalysis_step=300.0, LocGrd_Vol_FracStep=1.5e-03, LocGrd_Diag_FracStep=1e-03,
-                                 LocGrd_OffDiag_FracStep=5e-04, StepWise_Vol_StepFrac=1e-3,
-                                 StepWise_Vol_LowerFrac=0.97, StepWise_Vol_UpperFrac=1.16,
+                                 NumAnalysis_step=300.0, LocGrd_Vol_FracStep=0., LocGrd_CMatrix_FracStep=0.,
+                                 StepWise_Vol_StepFrac=1e-3, StepWise_Vol_LowerFrac=0.97, StepWise_Vol_UpperFrac=1.16,
                                  Statistical_mechanics='Classical', Gruneisen_Vol_FracStep=1.5e-3, 
                                  Gruneisen_Lat_FracStep=1.e-3, Wavenum_Tol=-1., Gradient_MaxTemp=300.0, 
                                  Aniso_LocGrad_Type='73', min_RMS_gradient=0.0001, cp2kroot='BNZ_NMA_p3'):
-
     Temperature = np.array(Temperature).astype(float)
     if Method == 'HA':
         print("Performing Harmonic Approximation")
@@ -63,10 +62,16 @@ def Temperature_Lattice_Dynamics(Temperature=[0.,300.], Pressure=1., Method='HA'
         print("Stepwise Isotropic Quasi-Harmonic Approximation is complete!")
 
     if (Method == 'GiQ') or (Method == 'GiQg'):
+        if LocGrd_Vol_FracStep == 0.:
+            LocGrd_dV = Ss.isotropic_gradient_settings(Coordinate_file, Program, Parameter_file, molecules_in_coord,
+                                                       min_RMS_gradient, Output)
+        else:
+            V_0 = Pr.Volume(Program=Program, Coordinate_file=Coordinate_file)
+            LocGrd_dV = LocGrd_Vol_FracStep * V_0
         # Gradient Isotropic QHA
         print("Performing Gradient Isotropic Quasi-Harmonic Approximation")
         properties = TNA.Isotropic_Gradient_Expansion(Coordinate_file, Program, molecules_in_coord, Output, Method,
-                                                      Gradient_MaxTemp, Pressure, LocGrd_Vol_FracStep,
+                                                      Gradient_MaxTemp, Pressure, LocGrd_dV,
                                                       Statistical_mechanics, NumAnalysis_step, NumAnalysis_method,
                                                       Temperature, min_RMS_gradient,
                                                       Parameter_file=Parameter_file,
@@ -77,10 +82,16 @@ def Temperature_Lattice_Dynamics(Temperature=[0.,300.], Pressure=1., Method='HA'
         print("Gradient Isotropic Quasi-Harmonic Approximation is complete!")
 
     if (Method == 'GaQ') or (Method == 'GaQg'):
+        if any(LocGrd_CMatrix_FracStep != 0.):
+            crystal_matrix_array = Ex.triangle_crystal_matrix_to_array(Ex.Lattice_parameters_to_Crystal_matrix(Pr.Lattice_parameters(Program, Coordinate_file)))
+            LocGrd_dC = np.absolute(LocGrd_CMatrix_FracStep * crystal_matrix_array)
+        else:
+            LocGrd_dC = Ss.anisotropic_gradient_settings(Coordinate_file, Program, Parameter_file, molecules_in_coord,
+                                                         min_RMS_gradient, Output)
         print("Performing Gradient Anisotropic Quasi-Harmonic Approximation")
         properties = TNA.Anisotropic_Gradient_Expansion(Coordinate_file, Program, molecules_in_coord, Output, Method,
-                                                        Gradient_MaxTemp, Pressure, LocGrd_Diag_FracStep,
-                                                        LocGrd_OffDiag_FracStep, Statistical_mechanics, NumAnalysis_step,
+                                                        Gradient_MaxTemp, Pressure, LocGrd_dC,
+                                                        Statistical_mechanics, NumAnalysis_step,
                                                         NumAnalysis_method, Aniso_LocGrad_Type, Temperature,
                                                         min_RMS_gradient, Gruneisen_Lat_FracStep=Gruneisen_Lat_FracStep, 
                                                         Parameter_file=Parameter_file, cp2kroot=cp2kroot)
@@ -349,21 +360,14 @@ if __name__ == '__main__':
                                                                                        " | grep = ", shell=True).decode("utf-8")
         LocGrd_Vol_FracStep = float(LocGrd_Vol_FracStep.split('=')[1].strip())
     except subprocess.CalledProcessError as grepexc:
-        LocGrd_Vol_FracStep = 3e-02
+        LocGrd_Vol_FracStep = 0.
 
     try:
-        LocGrd_Diag_FracStep = subprocess.check_output("less " + str(args.Input_file) + " | grep LocGrd_Diag_FracStep"
+        LocGrd_CMatrix_FracStep = subprocess.check_output("less " + str(args.Input_file) + " | grep LocGrd_CMatrix_FracStep"
                                                                                      " | grep = ", shell=True).decode("utf-8")
-        LocGrd_Diag_FracStep = float(LocGrd_Diag_FracStep.split('=')[1].strip())
+        LocGrd_CMatrix_FracStep = np.array(LocGrd_CMatrix_FracStep.split('=')[1].strip().split(',')).astype(float)
     except subprocess.CalledProcessError as grepexc:
-        LocGrd_Diag_FracStep = 2.5e-03
-
-    try:
-        LocGrd_OffDiag_FracStep = subprocess.check_output("less " + str(args.Input_file) + " | grep LocGrd_OffDiag_FracStep"
-                                                                                      " | grep = ", shell=True).decode("utf-8")
-        LocGrd_OffDiag_FracStep = float(LocGrd_OffDiag_FracStep.split('=')[1].strip())
-    except subprocess.CalledProcessError as grepexc:
-        LocGrd_OffDiag_FracStep = 1e-03
+        LocGrd_CMatrix_FracStep = np.zeros(6)
 
     try:
         StepWise_Vol_StepFrac = subprocess.check_output("less " + str(args.Input_file) + " | grep StepWise_Vol_StepFrac"
@@ -451,8 +455,7 @@ if __name__ == '__main__':
                                      NumAnalysis_method=NumAnalysis_method,
                                      NumAnalysis_step=NumAnalysis_step,
                                      LocGrd_Vol_FracStep=LocGrd_Vol_FracStep,
-                                     LocGrd_Diag_FracStep=LocGrd_Diag_FracStep,
-                                     LocGrd_OffDiag_FracStep=LocGrd_OffDiag_FracStep,
+                                     LocGrd_CMatrix_FracStep=LocGrd_CMatrix_FracStep,
                                      StepWise_Vol_StepFrac=StepWise_Vol_StepFrac,
                                      StepWise_Vol_LowerFrac=StepWise_Vol_LowerFrac,
                                      StepWise_Vol_UpperFrac=StepWise_Vol_UpperFrac,
@@ -482,8 +485,7 @@ if __name__ == '__main__':
                            NumAnalysis_method=NumAnalysis_method,
                            NumAnalysis_step=NumAnalysis_step,
                            LocGrd_Vol_FracStep=LocGrd_Vol_FracStep,
-                           LocGrd_Diag_FracStep=LocGrd_Diag_FracStep,
-                           LocGrd_OffDiag_FracStep=LocGrd_OffDiag_FracStep,
+                           LocGrd_CMatrix_FracStep=LocGrd_CMatrix_FracStep,
                            StepWise_Vol_StepFrac=StepWise_Vol_StepFrac,
                            StepWise_Vol_LowerFrac=StepWise_Vol_LowerFrac,
                            StepWise_Vol_UpperFrac=StepWise_Vol_UpperFrac,
