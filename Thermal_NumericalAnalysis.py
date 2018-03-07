@@ -322,7 +322,7 @@ def Isotropic_Stepwise_Expansion(StepWise_Vol_StepFrac, StepWise_Vol_LowerFrac, 
     # Setting file endings and determining how many wavenumbers there will be
     if Program == 'Tinker':
         file_ending = '.xyz'
-        number_of_wavenumbers = Pr.Tinker_atoms_per_molecule(Coordinate_file, 1)*3
+        number_of_wavenumbers = int(Pr.Tinker_atoms_per_molecule(Coordinate_file, 1)*3)
     elif Program == 'Test':
         file_ending = '.npy'
         number_of_wavenumbers = len(Wvn.Test_Wavenumber(Coordinate_file, True))
