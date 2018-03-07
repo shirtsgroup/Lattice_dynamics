@@ -48,6 +48,8 @@ def Call_Wavenumbers(Method, min_RMS_gradient, **keyword_parameters):
         # Directly computing the wavenumbers for a specific program, given a coordinate file
         if keyword_parameters['Program'] == 'Tinker':
             wavenumbers = Tinker_Wavenumber(keyword_parameters['Coordinate_file'], keyword_parameters['Parameter_file'])
+	if keyword_parameters['Program'] == 'Tinker':
+	    wavenumbers = CP2K_Wavenumber(keyword_parameters['Coordinate_file'], keyword_parameters['Parameter_file'])
         elif keyword_parameters['Program'] == 'Test':
             if Method == 'GaQ':
                 wavenumbers = Test_Wavenumber(keyword_parameters['Coordinate_file'],
@@ -163,14 +165,33 @@ def Tinker_Wavenumber(Coordinate_file, Parameter_file):
 ##########################################
 
 def CP2K_Wavenumber(coordinatefile, parameter_file, cp2kroot):
-    wavenumbers = np.zeros((3,))
-    wavenumfile = open(cp2kroot+'-VIBRATIONS-1.mol','r')
-    lines = wavenumfile.readlines()
-    iter = 2
-    while '[FR-COORD]' not in lines[iter]:
-        wave = lines[iter].split()
-        wavenumbers = np.append(wavenumbers, float(wave[0]))
-        iter = iter+1
+    if cp2kroot.find('benzene') >= 0:
+        molecule='benzene'
+    elif cp2kroot.find('pyrzin') >=0:
+        molecule='pyrzin'
+    elif cp2kroot.find('resora') >=0:
+        molecule='resora'
+    else:
+        molecule='qopbed'
+    if cp2kroot.find('p1') >=0:
+        polynum='p1'
+    elif cp2kroot.find('p2') >=0:
+        polynum='p2'
+    elif cp2kroot.find('p3') >=0:
+        polynum='p3'
+    else:
+        polynum='p4'
+    subprocess.call("setup_wavenumber", "-m",molecule,"-n",polynum,"-ty","nma")
+    subprocess.call("sbatch", "submit_cluster.slurm" )
+    
+    #wavenumbers = np.zeros((3,))
+    #wavenumfile = open(cp2kroot+'-VIBRATIONS-1.mol','r')
+    #lines = wavenumfile.readlines()
+    #iter = 2
+    #while '[FR-COORD]' not in lines[iter]:
+    #    wave = lines[iter].split()
+    #    wavenumbers = np.append(wavenumbers, float(wave[0]))
+    #	iter = iter+1
     return wavenumbers
 
 	 

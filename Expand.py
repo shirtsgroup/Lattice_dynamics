@@ -415,6 +415,8 @@ def Isotropic_Change_Lattice_Parameters(volume_fraction_change, Program, Coordin
         lattice_parameters = Pr.Tinker_Lattice_Parameters(Coordinate_file)
     elif Program == 'Test':
         lattice_parameters = Pr.Test_Lattice_Parameters(Coordinate_file)
+    elif Program == 'CP2K':
+        lattice_parameters = Pr.CP2K_Lattice_Parameters(Coordinate_file)
 
     # Calculating the new isotropic lattice parameters
     dlattice_parameters = lattice_parameters*volume_fraction_change**(1/3.) - lattice_parameters
@@ -488,6 +490,9 @@ def Expand_Structure(Coordinate_file, Program, Expansion_type, molecules_in_coor
         if Program == 'Tinker':
             coordinates = Return_Tinker_Coordinates(Coordinate_file)
             lattice_parameters = Pr.Tinker_Lattice_Parameters(Coordinate_file)
+	      elif Program == 'CP2K':
+	          coordinates = Return_Tinker_Coordinates(Coordinate_file)
+	          lattice_parameters = Pr.CP2K_Lattice_Parameters(Coordinate_file)
 
         crystal_matrix = Lattice_parameters_to_Crystal_matrix(lattice_parameters)
 
@@ -520,6 +525,9 @@ def Expand_Structure(Coordinate_file, Program, Expansion_type, molecules_in_coor
 
         if Program == 'Tinker':
             Output_Tinker_New_Coordinate_File(Coordinate_file, keyword_parameters['Parameter_file'], coordinates,
+                                              lattice_parameters, Output, min_RMS_gradient)
+        elif Program == 'CP2K':
+            Output_CP2K_New_Coordinate_File(Coordinate_file, keyword_parameters['Parameter_file'], coordinates,
                                               lattice_parameters, Output, min_RMS_gradient)
 
 ###################################################
@@ -557,6 +565,9 @@ def Isotropic_Local_Gradient(Coordinate_file, Program, Temperature, Pressure, Lo
         coordinate_plus = 'plus.npy'
         coordinate_minus = 'minus.npy'
         keyword_parameters['Parameter_file'] = ''
+    elif Program == 'CP2K':
+        coordinate_plus = 'plus.pdb'
+        coordinate_minus = 'minus.pdb'
 
     # Determining the volume of Coordinate_file
     volume = Pr.Volume(Program=Program, Coordinate_file=Coordinate_file)
