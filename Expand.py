@@ -490,9 +490,9 @@ def Expand_Structure(Coordinate_file, Program, Expansion_type, molecules_in_coor
         if Program == 'Tinker':
             coordinates = Return_Tinker_Coordinates(Coordinate_file)
             lattice_parameters = Pr.Tinker_Lattice_Parameters(Coordinate_file)
-	      elif Program == 'CP2K':
-	          coordinates = Return_Tinker_Coordinates(Coordinate_file)
-	          lattice_parameters = Pr.CP2K_Lattice_Parameters(Coordinate_file)
+        elif Program == 'CP2K':
+            coordinates = Return_Tinker_Coordinates(Coordinate_file)
+            lattice_parameters = Pr.CP2K_Lattice_Parameters(Coordinate_file)
 
         crystal_matrix = Lattice_parameters_to_Crystal_matrix(lattice_parameters)
 
