@@ -48,8 +48,8 @@ def Call_Wavenumbers(Method, min_RMS_gradient, **keyword_parameters):
         # Directly computing the wavenumbers for a specific program, given a coordinate file
         if keyword_parameters['Program'] == 'Tinker':
             wavenumbers = Tinker_Wavenumber(keyword_parameters['Coordinate_file'], keyword_parameters['Parameter_file'])
-	if keyword_parameters['Program'] == 'Tinker':
-	    wavenumbers = CP2K_Wavenumber(keyword_parameters['Coordinate_file'], keyword_parameters['Parameter_file'])
+        if keyword_parameters['Program'] == 'Tinker':
+            wavenumbers = CP2K_Wavenumber(keyword_parameters['Coordinate_file'], keyword_parameters['Parameter_file'])
         elif keyword_parameters['Program'] == 'Test':
             if Method == 'GaQ':
                 wavenumbers = Test_Wavenumber(keyword_parameters['Coordinate_file'],
