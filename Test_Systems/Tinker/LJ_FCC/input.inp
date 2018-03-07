@@ -1,0 +1,126 @@
+##Input file
+
+### General Inputs ###
+## Temperature
+# Import numpy array of temperatures
+Temperature = 0.,10.,20.,30.,40.,50.,60.,70.
+
+## Pressure
+# Only set up for single pressure values
+Pressure = 1.
+
+## Method
+# Only one method is accepted currently
+# Option - Description:
+# HA   - Harmonic approximation
+# SiQ  - Stepwise isotropic quasi-harmonic approximation
+# SiQg - Stepwise isotropic quasi-harmonic approximation with Gruneisen parameter
+# GiQ  - Gradient isotropic quasi-harmonic approximation
+# GiQg - Gradient isotropic quasi-harmonic approximation with Gruneisen parameter
+# GaQ  - Gradient anisotropic quasi-harmonic approximation
+# GaQg - Gradient anisotropic quasi-harmonic approximation with Gruneisen parameter
+Method = GaQg
+
+## Output
+# Output name for files
+# Example: out would output Gibbs energy as out_G.npy
+Output = out
+
+## Program
+# Program for minimization and vibrational spectra calculation
+# Option - Description:
+# Tinker - Tinker Molecular Modeling Package
+# Test - Input functions in *.py to determine thermal expansion landscape and *.py to determine changes in wavenumber
+# CP2K - CP2K Quantum mechanical package
+Program = Tinker
+
+## Statistical mechanics
+# Option - Description
+# Classical - Classical
+# Quantum - Quantum
+Statistical_mechanics = Classical
+
+## Structure
+# Coordinate file
+Coordinate_file = molecule.xyz
+
+## Molecular parameters
+# Input file for particular program
+Parameter_file = keyfile.key
+
+## Root for cp2k files
+cp2kroot = BNZ_NMA_p1
+
+## Nuber of molecules
+#****I want to eventually replace this with a program specific code to look at connectivity
+molecules_in_coord = 96
+
+## Properties
+# Properties to output in individual files
+# An <out>_raw.npy file will be output for all properties
+#****Eventually make a program to take the <out>_raw.npy file and re-output other properties not taken from initial run
+# Options - Description
+# G - Gibbs free energy [kcal/mol]
+# S - Entropy [kcal/(mol*T)]
+# T - Temperature [K]
+# P - Pressure [atm]
+# Av - Helmholtz vibrational energy [kcal/mol]
+# V - Volume [Ang.^3]
+# h - Lattice parameters [Ang., Ang., Ang., Deg., Deg., Deg.]
+# U - Potential energy [kcal/mol]
+properties_to_save = G,h,V,T
+
+### Gradient options ###
+## Numerical analysis for thermal expansion
+# Option - Description
+# Euler - Ueses Euler method
+# RK4   - Runge-kutta 4th order
+NumAnalysis_method = RK4
+
+## Stepsize numerical analysis
+# Right now only temperature is the only input option
+NumAnalysis_step = 70.
+
+## Local gradient presets
+# These options are tuned best for a wide array of options
+# Remove these variables if you want the code to pre-set these for you
+# Isotropic volume fraction change
+LocGrd_Vol_FracStep = 1.5e-03
+# Anisotropic fractional changes in the diagonal (C_i; i=1,2,3) and off-diagonal(C_i; i=4,5,6) elements of the cyrstal tensor
+#                       = dC1,dC2,dC3,dC4,dC5,dC6
+LocGrd_CMatrix_FracStep
+
+### Stepwise options ###
+# Stepwise thermal expansion is only set up for isotropic expansion
+# It is far too expansive to run anistropic expansion stepwise
+# Volume fraction stepsize
+StepWise_Vol_StepFrac = 5.e-3
+# Volume fraction lowerbound
+StepWise_Vol_LowerFrac = 0.99
+# Volume fraction upperbound
+StepWise_Vol_UpperFrac = 1.01
+
+### Gruneisen options ###
+# Volume fraction gruneisen change
+Gruneisen_Vol_FracStep = 1.5e-3
+# Lattice Parameter fraction Gruneisen Change
+Gruneisen_Lat_FracStep = 1.5e-03
+ 
+
+### Wavenumber tolerance
+Wavenum_Tol = -1.0
+
+### Maximum temperature for gradient method
+Gradient_MaxTemp = 70.
+
+### Type of anisotropic expansion
+# Option - Description
+# 1D - NOT YET AN OPTION!
+# 3D - Only considers the diagonals of the crystal matrix tensor
+# 6D - Performs full anisotropic expansion
+# matrix
+Aniso_LocGrad_Type = 73
+
+# Gradient for minimization
+min_RMS_gradient = 0.0001
+
