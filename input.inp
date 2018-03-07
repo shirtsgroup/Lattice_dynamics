@@ -88,7 +88,7 @@ NumAnalysis_step = 150.0
 LocGrd_Vol_FracStep = 1.5e-03
 # Anisotropic fractional changes in the diagonal (C_i; i=1,2,3) and off-diagonal(C_i; i=4,5,6) elements of the cyrstal tensor
 #                       = dC1,dC2,dC3,dC4,dC5,dC6
-LocGrd_CMatrix_FracStep = False
+LocGrd_CMatrix_FracStep = 0.1,0.1,0.1,0.,0.,0.
 
 ### Stepwise options ###
 # Stepwise thermal expansion is only set up for isotropic expansion
