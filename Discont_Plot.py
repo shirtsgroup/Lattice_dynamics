@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 #Note: To specify a temperature use the -T flag followed by the tempearture to plot at
 #Note: To plot a second coordinate file, use the -S and specify the path to the new coordinate folder.
-
+#Now can do 3 
 
 import numpy as np
 import matplotlib.pyplot as plt
