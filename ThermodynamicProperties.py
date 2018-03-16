@@ -372,6 +372,9 @@ def RotationFree_StrainArray_from_CrystalMatrix(ref_crystal_matrix, new_crystal_
     eta = 0.5*(U + U.T) - np.identity(3)
     eta = np.array([eta[0, 0], eta[1, 1], eta[2, 2],
                     eta[0, 1], eta[0, 2], eta[1, 2]])
+    for i in range(6):
+        if np.absolute(eta[i]) < 1e-10:
+            eta[i] = 0.
     return eta
 
 

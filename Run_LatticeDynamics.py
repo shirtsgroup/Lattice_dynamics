@@ -18,7 +18,7 @@ def Temperature_Lattice_Dynamics(Temperature=[0.,300.], Pressure=1., Method='HA'
                                  StepWise_Vol_StepFrac=1e-3, StepWise_Vol_LowerFrac=0.97, StepWise_Vol_UpperFrac=1.16,
                                  Statistical_mechanics='Classical', Gruneisen_Vol_FracStep=1.5e-3, 
                                  Gruneisen_Lat_FracStep=1.e-3, Wavenum_Tol=-1., Gradient_MaxTemp=300.0, 
-                                 Aniso_LocGrad_Type='73', min_RMS_gradient=0.0001, cp2kroot='BNZ_NMA_p3'):
+                                 Aniso_LocGrad_Type='6D', min_RMS_gradient=0.0001, cp2kroot='BNZ_NMA_p3'):
     Temperature = np.array(Temperature).astype(float)
     if Method == 'HA':
         print("Performing Harmonic Approximation")
@@ -61,7 +61,7 @@ def Temperature_Lattice_Dynamics(Temperature=[0.,300.], Pressure=1., Method='HA'
         Pr.Save_Properties(properties, properties_to_save, Output, Method, Statistical_mechanics)
         print("Stepwise Isotropic Quasi-Harmonic Approximation is complete!")
 
-    if (Method == 'GiQ') or (Method == 'GiQg'):
+    elif (Method == 'GiQ') or (Method == 'GiQg'):
         if LocGrd_Vol_FracStep == 0.:
             LocGrd_dV = Ss.isotropic_gradient_settings(Coordinate_file, Program, Parameter_file, molecules_in_coord,
                                                        min_RMS_gradient, Output)
@@ -81,7 +81,7 @@ def Temperature_Lattice_Dynamics(Temperature=[0.,300.], Pressure=1., Method='HA'
         Pr.Save_Properties(properties, properties_to_save, Output, Method, Statistical_mechanics)
         print("Gradient Isotropic Quasi-Harmonic Approximation is complete!")
 
-    if (Method == 'GaQ') or (Method == 'GaQg'):
+    elif ((Method == 'GaQ') or (Method == 'GaQg')) and (Aniso_LocGrad_Type != '1D'):
         if any(LocGrd_CMatrix_FracStep != 0.):
             crystal_matrix_array = Ex.triangle_crystal_matrix_to_array(Ex.Lattice_parameters_to_Crystal_matrix(Pr.Lattice_parameters(Program, Coordinate_file)))
             LocGrd_dC = np.absolute(LocGrd_CMatrix_FracStep * crystal_matrix_array)
@@ -99,6 +99,24 @@ def Temperature_Lattice_Dynamics(Temperature=[0.,300.], Pressure=1., Method='HA'
         Pr.Save_Properties(properties, properties_to_save, Output, Method, Statistical_mechanics)
         print("Gradient Anisotropic Quasi-Harmonic Approximation is complete!")
 
+    elif (Method == 'GaQ') or (Method == 'GaQg') and (Aniso_LocGrad_Type == '1D'):
+        if any(LocGrd_CMatrix_FracStep != 0.):
+            crystal_matrix_array = Ex.triangle_crystal_matrix_to_array(Ex.Lattice_parameters_to_Crystal_matrix(Pr.Lattice_parameters(Program, Coordinate_file)))
+            LocGrd_dC = np.absolute(LocGrd_CMatrix_FracStep * crystal_matrix_array)
+        else:
+            LocGrd_dC = Ss.anisotropic_gradient_settings(Coordinate_file, Program, Parameter_file, molecules_in_coord,
+                                                         min_RMS_gradient, Output)
+        print("Performing 1D-Gradient Anisotropic Quasi-Harmonic Approximation")
+        properties = TNA.Anisotropic_Gradient_Expansion_1D(Coordinate_file, Program, molecules_in_coord, Output, Method,
+                                                           Gradient_MaxTemp, Pressure, LocGrd_dC,
+                                                           Statistical_mechanics, NumAnalysis_step,
+                                                           NumAnalysis_method, Aniso_LocGrad_Type, Temperature,
+                                                           min_RMS_gradient, Gruneisen_Lat_FracStep=Gruneisen_Lat_FracStep,
+                                                           Parameter_file=Parameter_file, cp2kroot=cp2kroot)
+        print("   Saving user specified properties in indipendent files:")
+        Pr.Save_Properties(properties, properties_to_save, Output, Method, Statistical_mechanics)
+        print("Gradient Anisotropic Quasi-Harmonic Approximation is complete!")
+
 
 def Pressure_setup(Temperature=[0.0, 25.0, 50.0, 75.0, 100.0], Pressure=1., Method='HA', Program='Test',
                    Output='out', Coordinate_file='molecule.xyz', Parameter_file='keyfile.key',
@@ -110,7 +128,7 @@ def Pressure_setup(Temperature=[0.0, 25.0, 50.0, 75.0, 100.0], Pressure=1., Meth
                    StepWise_Vol_LowerFrac=0.97, StepWise_Vol_UpperFrac=1.16,
                    Statistical_mechanics='Classical', Gruneisen_Vol_FracStep=1.5e-3,
                    Gruneisen_Lat_FracStep=1.0e-3, Wavenum_Tol=-1., Gradient_MaxTemp=300.0,
-                   Aniso_LocGrad_Type='73', min_RMS_gradient=0.01):
+                   Aniso_LocGrad_Type='6D', min_RMS_gradient=0.01):
 
     if Program == 'Tinker':
         file_ending = '.xyz'
@@ -425,9 +443,9 @@ if __name__ == '__main__':
     try:
         Aniso_LocGrad_Type = subprocess.check_output("less " + str(args.Input_file) + " | grep Aniso_LocGrad_Type"
                                                                                       " | grep = ", shell=True).decode("utf-8")
-        Aniso_LocGrad_Type = int(Aniso_LocGrad_Type.split('=')[1].strip())
+        Aniso_LocGrad_Type = Aniso_LocGrad_Type.split('=')[1].strip()
     except subprocess.CalledProcessError as grepexc:
-        Aniso_LocGrad_Type = 73
+        Aniso_LocGrad_Type = '6D'
 
     try:
         min_RMS_gradient = subprocess.check_output("less " + str(args.Input_file) + " | grep min_RMS_gradient"
