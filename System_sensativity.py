@@ -132,31 +132,47 @@ def anisotropic_gradient_settings(Coordinate_file, Program, Parameter_file, mole
     return np.absolute(LocGrd_CMatrix_FracStep * crystal_matrix_array)
 
 
+def anisotropic_gradient_settings_1D(Coordinate_file, Program, Parameter_file, molecules_in_coord, min_RMS_gradient,
+                                     Output, dC_dLambda):
+    # Determining the file ending based on the program
+    file_ending = Ex.assign_file_ending(Program)
 
+    # Setting the energy cutoff
+    cutoff = program_cutoff(Program)
 
+    # Lambda step sizes to take
+    steps = np.array([5e-02, 1e-01, 5e-01, 1e01, 5e01, 1e02, 5e02, 1e03, 5e03])
 
-"""
+    # Number of total step sizes
+    n_steps = len(steps)
 
-for i in range(6):
-    for k in range(n_steps):
+    # Potential energy of input file and a place to store the expanded structures potential energy
+    U_0 = Pr.Potential_energy(Program, Coordinate_file=Coordinate_file, Parameter_file=Parameter_file) / \
+          molecules_in_coord
+    U = np.zeros(n_steps)
 
-c = ['r','r','r','b','b','b']
-min_step_size = np.zeros(6)
-for i in range(6):
-    plt.plot(np.log10(steps), U[i] - U_0, c=c[i], linestyle='--')
-    for j in range(len(U[i])):
-        if U[i, j] - U_0 > 5e-04:
-            min_step_size[i] = steps[j]
+    for i in range(n_steps):
+        dlattice_matrix = Ex.array_to_triangle_crystal_matrix(steps[i] * dC_dLambda)
+
+        Ex.Expand_Structure(Coordinate_file, Program, 'crystal_matrix', molecules_in_coord,
+                            Output, min_RMS_gradient, Parameter_file=Parameter_file,
+                            dcrystal_matrix=dlattice_matrix)
+        U[i] = Pr.Potential_energy(Program, Coordinate_file=Output + file_ending, Parameter_file=Parameter_file) / \
+               molecules_in_coord
+        subprocess.call(['rm', Output + file_ending])
+        if (U[i] - U_0) > cutoff:
+            LocGrd_dLambda = steps[i]
+            end_plot = i
             break
-plt.xlabel('$\log({f})$',fontsize=22)
-plt.ylabel('U [kcal/mol]',fontsize=22)
-plt.ylim((0., 1e-03))
-plt.axhline(y=5e-04, c='grey', linestyle='--')
-plt.tight_layout()
-plt.savefig('system_sensetivity.png')
-plt.show()
 
-print("The recommended input settings are:")
-print("LocGrd_Diag_FracStep = ", max(min_step_size[:3]))
-print("LocGrd_OffDiag_FracStep = ", max(min_step_size[3:]))
-"""
+    # Plotting the results
+#    plt.plot(np.log10(steps[:end_plot + 1]), U[:end_plot + 1] - U_0, linestyle='--', marker='o')
+#    plt.xlabel('$\log({\lambda})$', fontsize=22)
+#    plt.ylabel('$\Delta U$ [kcal/mol]', fontsize=22)
+#    plt.ylim((0., 2*cutoff))
+#    plt.axhline(y=cutoff, c='grey', linestyle='--')
+#    plt.tight_layout()
+#    plt.show()
+
+    # returning the value of dV
+    return LocGrd_dLambda

@@ -226,7 +226,7 @@ def Test_Wavenumber(Coordinate_file, ref_crystal_matrix, function='Test3', Gru=F
         if os.path.isfile('wvn0_test.npy') and os.path.isfile('wvnChange_test.npy'):
             if np.all(ref_crystal_matrix == True):
                 strain = np.zeros(6)
-                strain[:3] = (Pr.Volume(Program='Test', Coordinate_file=Coordinate_file)/ 400.49291723)**(1./3.) - 1.
+                strain[:3] = (Pr.Volume(Program='Test', Coordinate_file=Coordinate_file)/ 570.88883075)**(1./3.) - 1.
             elif np.all(ref_crystal_matrix == False):
                 strain = np.zeros(6)
             else:
