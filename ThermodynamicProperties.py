@@ -395,7 +395,7 @@ def Quantum_Vibrational_A(Temperature, wavenumbers):
     beta = 1 / (k * Temperature)
     wavenumbers = np.sort(wavenumbers)
     A = []
-    for i in wavenumbers[3:]:  # Skipping translational modes
+    for i in wavenumbers[0:]:  # Skipping translational modes
         if i > 0:  # Skipping negative wavenumbers
             a = ((h * i * c * np.pi) + (1 / beta) * np.log(1 - np.exp(-beta * h * i * c * 2 * np.pi))) * Na / 1000
             A.append(a)
