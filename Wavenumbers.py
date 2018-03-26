@@ -47,16 +47,15 @@ def Call_Wavenumbers(Method, min_RMS_gradient, **keyword_parameters):
         # Directly computing the wavenumbers for a specific program, given a coordinate file
         if keyword_parameters['Program'] == 'Tinker':
             wavenumbers = Tinker_Wavenumber(keyword_parameters['Coordinate_file'], keyword_parameters['Parameter_file'])
-	if keyword_parameters['Program'] == 'Tinker':
-	    wavenumbers = CP2K_Wavenumber(keyword_parameters['Coordinate_file'], keyword_parameters['Parameter_file'])
+	elif keyword_parameters['Program'] == 'CP2K':
+	    wavenumbers = CP2K_Wavenumber(keyword_parameters['Coordinate_file'], keyword_parameters['Parameter_file'], keyword_parameters['cp2kroot'])
         elif keyword_parameters['Program'] == 'Test':
             if Method == 'GaQ':
                 wavenumbers = Test_Wavenumber(keyword_parameters['Coordinate_file'],
                                               keyword_parameters['ref_crystal_matrix'])
             else:
                 wavenumbers = Test_Wavenumber(keyword_parameters['Coordinate_file'], True)
-        elif keyword_parameters['Program'] == 'CP2K':
-            return "Natalie add this in"
+       
         return wavenumbers
 
     elif (Method == 'SiQg') or (Method == 'GiQg'):
@@ -164,6 +163,7 @@ def Tinker_Wavenumber(Coordinate_file, Parameter_file):
 ##########################################
 
 def CP2K_Wavenumber(coordinatefile, parameter_file, cp2kroot):
+    import os.path
     if cp2kroot.find('benzene') >= 0:
 	molecule='benzene'
     elif cp2kroot.find('pyrzin') >=0:
@@ -180,17 +180,19 @@ def CP2K_Wavenumber(coordinatefile, parameter_file, cp2kroot):
         polynum='p3'
     else:
         polynum='p4'
-    subprocess.call("setup_wavenumber", "-m",molecule,"-n",polynum,"-ty","nma")
-    subprocess.call("sbatch", "submit_cluster.slurm" )
+    if os.path.exists(cp2kroot+'-VIBRATIONS-1.mol') == True:
     
-    #wavenumbers = np.zeros((3,))
-    #wavenumfile = open(cp2kroot+'-VIBRATIONS-1.mol','r')
-    #lines = wavenumfile.readlines()
-    #iter = 2
-    #while '[FR-COORD]' not in lines[iter]:
-    #    wave = lines[iter].split()
-    #    wavenumbers = np.append(wavenumbers, float(wave[0]))
-    #	iter = iter+1
+        wavenumbers = np.zeros((3,))
+        wavenumfile = open(cp2kroot+'-VIBRATIONS-1.mol','r')
+        lines = wavenumfile.readlines()
+        iter = 2
+        while '[FR-COORD]' not in lines[iter]:
+            wave = lines[iter].split()
+            wavenumbers = np.append(wavenumbers, float(wave[0]))
+    	    iter = iter+1
+    else:
+        subprocess.call("setup_wavenumber", "-m",molecule,"-n",polynum,"-ty","nma")
+        subprocess.call("sbatch", "submit_cluster.slurm" )
 
     
 
