@@ -32,24 +32,24 @@ line_style = ['--',':']
 
 # Plotting lattice parameters
 if (lattice_parameters[0] != '') and (len(lattice_parameters) == len(temperature)):
-    label = ['a','b','c','alpha','beta','gamma']
+    label = ['a','b','c',r'$\alpha$',r'$\beta$',r'$\gamma$']
+    plt.figure(figsize=(12,5))
+    ax1 = plt.subplot(121)
+    ax2 = plt.subplot(122)
     for i in np.arange(0,3):
         for j in range(len(lattice_parameters)):
             hold_lattice_parameters = np.load(lattice_parameters[j])[:,i]
-            plt.plot(np.load(temperature[j]), (hold_lattice_parameters - hold_lattice_parameters[0])/hold_lattice_parameters[0]*100,label=label[i] + ' ' + Labels[j], c=color[i], linestyle=line_style[j])
-    plt.xlabel('Temperature [K]', fontsize=18)
-    plt.ylabel('% Lattice Vector Change\nfrom ' + str(np.load(temperature[0])[0]) + 'K', fontsize=18)
-    plt.legend(loc='upper left', fontsize=18)
-    plt.tight_layout()
-    plt.show()
+            ax1.plot(np.load(temperature[j]), (hold_lattice_parameters - hold_lattice_parameters[0])/hold_lattice_parameters[0]*100,label=label[i] + ' ' + Labels[j], c=color[i], linestyle=line_style[j])
+    ax1.set_xlabel('Temperature [K]', fontsize=18)
+    ax1.set_ylabel('% Change from ' + str(int(np.load(temperature[0])[0])) + 'K', fontsize=18)
+    ax1.legend(loc='upper left', fontsize=18)
 
     for i in np.arange(3,6):
         for j in range(len(lattice_parameters)):
             hold_lattice_parameters = np.load(lattice_parameters[j])[:,i]
-            plt.plot(np.load(temperature[j]), (hold_lattice_parameters - hold_lattice_parameters[0])/hold_lattice_parameters[0]*100, label=label[i] + ' ' + Labels[j], c=color[i-3], linestyle=line_style[j])
-    plt.xlabel('Temperature [K]', fontsize=18)
-    plt.ylabel('% Lattice Angle Change\nfrom ' + str(np.load(temperature[0])[0]) + 'K', fontsize=18)
-    plt.legend(loc='upper left', fontsize=18)
+            ax2.plot(np.load(temperature[j]), (hold_lattice_parameters - hold_lattice_parameters[0])/hold_lattice_parameters[0]*100, label=label[i] + ' ' + Labels[j], c=color[i-3], linestyle=line_style[j])
+    ax2.set_xlabel('Temperature [K]', fontsize=18)
+    ax2.legend(loc='upper left', fontsize=18)
     plt.tight_layout()
     plt.show()
 
