@@ -434,17 +434,21 @@ def Vibrational_Entropy(Temperature, wavenumbers, Statistical_mechanics):
     Statistical_mechanics = 'Classical'
                             'Quantum'
     """
-    if Statistical_mechanics == 'Classical' and T != 0.:
+    if Statistical_mechanics == 'Classical' and Temperature != 0.:
         S = Classical_Vibrational_S(Temperature, wavenumbers)
     elif Statistical_mechanics == 'Quantum':
         S = Quantum_Vibrational_S(Temperature, wavenumbers)
+    else:
+        S = 0.
     return S
 
 def Vibrational_Helmholtz(Temperature, wavenumbers, Statistical_mechanics):
-    if Statistical_mechanics == 'Classical' and T != 0.:
+    if Statistical_mechanics == 'Classical' and Temperature != 0.:
         Av = Classical_Vibrational_A(Temperature, wavenumbers)
     elif Statistical_mechanics == 'Quantum':
         Av = Quantum_Vibrational_A(Temperature, wavenumbers)
+    else:
+        Av = 0.
     return Av
 
 

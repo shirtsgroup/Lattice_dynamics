@@ -189,7 +189,7 @@ def CP2K_Wavenumber(coordinatefile, parameter_file, cp2kroot):
         while '[FR-COORD]' not in lines[iter]:
             wave = lines[iter].split()
             wavenumbers = np.append(wavenumbers, float(wave[0]))
-    	    iter = iter+1
+            iter = iter+1
     else:
         subprocess.call("setup_wavenumber", "-m",molecule,"-n",polynum,"-ty","nma")
         subprocess.call("sbatch", "submit_cluster.slurm" )
