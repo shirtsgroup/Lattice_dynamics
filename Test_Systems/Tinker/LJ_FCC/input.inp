@@ -3,7 +3,8 @@
 ### General Inputs ###
 ## Temperature
 # Import numpy array of temperatures
-Temperature = 0.,10.,20.,30.,40.,50.,60.,70.,80.,90.,100.,110.,120.,130.,140.,150.,160.,170.,180.,190.,200.,210.,220.,230.,240.,250.,260.,270.,280.,290.,300.
+Temperature = 0.,70.
+#,10.,20.,30.,40.,50.,60.,70.
 
 ## Pressure
 # Only set up for single pressure values
@@ -19,7 +20,7 @@ Pressure = 1.
 # GiQg - Gradient isotropic quasi-harmonic approximation with Gruneisen parameter
 # GaQ  - Gradient anisotropic quasi-harmonic approximation
 # GaQg - Gradient anisotropic quasi-harmonic approximation with Gruneisen parameter
-Method = HA
+Method = GaQ
 
 ## Output
 # Output name for files
@@ -53,7 +54,7 @@ cp2kroot = BNZ_NMA_p1
 
 ## Nuber of molecules
 #****I want to eventually replace this with a program specific code to look at connectivity
-molecules_in_coord = 4
+molecules_in_coord = 96
 
 ## Properties
 # Properties to output in individual files
@@ -79,26 +80,26 @@ NumAnalysis_method = RK4
 
 ## Stepsize numerical analysis
 # Right now only temperature is the only input option
-NumAnalysis_step = 150.0
+NumAnalysis_step = 70.
 
 ## Local gradient presets
 # These options are tuned best for a wide array of options
 # Remove these variables if you want the code to pre-set these for you
 # Isotropic volume fraction change
-LocGrd_Vol_FracStep = 1.5e-03
+LocGrd_Vol_FracStep 
 # Anisotropic fractional changes in the diagonal (C_i; i=1,2,3) and off-diagonal(C_i; i=4,5,6) elements of the cyrstal tensor
 #                       = dC1,dC2,dC3,dC4,dC5,dC6
-LocGrd_CMatrix_FracStep = 0.1,0.1,0.1,0.,0.,0.
+LocGrd_CMatrix_FracStep
 
 ### Stepwise options ###
 # Stepwise thermal expansion is only set up for isotropic expansion
 # It is far too expansive to run anistropic expansion stepwise
 # Volume fraction stepsize
-StepWise_Vol_StepFrac = 1.e-3
+StepWise_Vol_StepFrac = 5.e-3
 # Volume fraction lowerbound
 StepWise_Vol_LowerFrac = 0.99
 # Volume fraction upperbound
-StepWise_Vol_UpperFrac = 1.08
+StepWise_Vol_UpperFrac = 1.01
 
 ### Gruneisen options ###
 # Volume fraction gruneisen change
@@ -111,7 +112,7 @@ Gruneisen_Lat_FracStep = 1.5e-03
 Wavenum_Tol = -1.0
 
 ### Maximum temperature for gradient method
-Gradient_MaxTemp = 300.0
+Gradient_MaxTemp = 70.
 
 ### Type of anisotropic expansion
 # Option - Description
@@ -119,7 +120,7 @@ Gradient_MaxTemp = 300.0
 # 3D - Only considers the diagonals of the crystal matrix tensor
 # 6D - Performs full anisotropic expansion
 # matrix
-Aniso_LocGrad_Type = 73
+Aniso_LocGrad_Type = 1D
 
 # Gradient for minimization
 min_RMS_gradient = 0.0001

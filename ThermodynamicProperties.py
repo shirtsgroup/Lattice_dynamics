@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+from __future__ import print_function
 import subprocess
 import numpy as np
 import itertools as it
@@ -106,31 +107,31 @@ def Save_Properties(properties, Properties_to_save, Output, Method, Statistical_
     """
     for i in Properties_to_save:
         if i == 'T':  # Temperature
-            print "   ... Saving temperature in: " + Output + "_T_" + Method + ".npy"
+            print("   ... Saving temperature in: " + Output + "_T_" + Method + ".npy")
             np.save(Output + '_T_' + Method, properties[:, 0])
         if i == 'P':  # Pressure
-            print "   ... Saving Pressure in: " + Output + "_P_" + Method + ".npy"
+            print("   ... Saving Pressure in: " + Output + "_P_" + Method + ".npy")
             np.save(Output + '_P_' + Method, properties[:, 1])
         if i == 'G':  # Gibbs free energy
-            print "   ... Saving Gibbs free energy in: " + Output + "_G" + Statistical_mechanics + "_" + Method +\
-                  ".npy"
+            print("   ... Saving Gibbs free energy in: " + Output + "_G" + Statistical_mechanics + "_" + Method +\
+                  ".npy")
             np.save(Output + '_G' + Statistical_mechanics + '_' + Method, properties[:, 2])
         if i == 'U':  # Potential energy
-            print "   ... Saving potential energy in: " + Output + "_U" + Statistical_mechanics + "_" + Method + ".npy"
+            print("   ... Saving potential energy in: " + Output + "_U" + Statistical_mechanics + "_" + Method + ".npy")
             np.save(Output + '_U' + Statistical_mechanics + '_' + Method, properties[:, 3])
         if i == 'Av':  # Helmholtz vibrational energy
-            print "   ... Saving vibrational Helmholtz free energy in: " + Output + "_Av" + Statistical_mechanics + "_"\
-                  + Method + ".npy"
+            print("   ... Saving vibrational Helmholtz free energy in: " + Output + "_Av" + Statistical_mechanics + "_"\
+                  + Method + ".npy")
             np.save(Output + '_Av' + Statistical_mechanics + '_' + Method, properties[:, 4])
         if i == 'V':  # Volume
-            print "   ... Saving volume in: " + Output + "_V" + Statistical_mechanics + "_" + Method + ".npy"
+            print("   ... Saving volume in: " + Output + "_V" + Statistical_mechanics + "_" + Method + ".npy")
             np.save(Output + '_V' + Statistical_mechanics + '_' + Method, properties[:, 6])
         if i == 'h':  # Lattice parameters
-            print "   ... Saving lattice parameters in: " + Output + "_h" + Statistical_mechanics + "_" + Method +\
-                  ".npy"
+            print("   ... Saving lattice parameters in: " + Output + "_h" + Statistical_mechanics + "_" + Method +\
+                  ".npy")
             np.save(Output + '_h' + Statistical_mechanics + '_' + Method, properties[:, 7:13])
         if i == 'S':  # Entropy
-            print "   ... Saving entropy in: " + Output + "_S" + Statistical_mechanics + "_" + Method + ".npy"
+            print("   ... Saving entropy in: " + Output + "_S" + Statistical_mechanics + "_" + Method + ".npy")
             np.save(Output + '_S' + Statistical_mechanics + '_' + Method, properties[:, 14])
 
 
@@ -162,7 +163,7 @@ def Tinker_atoms_per_molecule(Coordinate_file, molecules_in_coord):
     """
     with open('%s' % Coordinate_file, 'r') as l:
         coordinates = [lines.split() for lines in l]
-        coordinates = np.array(list(it.izip_longest(*coordinates, fillvalue=' '))).T
+        coordinates = np.array(list(it.zip_longest(*coordinates, fillvalue=' '))).T
     atoms_per_molecule = int(coordinates[0, 0]) / molecules_in_coord
     return atoms_per_molecule
 
@@ -176,7 +177,7 @@ def Tinker_Lattice_Parameters(Coordinate_file):
     """
     with open('%s' % Coordinate_file, 'r') as l:
         lattice_parameters = [lines.split() for lines in l]
-        lattice_parameters = np.array(list(it.izip_longest(*lattice_parameters, fillvalue=' '))).T
+        lattice_parameters = np.array(list(it.zip_longest(*lattice_parameters, fillvalue=' '))).T
         lattice_parameters = lattice_parameters[1, :6].astype(float)
     return lattice_parameters
 
@@ -193,18 +194,43 @@ def Test_U(Coordinate_file):
     Coordinate_file = File containing lattice parameters
     """
     new_lp = np.load(Coordinate_file)
+    U = Test_U_poly(new_lp)
+    return U
 
-    polynomial_normal = np.array([[  1.32967100e+01,  -3.86230306e+02,   4.21859038e+03,  -2.05171077e+04,    3.71986258e+04],
-                                  [  5.96012607e-00,  -3.29643734e+01,   6.87371706e+02,  -6.39222328e+03,    2.20706869e+04],
-                                  [  6.54309591e-01,  -2.95928106e+01,   4.82192443e+02,  -3.37907613e+03,    8.38105955e+03],
-                                  [  1.73101682e-04,  -6.23169023e-02,   8.53269922e+00,  -5.26349633e+02,    1.20653441e+04],
-                                  [  1.87342875e-04,  -6.45384256e-02,   8.09885843e+00,  -4.58100859e+02,    1.27492294e+04],
-                                  [ -7.85675953e-05,   2.82845448e-02,  -3.66590698e+00,   2.01651921e+02,   -4.18251942e+03]])
+def Test_U_poly(array):
+#    # 4th order polynomial to describe how the potential energy changes as a function of the lattice parameters
+#    # Given as [A, B, C, D, E]: A*x**4 + B*x**3 + C*x**2 + D*x + E
+#                                  # Lattice vectors [Ang.]
+#    polynomial_normal = np.array([[  1.32967100e+01,  -3.86230306e+02,   4.21859038e+03,  -2.05171077e+04,    3.71986258e+04],
+#                                  [  5.96012607e-00,  -3.29643734e+01,   6.87371706e+02,  -6.39222328e+03,    2.20706869e+04],
+#                                  [  6.54309591e-01,  -2.95928106e+01,   4.82192443e+02,  -3.37907613e+03,    8.38105955e+03],
+#                                  # Lattice Angles [Degrees]
+#                                  [  1.73101682e-04,  -6.23169023e-02,   8.53269922e+00,  -5.26349633e+02,    1.20653441e+04],
+#                                  [  1.87342875e-04,  -6.45384256e-02,   8.09885843e+00,  -4.58100859e+02,    1.27492294e+04],
+#                                  [ -7.85675953e-05,   2.82845448e-02,  -3.66590698e+00,   2.01651921e+02,   -4.18251942e+03]])
+#    U = 0.
+#    for i in range(6):
+#        p = np.poly1d(polynomial_normal[i])
+#        U = U + p(array[i])
+    # Energy returned in kcal/mol
 
-    U = 0.
-    for i in xrange(6):
-        p = np.poly1d(polynomial_normal[i])
-        U = U + p(new_lp[i])
+
+
+    p = np.array([  4.23707763e+03,  -4.84369902e+02,  -4.14736558e+02,  -3.52679881e+02,
+                   -3.56924620e+00,   1.84204932e+01,   2.91373650e+00,   3.39706395e+01,
+                    1.43083158e+01,   1.29649063e+01,   2.44591565e-02,   1.48827075e-01,
+                    2.43687850e-02,   1.79715135e+01,   2.30779870e+01,   8.31777610e-02,
+                   -3.37390151e+00,  -3.77035091e-01,   1.41456418e+01,   6.39700536e-02,
+                   -8.04076344e-01,  -7.14652248e-02,  -1.39556833e-01,  -1.75045683e+00,
+                   -3.25448447e-02,   7.63592279e-03,  -1.32279455e-02,  -2.32066032e-02])
+
+    U = p[0] + array[0]*p[1] + array[1]*p[2] + array[2]*p[3] + array[3]*p[4] + array[4]*p[5] + array[5]*p[6] \
+        + array[0]**2*p[7] + array[1]**2*p[8] + array[2]**2*p[9] + array[3]**2*p[10] + array[4]**2*p[11] + array[5]**2*p[12] \
+        + array[0]*array[1]*p[13] + array[0]*array[2]*p[14] + array[0]*array[3]*p[15] + array[0]*array[4]*p[16] + array[0]*array[5]*p[17] \
+        + array[1]*array[2]*p[18] + array[1]*array[3]*p[19] + array[1]*array[4]*p[20] + array[1]*array[5]*p[21] \
+        + array[2]*array[3]*p[22] + array[2]*array[4]*p[23] + array[2]*array[5]*p[24] \
+        + array[3]*array[4]*p[25] + array[3]*array[5]*p[26] \
+        + array[4]*array[5]*p[27]
     return U
 
 
@@ -233,9 +259,8 @@ def CP2K_U(cp2kroot):
     l = open(cp2kroot+'-r-0.out')
     lines = l.readlines()
     for x in range(0,len(lines)):
-	if 'ENERGY| Total FORCE_EVAL ( QS ) energy (a.u.): ' in lines[x]:
-	    U = float(lines[x].split()[-1])*627.5
-	   
+        if 'ENERGY| Total FORCE_EVAL ( QS ) energy (a.u.): ' in lines[x]:
+            U = float(lines[x].split()[-1])*627.5	   
     return U
 
 
@@ -247,10 +272,8 @@ def CP2K_Lattice_Parameters(Coordinate_file):
     Coordinate_file = Tinker .xyz file for crystal structure
     """
     with open('%s' % Coordinate_file, 'r') as l:
-	lines = l.readlines()
+        lines = l.readlines()
         lattice_parameters = lines[1].split()[1:7]
-
-
     return lattice_parameters
 
 def CP2K_atoms_per_molecule(Coordinate_file, molecules_in_coord):
@@ -263,7 +286,7 @@ def CP2K_atoms_per_molecule(Coordinate_file, molecules_in_coord):
     """
     with open('%s' % Coordinate_file, 'r') as l:
         coordinates = [lines.split() for lines in l]
-        coordinates = np.array(list(it.izip_longest(*coordinates, fillvalue=' '))).T
+        coordinates = np.array(list(it.zip_longest(*coordinates, fillvalue=' '))).T
     atoms_per_molecule = int(coordinates[0, 0]) / molecules_in_coord
     return atoms_per_molecule
 
@@ -340,6 +363,9 @@ def RotationFree_StrainArray_from_CrystalMatrix(ref_crystal_matrix, new_crystal_
     eta = 0.5*(U + U.T) - np.identity(3)
     eta = np.array([eta[0, 0], eta[1, 1], eta[2, 2],
                     eta[0, 1], eta[0, 2], eta[1, 2]])
+    for i in range(6):
+        if np.absolute(eta[i]) < 1e-10:
+            eta[i] = 0.
     return eta
 
 
@@ -512,6 +538,6 @@ def Gibbs_Free_Energy(Temperature, Pressure, Program, wavenumbers, Coordinate_fi
 
     # Gibbs Free energy
     G = U + A + PV_energy(Pressure, volume) / molecules_in_coord
-    return G
+    return G, U, A
 
 

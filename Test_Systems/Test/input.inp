@@ -19,7 +19,7 @@ Pressure = 1.
 # GiQg - Gradient isotropic quasi-harmonic approximation with Gruneisen parameter
 # GaQ  - Gradient anisotropic quasi-harmonic approximation
 # GaQg - Gradient anisotropic quasi-harmonic approximation with Gruneisen parameter
-Method = HA
+Method = GaQ
 
 ## Output
 # Output name for files
@@ -31,8 +31,7 @@ Output = out
 # Option - Description:
 # Tinker - Tinker Molecular Modeling Package
 # Test - Input functions in *.py to determine thermal expansion landscape and *.py to determine changes in wavenumber
-# CP2K - CP2K Quantum mechanical package
-Program = Tinker
+Program = Test
 
 ## Statistical mechanics
 # Option - Description
@@ -42,14 +41,7 @@ Statistical_mechanics = Classical
 
 ## Structure
 # Coordinate file
-Coordinate_file = molecule.xyz
-
-## Molecular parameters
-# Input file for particular program
-Parameter_file = keyfile.key
-
-## Root for cp2k files
-cp2kroot = BNZ_NMA_p1
+Coordinate_file = test.npy
 
 ## Nuber of molecules
 #****I want to eventually replace this with a program specific code to look at connectivity
@@ -79,16 +71,14 @@ NumAnalysis_method = RK4
 
 ## Stepsize numerical analysis
 # Right now only temperature is the only input option
-NumAnalysis_step = 150.0
+NumAnalysis_step = 100.0
 
 ## Local gradient presets
 # These options are tuned best for a wide array of options
-# Remove these variables if you want the code to pre-set these for you
 # Isotropic volume fraction change
 LocGrd_Vol_FracStep = 1.5e-03
-# Anisotropic fractional changes in the diagonal (C_i; i=1,2,3) and off-diagonal(C_i; i=4,5,6) elements of the cyrstal tensor
-#                       = dC1,dC2,dC3,dC4,dC5,dC6
-LocGrd_CMatrix_FracStep = 0.1,0.1,0.1,0.,0.,0.
+# Anisotropic fractional changes in the diagonal and off-diagonal elements of the cyrstal tensor
+LocGrd_CMatrix_FracStep = 1.0e-02,1.0e-02,1.0e-02,0.,0.,0.
 
 ### Stepwise options ###
 # Stepwise thermal expansion is only set up for isotropic expansion
@@ -98,7 +88,7 @@ StepWise_Vol_StepFrac = 1.e-3
 # Volume fraction lowerbound
 StepWise_Vol_LowerFrac = 0.99
 # Volume fraction upperbound
-StepWise_Vol_UpperFrac = 1.08
+StepWise_Vol_UpperFrac = 1.10
 
 ### Gruneisen options ###
 # Volume fraction gruneisen change
@@ -113,11 +103,10 @@ Wavenum_Tol = -1.0
 ### Maximum temperature for gradient method
 Gradient_MaxTemp = 300.0
 
-### Type of anisotropic expansion
+### Number of Hessians for anistropic local gradient
 # Option - Description
-# 1D - NOT YET AN OPTION!
-# 3D - Only considers the diagonals of the crystal matrix tensor
-# 6D - Performs full anisotropic expansion
+# 73   - Compute every vibrational spectra for local gradient
+# 25   - For d**2G/dUdU compute vibrational spectra for the diagonal and the off diagonals for the upper left 3x3
 # matrix
 Aniso_LocGrad_Type = 73
 
