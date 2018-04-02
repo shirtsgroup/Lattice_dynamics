@@ -13,7 +13,8 @@ def program_cutoff(Program):
         cutoff = 5e-05
     return cutoff
 
-def isotropic_gradient_settings(Coordinate_file, Program, Parameter_file, molecules_in_coord, min_RMS_gradient, Output):
+def isotropic_gradient_settings(Coordinate_file, Program, Parameter_file, molecules_in_coord, min_RMS_gradient, Output, 
+                                Pressure):
     # Determining the file ending based on the program
     file_ending = Ex.assign_file_ending(Program)
 
@@ -27,7 +28,8 @@ def isotropic_gradient_settings(Coordinate_file, Program, Parameter_file, molecu
     n_steps = len(steps)
 
     # Potential energy of input file and a place to store the expanded structures potential energy
-    U_0 = Pr.Potential_energy(Program, Coordinate_file=Coordinate_file, Parameter_file=Parameter_file) / \
+    U_0 = (Pr.Potential_energy(Program, Coordinate_file=Coordinate_file, Parameter_file=Parameter_file) \
+           + Pr.PV_energy(Pressure, Pr.Volume(Program=Program, Coordinate_file=Coordinate_file))) / \
           molecules_in_coord
     U = np.zeros((n_steps))
 
@@ -40,8 +42,9 @@ def isotropic_gradient_settings(Coordinate_file, Program, Parameter_file, molecu
                             min_RMS_gradient, Parameter_file=Parameter_file, dlattice_parameters=dlattice_parameters)
 
         # Computing the potential energy
-        U[i] = Pr.Potential_energy(Program, Coordinate_file=Output + file_ending, Parameter_file=Parameter_file) / \
-               molecules_in_coord
+        U[i] = (Pr.Potential_energy(Program, Coordinate_file=Output + file_ending, Parameter_file=Parameter_file) \
+                + Pr.PV_energy(Pressure, Pr.Volume(Program=Program, Coordinate_file=Output + file_ending))) / \
+                molecules_in_coord
         subprocess.call(['rm', Output + file_ending])
 
         if (U[i] - U_0) > cutoff:
