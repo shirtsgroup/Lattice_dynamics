@@ -7,7 +7,7 @@ Temperature = 0.,10.,20.,30.,40.,50.,60.,70.,80.,90.,100.,110.,120.,130.,140.,15
 
 ## Pressure
 # Only set up for single pressure values
-Pressure = 1.
+Pressure = 1.,1000.,10000.,100000.
 
 ## Method
 # Only one method is accepted currently
@@ -19,7 +19,7 @@ Pressure = 1.
 # GiQg - Gradient isotropic quasi-harmonic approximation with Gruneisen parameter
 # GaQ  - Gradient anisotropic quasi-harmonic approximation
 # GaQg - Gradient anisotropic quasi-harmonic approximation with Gruneisen parameter
-Method = GaQ
+Method = GiQ
 
 ## Output
 # Output name for files
@@ -60,7 +60,7 @@ molecules_in_coord = 4
 # V - Volume [Ang.^3]
 # h - Lattice parameters [Ang., Ang., Ang., Deg., Deg., Deg.]
 # U - Potential energy [kcal/mol]
-properties_to_save = G,h,V,T
+properties_to_save = G,h,V,T,U,Av
 
 ### Gradient options ###
 ## Numerical analysis for thermal expansion
@@ -71,24 +71,24 @@ NumAnalysis_method = RK4
 
 ## Stepsize numerical analysis
 # Right now only temperature is the only input option
-NumAnalysis_step = 100.0
+NumAnalysis_step = 70.0
 
 ## Local gradient presets
 # These options are tuned best for a wide array of options
 # Isotropic volume fraction change
-LocGrd_Vol_FracStep = 1.5e-03
+LocGrd_Vol_FracStep 
 # Anisotropic fractional changes in the diagonal and off-diagonal elements of the cyrstal tensor
-LocGrd_CMatrix_FracStep = 1.0e-02,1.0e-02,1.0e-02,0.,0.,0.
+LocGrd_CMatrix_FracStep 
 
 ### Stepwise options ###
 # Stepwise thermal expansion is only set up for isotropic expansion
 # It is far too expansive to run anistropic expansion stepwise
 # Volume fraction stepsize
-StepWise_Vol_StepFrac = 1.e-3
+StepWise_Vol_StepFrac = 1.e-02
 # Volume fraction lowerbound
-StepWise_Vol_LowerFrac = 0.99
+StepWise_Vol_LowerFrac = 0.5
 # Volume fraction upperbound
-StepWise_Vol_UpperFrac = 1.10
+StepWise_Vol_UpperFrac = 1.0
 
 ### Gruneisen options ###
 # Volume fraction gruneisen change
@@ -101,14 +101,14 @@ Gruneisen_Lat_FracStep = 1.5e-03
 Wavenum_Tol = -1.0
 
 ### Maximum temperature for gradient method
-Gradient_MaxTemp = 300.0
+Gradient_MaxTemp = 70.0
 
 ### Number of Hessians for anistropic local gradient
 # Option - Description
 # 73   - Compute every vibrational spectra for local gradient
 # 25   - For d**2G/dUdU compute vibrational spectra for the diagonal and the off diagonals for the upper left 3x3
 # matrix
-Aniso_LocGrad_Type = 73
+Aniso_LocGrad_Type = 1D
 
 # Gradient for minimization
 min_RMS_gradient = 0.0001
