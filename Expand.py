@@ -330,6 +330,8 @@ def assign_file_ending(program):
         return '.xyz'
     elif program == 'Test':
         return '.npy'
+    elif program == 'cp2k':
+        return '.pdb'
     else:
         print('ERROR: Program is not supported!')
         sys.exit()
