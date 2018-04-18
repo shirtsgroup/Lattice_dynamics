@@ -177,6 +177,5 @@ def anisotropic_gradient_settings_1D(Coordinate_file, Program, Parameter_file, m
     plt.tight_layout()
     plt.show()
     print('dLambda used: ', LocGrd_dLambda)
-    sys.exit()
     # returning the value of dV
     return LocGrd_dLambda
