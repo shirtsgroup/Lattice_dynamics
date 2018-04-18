@@ -3,13 +3,15 @@
 from __future__ import print_function
 import os
 import sys
-import numpy as np
 import subprocess
+import scipy.optimize
+import numpy as np
 import ThermodynamicProperties as Pr
 import Wavenumbers as Wvn
 import Thermal_NumericalAnalysis as TNA
 import Expand as Ex
 import System_sensativity as Ss
+
 
 def Temperature_Lattice_Dynamics(Temperature=[0.,300.], Pressure=1., Method='HA', Program='Test',
                                  Output='out', Coordinate_file='test.npy', Parameter_file='keyfile.key',
@@ -64,7 +66,7 @@ def Temperature_Lattice_Dynamics(Temperature=[0.,300.], Pressure=1., Method='HA'
     elif (Method == 'GiQ') or (Method == 'GiQg'):
         if LocGrd_Vol_FracStep == 0.:
             LocGrd_dV = Ss.isotropic_gradient_settings(Coordinate_file, Program, Parameter_file, molecules_in_coord,
-                                                       min_RMS_gradient, Output)
+                                                       min_RMS_gradient, Output, Pressure)
         else:
             V_0 = Pr.Volume(Program=Program, Coordinate_file=Coordinate_file)
             LocGrd_dV = LocGrd_Vol_FracStep * V_0
@@ -117,25 +119,19 @@ def Temperature_Lattice_Dynamics(Temperature=[0.,300.], Pressure=1., Method='HA'
         Pr.Save_Properties(properties, properties_to_save, Output, Method, Statistical_mechanics)
         print("Gradient Anisotropic Quasi-Harmonic Approximation is complete!")
 
-
 def Pressure_setup(Temperature=[0.0, 25.0, 50.0, 75.0, 100.0], Pressure=1., Method='HA', Program='Test',
                    Output='out', Coordinate_file='molecule.xyz', Parameter_file='keyfile.key',
                    molecules_in_coord=1, properties_to_save=['G', 'T'], NumAnalysis_method='RK4',
                    NumAnalysis_step=25.0,
-                   LocGrd_Vol_FracStep=3e-02,
-                   LocGrd_Diag_FracStep=2e-03,
-                   LocGrd_OffDiag_FracStep=1e-03, StepWise_Vol_StepFrac=1.5e-3,
+                   LocGrd_Vol_FracStep='',
+                   LocGrd_CMatrix_FracStep='',
+                   StepWise_Vol_StepFrac=1.5e-3,
                    StepWise_Vol_LowerFrac=0.97, StepWise_Vol_UpperFrac=1.16,
                    Statistical_mechanics='Classical', Gruneisen_Vol_FracStep=1.5e-3,
                    Gruneisen_Lat_FracStep=1.0e-3, Wavenum_Tol=-1., Gradient_MaxTemp=300.0,
-                   Aniso_LocGrad_Type='6D', min_RMS_gradient=0.01):
+                   Aniso_LocGrad_Type='6D', min_RMS_gradient=0.01, cp2kroot='BNZ_NMA_p2'):
 
-    if Program == 'Tinker':
-        file_ending = '.xyz'
-    elif Program == 'Test':
-        file_ending = '.npy'
-    elif Program =='cp2k':
-        file_ending='.pdb'
+    file_ending = Ex.assign_file_ending(Program)
 
     # Making an array of volume fractions
     V_frac = np.arange(StepWise_Vol_LowerFrac, 1.0, StepWise_Vol_StepFrac)
@@ -169,6 +165,10 @@ def Pressure_setup(Temperature=[0.0, 25.0, 50.0, 75.0, 100.0], Pressure=1., Meth
         # Expanding the lattice minimum structure to the minimum energy structure at Pressure i
         Ex.Call_Expansion(Method, 'expand', Program, Coordinate_file, molecules_in_coord, min_RMS_gradient,
                           volume_fraction_change=V_min/V0, Output='temporary', Parameter_file=Parameter_file)
+#        subprocess.call(['cp', Coordinate_file, 'temporary' + file_ending])
+
+        # Running a tighter minimization
+        scipy.optimize.minimize(U_PV, V_min, args=(Pressure[i], file_ending),method='Nelder-Mead', tol=1.e-4)
 
         # Making a new directory
         subprocess.call(['mkdir', Output + '_' + str(Pressure[i]) + 'atm'])
@@ -181,15 +181,28 @@ def Pressure_setup(Temperature=[0.0, 25.0, 50.0, 75.0, 100.0], Pressure=1., Meth
             pass
         write_input_file(Temperature, Pressure[i], Method, Program, Output, Coordinate_file, Parameter_file,
                          molecules_in_coord, properties_to_save, NumAnalysis_method, NumAnalysis_step, LocGrd_Vol_FracStep,
-                         LocGrd_Diag_FracStep, LocGrd_OffDiag_FracStep, StepWise_Vol_StepFrac, StepWise_Vol_LowerFrac,
+                         LocGrd_CMatrix_FracStep, StepWise_Vol_StepFrac, StepWise_Vol_LowerFrac,
                          StepWise_Vol_UpperFrac, Statistical_mechanics, Gruneisen_Vol_FracStep, Gruneisen_Lat_FracStep,
-                         Wavenum_Tol, Gradient_MaxTemp, Aniso_LocGrad_Type, min_RMS_gradient, Output + '_' +
-                         str(Pressure[i]) + 'atm/input.inp')
+                         Wavenum_Tol, Gradient_MaxTemp, Aniso_LocGrad_Type, min_RMS_gradient,
+                         Output + '_' + str(Pressure[i]) + 'atm/input.inp')
+        subprocess.call(['rm', 'temporary' + file_ending])
 
+def U_PV(V, Pressure, file_ending):
+#    print(V)
+    # WARNING: This function should only be used with Pressure_setup !!!
+    V_hold = Pr.Volume(Program=Program, Coordinate_file='temporary' + file_ending)
+    V_frac = V / V_hold
+#    print(V_frac)
+    Ex.Call_Expansion(Method, 'expand', Program, 'temporary' + file_ending, molecules_in_coord, min_RMS_gradient,
+                      volume_fraction_change=V_frac, Output='temporary', Parameter_file=Parameter_file)
+    U = (Pr.Potential_energy(Program, Coordinate_file='temporary' + file_ending, Parameter_file=Parameter_file) \
+           + Pr.PV_energy(Pressure, Pr.Volume(Program=Program, Coordinate_file='temporary' + file_ending))) / molecules_in_coord
+#    print(U)
+    return U
 
 def write_input_file(Temperature, Pressure, Method, Program, Output, Coordinate_file, Parameter_file, 
                      molecules_in_coord, properties_to_save, NumAnalysis_method, NumAnalysis_step, LocGrd_Vol_FracStep,
-                     LocGrd_Diag_FracStep, LocGrd_OffDiag_FracStep, StepWise_Vol_StepFrac, StepWise_Vol_LowerFrac, 
+                     LocGrd_CMatrix_FracStep, StepWise_Vol_StepFrac, StepWise_Vol_LowerFrac, 
                      StepWise_Vol_UpperFrac, Statistical_mechanics, Gruneisen_Vol_FracStep, Gruneisen_Lat_FracStep,
                      Wavenum_Tol, Gradient_MaxTemp, Aniso_LocGrad_Type, min_RMS_gradient, input_file_location_and_name):
     properties_out = ''
@@ -210,8 +223,7 @@ def write_input_file(Temperature, Pressure, Method, Program, Output, Coordinate_
         myfile.write('NumAnalysis_method = ' + NumAnalysis_method + '\n')
         myfile.write('NumAnalysis_step = ' + str(NumAnalysis_step) + '\n')
         myfile.write('LocGrd_Vol_FracStep = ' + str(LocGrd_Vol_FracStep) + '\n')
-        myfile.write('LocGrd_Diag_FracStep = ' + str(LocGrd_Diag_FracStep) + '\n')
-        myfile.write('LocGrd_OffDiag_FracStep = ' + str(LocGrd_OffDiag_FracStep) + '\n')
+        myfile.write('LocGrd_CMatrix_FracStep = ' + np.array2string(LocGrd_CMatrix_FracStep,separator=',').strip('[').strip(']').replace(' ','') + '\n')
         myfile.write('StepWise_Vol_StepFrac = ' + str(StepWise_Vol_StepFrac) + '\n')
         myfile.write('StepWise_Vol_LowerFrac = ' + str(StepWise_Vol_LowerFrac) + '\n')
         myfile.write('StepWise_Vol_UpperFrac = ' + str(StepWise_Vol_UpperFrac) + '\n')
@@ -462,6 +474,7 @@ if __name__ == '__main__':
         cp2kroot = (cp2kroot.split('=')[1].strip())
     except subprocess.CalledProcessError as grepexc:
         cp2kroot = 'BNZ_NMA_p2'
+
     if pressure_scan == False: 
         Temperature_Lattice_Dynamics(Temperature=Temperature,
                                      Pressure=Pressure,
@@ -517,4 +530,5 @@ if __name__ == '__main__':
                            Aniso_LocGrad_Type=Aniso_LocGrad_Type,
                            min_RMS_gradient=min_RMS_gradient,
                            cp2kroot=cp2kroot)
+
 

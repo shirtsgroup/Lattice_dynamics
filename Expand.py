@@ -704,7 +704,7 @@ def Anisotropic_Local_Gradient(Coordinate_file, Program, Temperature, Pressure, 
 
     if Temperature == 0.:
         # If temperature is zero, we assume that the local gradient is the same at 0.1K
-        Temperature = 1e-3
+        Temperature = 1e-10
 
 
     # Modified anisotropic Local Gradient
