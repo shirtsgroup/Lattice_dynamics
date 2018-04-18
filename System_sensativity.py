@@ -56,7 +56,7 @@ def isotropic_gradient_settings(Coordinate_file, Program, Parameter_file, molecu
 
     # Plotting the results
     plt.plot(np.log10(steps), U - U_0, linestyle='--', marker='o')
-    plt.xlabel('$\log({V/V_{0}})$', fontsize=22)
+    plt.xlabel('$\log({dV/V_{0}})$', fontsize=22)
     plt.ylabel('$\Delta U$ [kcal/mol]', fontsize=22)
     plt.ylim((0., 2*cutoff))
     plt.axhline(y=cutoff, c='grey', linestyle='--')
@@ -119,7 +119,7 @@ def anisotropic_gradient_settings(Coordinate_file, Program, Parameter_file, mole
             plt.plot(np.log10(steps[:i + 1]), U[j, :i + 1] - U_0, linestyle='--', marker='o', label='C' + str(j + 1))
 
     # Plotting the results
-    plt.xlabel('$\log({C/C_{0}})$', fontsize=22)
+    plt.xlabel('$\log({dC/C_{0}})$', fontsize=22)
     plt.ylabel('$\Delta U$ [kcal/mol]', fontsize=22)
     plt.ylim((0., 2*cutoff))
     plt.axhline(y=cutoff, c='grey', linestyle='--')
@@ -169,13 +169,14 @@ def anisotropic_gradient_settings_1D(Coordinate_file, Program, Parameter_file, m
             break
 
     # Plotting the results
-#    plt.plot(np.log10(steps[:end_plot + 1]), U[:end_plot + 1] - U_0, linestyle='--', marker='o')
-#    plt.xlabel('$\log({\lambda})$', fontsize=22)
-#    plt.ylabel('$\Delta U$ [kcal/mol]', fontsize=22)
-#    plt.ylim((0., 2*cutoff))
-#    plt.axhline(y=cutoff, c='grey', linestyle='--')
-#    plt.tight_layout()
-#    plt.show()
-
+    plt.plot(np.log10(steps[:end_plot + 1]), U[:end_plot + 1] - U_0, linestyle='--', marker='o')
+    plt.xlabel('$\log({d\lambda})$', fontsize=22)
+    plt.ylabel('$\Delta U$ [kcal/mol]', fontsize=22)
+    plt.ylim((0., 2*cutoff))
+    plt.axhline(y=cutoff, c='grey', linestyle='--')
+    plt.tight_layout()
+    plt.show()
+    print('dLambda used: ', LocGrd_dLambda)
+    sys.exit()
     # returning the value of dV
     return LocGrd_dLambda

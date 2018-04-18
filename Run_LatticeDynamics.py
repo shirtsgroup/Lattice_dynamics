@@ -165,9 +165,10 @@ def Pressure_setup(Temperature=[0.0, 25.0, 50.0, 75.0, 100.0], Pressure=1., Meth
         # Expanding the lattice minimum structure to the minimum energy structure at Pressure i
         Ex.Call_Expansion(Method, 'expand', Program, Coordinate_file, molecules_in_coord, min_RMS_gradient,
                           volume_fraction_change=V_min/V0, Output='temporary', Parameter_file=Parameter_file)
+#        subprocess.call(['cp', Coordinate_file, 'temporary' + file_ending])
 
         # Running a tighter minimization
-        scipy.optimize.minimize(U_PV, V_min, args=(Pressure[i], file_ending), tol=1.e-06)
+        scipy.optimize.minimize(U_PV, V_min, args=(Pressure[i], file_ending),method='Nelder-Mead', tol=1.e-4)
 
         # Making a new directory
         subprocess.call(['mkdir', Output + '_' + str(Pressure[i]) + 'atm'])
@@ -187,14 +188,16 @@ def Pressure_setup(Temperature=[0.0, 25.0, 50.0, 75.0, 100.0], Pressure=1., Meth
         subprocess.call(['rm', 'temporary' + file_ending])
 
 def U_PV(V, Pressure, file_ending):
+#    print(V)
     # WARNING: This function should only be used with Pressure_setup !!!
-    if 'V_hold' in locals():        
-        V_frac = V / V_hold
-        Ex.Call_Expansion(Method, 'expand', Program, 'temporary' + file_ending, molecules_in_coord, min_RMS_gradient,
-                          volume_fraction_change=V_frac, Output='temporary', Parameter_file=Parameter_file)
-    V_hold = 1. * V
+    V_hold = Pr.Volume(Program=Program, Coordinate_file='temporary' + file_ending)
+    V_frac = V / V_hold
+#    print(V_frac)
+    Ex.Call_Expansion(Method, 'expand', Program, 'temporary' + file_ending, molecules_in_coord, min_RMS_gradient,
+                      volume_fraction_change=V_frac, Output='temporary', Parameter_file=Parameter_file)
     U = (Pr.Potential_energy(Program, Coordinate_file='temporary' + file_ending, Parameter_file=Parameter_file) \
-           + Pr.PV_energy(Pressure, Pr.Volume(Program=Program, Coordinate_file='temporary' + file_ending)))
+           + Pr.PV_energy(Pressure, Pr.Volume(Program=Program, Coordinate_file='temporary' + file_ending))) / molecules_in_coord
+#    print(U)
     return U
 
 def write_input_file(Temperature, Pressure, Method, Program, Output, Coordinate_file, Parameter_file, 
