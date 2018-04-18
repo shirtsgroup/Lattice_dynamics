@@ -163,27 +163,11 @@ def Tinker_Wavenumber(Coordinate_file, Parameter_file):
 #                  CP2K                  #
 ##########################################
 
-def CP2K_Wavenumber(coordinatefile, parameter_file, cp2kroot):
+def CP2K_Wavenumber(coordinatefile, parameter_file, output):
     import os.path
-    if cp2kroot.find('benzene') >= 0:
-        molecule='benzene'
-    elif cp2kroot.find('pyrzin') >=0:
-        molecule='pyrzin'
-    elif cp2kroot.find('resora') >=0:
-        molecule='resora'
-    else:
-        molecule='qopbed'
-    if cp2kroot.find('p1') >=0:
-        polynum='p1'
-    elif cp2kroot.find('p2') >=0:
-        polynum='p2'
-    elif cp2kroot.find('p3') >=0:
-        polynum='p3'
-    else:
-        polynum='p4'
-    if os.path.exists(cp2kroot+'-VIBRATIONS-1.mol') == True:
+    if os.path.exists(output+'-VIBRATIONS-1.mol') == True:
         wavenumbers = np.zeros((3,))
-        wavenumfile = open(cp2kroot+'-VIBRATIONS-1.mol','r')
+        wavenumfile = open(output+'.mol','r')
         lines = wavenumfile.readlines()
         iter = 2
         while '[FR-COORD]' not in lines[iter]:
@@ -191,8 +175,17 @@ def CP2K_Wavenumber(coordinatefile, parameter_file, cp2kroot):
             wavenumbers = np.append(wavenumbers, float(wave[0]))
     	    iter = iter+1
     else:
-        subprocess.call("setup_wavenumber", "-m",molecule,"-n",polynum,"-ty","nma")
-        subprocess.call("sbatch", "submit_cluster.slurm" )
+        subprocess.call(['setup_wavenumber', '-t', 'nma', '-h', Output])
+        subprocess.call(['mpirun', '-np','112','cp2k.popt','-i',Output+'.inp'])
+        subprocess.call(['mv','NMA-VIBRATIONS-1.mol',Output+'.mol'])
+        wavenumbers = np.zeros((3,))
+        wavenumfile = open(output+'.mol','r')
+        lines = wavenumfile.readlines()
+        iter = 2
+        while '[FR-COORD]' not in lines[iter]:
+            wave = lines[iter].split()
+            wavenumbers = np.append(wavenumbers, float(wave[0]))
+            iter = iter+1
     return wavenumbers
 
 	 
@@ -303,7 +296,7 @@ def Setup_Isotropic_Gruneisen(Coordinate_file, Program, Gruneisen_Vol_FracStep, 
     if Program == 'CP2K':
         Ex.Expand_Structure(Coordinate_file, Program, 'lattice_parameters', molecules_in_coord, 'temp', min_RMS_gradient,
                             dlattice_parameters=dLattice_Parameters,
-                            Parameter_file=keyword_parameters['Parameter_file'], cp2kroot = keyword_parameters['cp2kroot'])
+                            Parameter_file=keyword_parameters['Parameter_file'])
         Organized_wavenumbers = CP2K_Gru_organized_wavenumbers('Isotropic', Coordinate_file, 'temp.xyz', keyword_parameters['Parameter_file'])
         Wavenumber_Reference = Organized_wavenumbers[0] 
         Wavenumber_expand = Organized_wavenumbers[1]
