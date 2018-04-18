@@ -273,7 +273,10 @@ def CP2K_Lattice_Parameters(Coordinate_file):
     """
     with open('%s' % Coordinate_file, 'r') as l:
         lines = l.readlines()
-        lattice_parameters = lines[1].split()[1:7]
+        lattice_parameterstemp = (lines[1].split()[1:7])
+    lattice_parameters = np.zeros((6,))
+    for x in range(0,6):
+        lattice_parameters[x] = float(lattice_parameterstemp[x])
     return lattice_parameters
 
 def CP2K_atoms_per_molecule(Coordinate_file, molecules_in_coord):
@@ -284,10 +287,13 @@ def CP2K_atoms_per_molecule(Coordinate_file, molecules_in_coord):
     Coordinate_file = Tinker .xyz file for crystal structure
     molecules_in_coord = number of molecules in Coordinate_file
     """
+    numatoms = 0
     with open('%s' % Coordinate_file, 'r') as l:
-        coordinates = [lines.split() for lines in l]
-        coordinates = np.array(list(it.zip_longest(*coordinates, fillvalue=' '))).T
-    atoms_per_molecule = int(coordinates[0, 0]) / molecules_in_coord
+        lines = l.readlines()
+        for line in lines:
+            if line.split()[0] == 'ATOM':
+                numatoms+=1
+    atoms_per_molecule = numatoms / molecules_in_coord
     return atoms_per_molecule
 
 

@@ -134,6 +134,8 @@ def Pressure_setup(Temperature=[0.0, 25.0, 50.0, 75.0, 100.0], Pressure=1., Meth
         file_ending = '.xyz'
     elif Program == 'Test':
         file_ending = '.npy'
+    elif Program =='cp2k':
+        file_ending='.pdb'
 
     # Making an array of volume fractions
     V_frac = np.arange(StepWise_Vol_LowerFrac, 1.0, StepWise_Vol_StepFrac)
