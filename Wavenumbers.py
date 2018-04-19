@@ -7,6 +7,7 @@ import subprocess
 import numpy as np
 import Expand as Ex
 import ThermodynamicProperties as Pr
+from munkres import Munkres, print_matrix
 
 
 ##########################################
@@ -412,9 +413,6 @@ def Get_Aniso_Gruneisen_Wavenumbers(Gruneisen, Wavenumber_Reference, ref_crystal
 #     Organizing Wavenumbers for Gru     #
 ##########################################
 def Tinker_Gru_organized_wavenumbers(Expansion_type, Coordinate_file, Expanded_Coordinate_file, Parameter_file):
-    from munkres import Munkres, print_matrix
-    m = Munkres()
-
     number_of_modes = int(3*Pr.Tinker_atoms_per_molecule(Coordinate_file, 1))
 
     if Expansion_type == 'Isotropic':
@@ -433,34 +431,36 @@ def Tinker_Gru_organized_wavenumbers(Expansion_type, Coordinate_file, Expanded_C
     wavenumbers_out = np.zeros((len(wavenumbers[:, 0]), number_of_modes))
     wavenumbers_out[0] = wavenumbers[0]
     for k in range(1, len(wavenumbers[:, 0])):
-        weight = np.zeros((number_of_modes - 3, number_of_modes - 3))
-        for i in range(3, number_of_modes):
-            diff = np.dot(eigenvectors[0, i], eigenvectors[k, i])/(np.linalg.norm(eigenvectors[0, i])*np.linalg.norm(eigenvectors[k, i]))
-            if np.absolute(diff) > 0.95:
-                weight[i - 3] = 10000000.
-                weight[i - 3, i - 3] = 1. - diff
-            else:
-                for j in range(3, number_of_modes):
-                    hold_weight = np.zeros(4)
-                    hold_weight[0] = 1 - np.dot(-1*eigenvectors[0, i], eigenvectors[k, j])/(np.linalg.norm(-1*eigenvectors[0, i])*np.linalg.norm(eigenvectors[k, j]))
-                    hold_weight[1] = 1 - np.dot(eigenvectors[0, i], -1*eigenvectors[k, j])/(np.linalg.norm(eigenvectors[0, i])*np.linalg.norm(-1*eigenvectors[k, j]))
-                    hold_weight[2] = 1 - np.dot(eigenvectors[0, i], eigenvectors[k, j])/(np.linalg.norm(eigenvectors[0, i])*np.linalg.norm(eigenvectors[k, j]))
-                    hold_weight[3] = 1 - np.dot(-1*eigenvectors[0, i], -1*eigenvectors[k, j])/(np.linalg.norm(-1*eigenvectors[0, i])*np.linalg.norm(-1*eigenvectors[k, j]))
-                    weight[i - 3, j - 3] = min(hold_weight)
-        # Using the Hungarian algorithm to match wavenumbers
-        Wgt = m.compute(weight)
-        x,y = zip(*Wgt)
-        z = np.column_stack((x,y))
-        z = z +3
-
-    # Re-organizing the expanded wavenumbers
+        z, _ = match_modes(number_of_modes, eigenvectors[0], eigenvectors[k])
+        # Re-organizing the expanded wavenumbers
         for i in z:
             wavenumbers_out[k, i[0]] = wavenumbers[k, i[1]]
     return wavenumbers_out
 
+def match_modes(number_of_modes, eigenvectors_1, eigenvectors_2):
+    m = Munkres()
+    weight = np.zeros((number_of_modes - 3, number_of_modes - 3))
+    for i in range(3, number_of_modes):
+        diff = np.dot(eigenvectors_1[i], eigenvectors_2[i])/(np.linalg.norm(eigenvectors_1[i])*np.linalg.norm(eigenvectors_2[i]))
+        if np.absolute(diff) > 0.95:
+            weight[i - 3] = 10000000.
+            weight[i - 3, i - 3] = 1. - diff
+        else:
+            for j in range(3, number_of_modes):
+                hold_weight = np.zeros(4)
+                hold_weight[0] = 1 - np.dot(-1*eigenvectors_1[i], eigenvectors_2[j])/(np.linalg.norm(-1*eigenvectors_1[i])*np.linalg.norm(eigenvectors_2[j]))
+                hold_weight[1] = 1 - np.dot(eigenvectors_1[i], -1*eigenvectors_2[j])/(np.linalg.norm(eigenvectors_1[i])*np.linalg.norm(-1*eigenvectors_2[j]))
+                hold_weight[2] = 1 - np.dot(eigenvectors_1[i], eigenvectors_2[j])/(np.linalg.norm(eigenvectors_1[i])*np.linalg.norm(eigenvectors_2[j]))
+                hold_weight[3] = 1 - np.dot(-1*eigenvectors_1[i], -1*eigenvectors_2[j])/(np.linalg.norm(-1*eigenvectors_1[i])*np.linalg.norm(-1*eigenvectors_2[j]))
+                weight[i - 3, j - 3] = min(hold_weight)
+    # Using the Hungarian algorithm to match wavenumbers
+    Wgt = m.compute(weight)
+    x,y = zip(*Wgt)
+    z = np.column_stack((x,y))
+    z = z +3
+    return z, weight
 
 def CP2K_Gru_organized_wavenumbers(Expansion_type, Coordinate_file, Expanded_Coordinate_file, Parameter_file):
-    from munkres import Munkres, print_matrix
     m = Munkres()
 
     number_of_modes = 3*Pr.CP2K_atoms_per_molecule(Coordinate_file, 1)
@@ -482,23 +482,8 @@ def CP2K_Gru_organized_wavenumbers(Expansion_type, Coordinate_file, Expanded_Coo
     wavenumbers_out = np.zeros((len(wavenumbers[:, 0]), number_of_modes))
     wavenumbers_out[0] = wavenumbers[0]
     for k in range(1, len(wavenumbers[:, 0])):
-        weight = np.zeros((number_of_modes - 3, number_of_modes - 3))
-        for i in range(3, number_of_modes):
-            diff = np.linalg.norm(np.dot(eigenvectors[0, i], eigenvectors[k, i]))/(np.linalg.norm(eigenvectors[0, i])*np.linalg.norm(eigenvectors[k, i]))
-            if diff > 0.95:
-                weight[i - 3] = 10000000.
-                weight[i - 3, i - 3] = 1. - diff
-            else:
-                for j in range(3, number_of_modes):
-                    weight[i - 3, j - 3] = 1 - np.linalg.norm(np.dot(eigenvectors[0, i], eigenvectors[k, j]))/(np.linalg.norm(eigenvectors[0, i])*np.linalg.norm(eigenvectors[k, j]))
-
-        # Using the Hungarian algorithm to match wavenumbers
-        Wgt = m.compute(weight)
-        x,y = zip(*Wgt)
-        z = np.column_stack((x,y))
-        z = z +3
-
-    # Re-organizing the expanded wavenumbers
+        z, _ = match_modes(number_of_modes, eigenvectors[0], eigenvectors[k])
+        # Re-organizing the expanded wavenumbers
         for i in z:
             wavenumbers_out[k, i[0]] = wavenumbers[k, i[1]]
     return wavenumbers_out
