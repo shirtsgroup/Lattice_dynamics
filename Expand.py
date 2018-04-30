@@ -57,6 +57,7 @@ def Call_Expansion(Method, Purpose, Program, Coordinate_file, molecules_in_coord
         if (Method == 'GiQ') or (Method == 'GiQg') or (Method == 'SiQ') or (Method == 'SiQg'):
             dlattice_parameters = Isotropic_Change_Lattice_Parameters(keyword_parameters['volume_fraction_change'],
                                                                       Program, Coordinate_file)
+            
             Expand_Structure(Coordinate_file, Program, 'lattice_parameters', molecules_in_coord,
                              keyword_parameters['Output'], min_RMS_gradient, 
                              Parameter_file=keyword_parameters['Parameter_file'],
@@ -316,10 +317,10 @@ def Ouput_CP2K_Coordinate_File(Coordinate_file, Parameter_file, coordinates, lat
 
 
 def CP2K_minimization(Parameter_file, Coordinate_file, Output, min_RMS_gradient):
-    
+    print(Output)
     subprocess.call(['setup_wavenumber','-t','geoopt','-h',Output])
-    subprocess.call(['mpirun', '-np','112','cp2k.popt','-i',Output+'.inp'])
-    subprocess.call(['python','pulllastframe.py','-f','GEOOPT-GEOOPT.pdb-pos-1.pdb','-n',Output+'.pdb'])
+    subprocess.call(['mpirun', '-np','112','cp2k.popt','-i',Output+'.inp' ])
+    subprocess.call(['pulllastframe', '-f', 'GEOOPT-GEOOPT.pdb-pos-1.pdb' ,'-n', Output+'.pdb'])
 
 
 ##########################################
@@ -330,6 +331,8 @@ def assign_file_ending(program):
         return '.xyz'
     elif program == 'Test':
         return '.npy'
+    elif program == 'CP2K':
+        return '.pdb'
     else:
         print('ERROR: Program is not supported!')
         sys.exit()
@@ -562,7 +565,7 @@ def Isotropic_Local_Gradient(Coordinate_file, Program, Temperature, Pressure, Lo
     # Determining the change in lattice parameter for isotropic expansion
     dlattice_parameters_p = Isotropic_Change_Lattice_Parameters((volume + LocGrd_dV) / volume, Program, Coordinate_file)
     dlattice_parameters_m = Isotropic_Change_Lattice_Parameters((volume - LocGrd_dV) / volume, Program, Coordinate_file)
-
+    print(dlattice_parameters_p, dlattice_parameters_m)
     # Building the isotropically expanded and compressed strucutres
     Expand_Structure(Coordinate_file, Program, 'lattice_parameters', molecules_in_coord, 'plus', min_RMS_gradient,
                      dlattice_parameters=dlattice_parameters_p, Parameter_file=keyword_parameters['Parameter_file'])
@@ -645,7 +648,7 @@ def Isotropic_Local_Gradient(Coordinate_file, Program, Temperature, Pressure, Lo
     NO.iso_gradient(dG, ddG, dS, dS/ddG)
 
     # Removing excess files
-    os.system('rm '+coordinate_plus+' '+coordinate_minus)
+    #os.system('rm '+coordinate_plus+' '+coordinate_minus)
     return dS/ddG, wavenumbers, volume
 
 

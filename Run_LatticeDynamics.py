@@ -29,7 +29,7 @@ def Temperature_Lattice_Dynamics(Temperature=[0.,300.], Pressure=1., Method='HA'
         else:
             print("   Computing wavenumbers of coordinate file")
             wavenumbers = Wvn.Call_Wavenumbers(Method, min_RMS_gradient, Program=Program, Coordinate_file=Coordinate_file,
-                                               Parameter_file=Parameter_file, cp2kroot=cp2kroot)
+                                               Parameter_file=Parameter_file, Output=Output)
             np.save(Output + '_' + Method + '_WVN', wavenumbers)
 
         if all(wavenumbers > Wavenum_Tol):

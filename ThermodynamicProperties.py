@@ -35,7 +35,7 @@ def Properties(Coordinate_file, wavenumbers, Temperature, Pressure, Program, Sta
         # Potential energy
         properties[7:13] = Tinker_Lattice_Parameters(Coordinate_file)  # Lattice parameters
     elif Program == 'CP2K':
-        properties[3] = CP2K_U(cp2kroot) / molecules_in_coord  # Potential energy
+        properties[3] = CP2K_U() / molecules_in_coord  # Potential energy
         properties[7:13] = CP2K_Lattice_Parameters(Coordinate_file)  # Lattice parameters
     elif Program == 'Test':
         properties[3] = Test_U(Coordinate_file) / molecules_in_coord  # Potential energy
@@ -248,7 +248,7 @@ def Test_Lattice_Parameters(Coordinate_file):
 #                 CP2K                   #
 ##########################################
 
-def CP2K_U(cp2kroot):
+def CP2K_U():
     """
     This function takes a set of lattice parameters in a .npy file and returns the potential energy
     Random funcitons can be input here to run different tests and implimented new methods efficiently
@@ -256,7 +256,7 @@ def CP2K_U(cp2kroot):
     **Required Inputs
     Coordinate_file = File containing lattice parameters
     """
-    l = open(cp2kroot+'-r-0.out')
+    l = open('NMA-r-0.out')
     lines = l.readlines()
     for x in range(0,len(lines)):
         if 'ENERGY| Total FORCE_EVAL ( QS ) energy (a.u.): ' in lines[x]:
@@ -340,6 +340,8 @@ def Potential_energy(Program, **keyword_parameters):
         U = Tinker_U(keyword_parameters['Coordinate_file'], keyword_parameters['Parameter_file'])
     elif Program == 'Test':
         U = Test_U(keyword_parameters['Coordinate_file'])
+    elif Program == 'CP2K':
+        U = CP2K_U()
     return U
 
 def Lattice_parameters(Program, Coordinate_file):
@@ -347,6 +349,8 @@ def Lattice_parameters(Program, Coordinate_file):
         lattice_parameters = Tinker_Lattice_Parameters(Coordinate_file)
     elif Program == 'Test':
         lattice_parameters = Test_Lattice_Parameters(Coordinate_file)
+    elif Program == 'CP2K':
+        lattice_parameters = CP2K_Lattice_Parameters(Coordinate_file)
     return lattice_parameters
 
 def RotationFree_StrainArray_from_CrystalMatrix(ref_crystal_matrix, new_crystal_matrix):
@@ -529,7 +533,8 @@ def Gibbs_Free_Energy(Temperature, Pressure, Program, wavenumbers, Coordinate_fi
         U = Tinker_U(Coordinate_file, keyword_parameters['Parameter_file']) / molecules_in_coord  # Potential Energy
     elif Program == 'Test':
         U = Test_U(Coordinate_file) / molecules_in_coord
-
+    elif Program == 'CP2K':
+        U = CP2K_U()
     # Volume
     volume = Volume(Program=Program, Coordinate_file=Coordinate_file)
 

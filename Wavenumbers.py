@@ -49,7 +49,7 @@ def Call_Wavenumbers(Method, min_RMS_gradient, **keyword_parameters):
         if keyword_parameters['Program'] == 'Tinker':
             wavenumbers = Tinker_Wavenumber(keyword_parameters['Coordinate_file'], keyword_parameters['Parameter_file'])
         elif keyword_parameters['Program'] == 'CP2K':
-            wavenumbers = CP2K_Wavenumber(keyword_parameters['Coordinate_file'], keyword_parameters['Parameter_file'], keyword_parameters['cp2kroot'])
+            wavenumbers = CP2K_Wavenumber(keyword_parameters['Coordinate_file'], keyword_parameters['Parameter_file'], Output=keyword_parameters['Output'])
 
         elif keyword_parameters['Program'] == 'Test':
             if Method == 'GaQ':
@@ -88,7 +88,8 @@ def Call_Wavenumbers(Method, min_RMS_gradient, **keyword_parameters):
                                               keyword_parameters['Program'],
                                               keyword_parameters['Gruneisen_Vol_FracStep'],
                                               keyword_parameters['molecules_in_coord'], min_RMS_gradient,
-                                              Parameter_file=keyword_parameters['Parameter_file'])
+                                              Parameter_file=keyword_parameters['Parameter_file'],
+                                              Output=keyword_parameters['Output'])
                 print("   ... Saving reference wavenumbers and Gruneisen parameters to: " + \
                       keyword_parameters['Output'] + '_GRU_' + Method + '.npy')
                 np.save(keyword_parameters['Output'] + '_GRU_' + Method, Gruneisen)
@@ -163,11 +164,11 @@ def Tinker_Wavenumber(Coordinate_file, Parameter_file):
 #                  CP2K                  #
 ##########################################
 
-def CP2K_Wavenumber(coordinatefile, parameter_file, output):
+def CP2K_Wavenumber(coordinatefile, parameter_file, Output):
     import os.path
-    if os.path.exists(output+'-VIBRATIONS-1.mol') == True:
+    if os.path.exists(Output+'-VIBRATIONS-1.mol') == True:
         wavenumbers = np.zeros((3,))
-        wavenumfile = open(output+'.mol','r')
+        wavenumfile = open(Output+'.mol','r')
         lines = wavenumfile.readlines()
         iter = 2
         while '[FR-COORD]' not in lines[iter]:
@@ -175,11 +176,12 @@ def CP2K_Wavenumber(coordinatefile, parameter_file, output):
             wavenumbers = np.append(wavenumbers, float(wave[0]))
     	    iter = iter+1
     else:
-        subprocess.call(['setup_wavenumber', '-t', 'nma', '-h', Output])
-        subprocess.call(['mpirun', '-np','112','cp2k.popt','-i',Output+'.inp'])
+        print('setting up vibrational analysis')
+        subprocess.call(['setup_wavenumber', '-t', 'nma', '-h', coordinatefile[0:-4]])
+        subprocess.call(['mpirun', '-np','112','cp2k.popt','-i',coordinatefile[0:-4]+'.inp'])
         subprocess.call(['mv','NMA-VIBRATIONS-1.mol',Output+'.mol'])
         wavenumbers = np.zeros((3,))
-        wavenumfile = open(output+'.mol','r')
+        wavenumfile = open(Output+'.mol','r')
         lines = wavenumfile.readlines()
         iter = 2
         while '[FR-COORD]' not in lines[iter]:
@@ -297,7 +299,7 @@ def Setup_Isotropic_Gruneisen(Coordinate_file, Program, Gruneisen_Vol_FracStep, 
         Ex.Expand_Structure(Coordinate_file, Program, 'lattice_parameters', molecules_in_coord, 'temp', min_RMS_gradient,
                             dlattice_parameters=dLattice_Parameters,
                             Parameter_file=keyword_parameters['Parameter_file'])
-        Organized_wavenumbers = CP2K_Gru_organized_wavenumbers('Isotropic', Coordinate_file, 'temp.xyz', keyword_parameters['Parameter_file'])
+        Organized_wavenumbers = CP2K_Gru_organized_wavenumbers('Isotropic', Coordinate_file, 'temp.pdb', keyword_parameters['Parameter_file'], keyword_parameters['Output'])
         Wavenumber_Reference = Organized_wavenumbers[0] 
         Wavenumber_expand = Organized_wavenumbers[1]
         lattice_parameters = Pr.CP2K_Lattice_Parameters(Coordinate_file)
@@ -459,7 +461,7 @@ def Tinker_Gru_organized_wavenumbers(Expansion_type, Coordinate_file, Expanded_C
     return wavenumbers_out
 
 
-def CP2K_Gru_organized_wavenumbers(Expansion_type, Coordinate_file, Expanded_Coordinate_file, Parameter_file):
+def CP2K_Gru_organized_wavenumbers(Expansion_type, Coordinate_file, Expanded_Coordinate_file, Parameter_file, Output):
     from munkres import Munkres, print_matrix
     m = Munkres()
 
@@ -468,14 +470,14 @@ def CP2K_Gru_organized_wavenumbers(Expansion_type, Coordinate_file, Expanded_Coo
     if Expansion_type == 'Isotropic':
         wavenumbers = np.zeros((2, number_of_modes))
         eigenvectors = np.zeros((2, number_of_modes, number_of_modes))
-        wavenumbers[0], eigenvectors[0] = CP2K_Wavenumber_and_Vectors(Coordinate_file, Parameter_file)
-        wavenumbers[1], eigenvectors[1] = CP2K_Wavenumber_and_Vectors(Expanded_Coordinate_file, Parameter_file)
+        wavenumbers[0], eigenvectors[0] = CP2K_Wavenumber_and_Vectors(Coordinate_file, Parameter_file, Output)
+        wavenumbers[1], eigenvectors[1] = CP2K_Wavenumber_and_Vectors(Expanded_Coordinate_file, Parameter_file, Output)
     elif Expansion_type == 'Anisotropic':
         wavenumbers = np.zeros((7, number_of_modes))
         eigenvectors = np.zeros((7, number_of_modes, number_of_modes))
-        wavenumbers[0], eigenvectors[0] = CP2K_Wavenumber_and_Vectors(Coordinate_file, Parameter_file)
+        wavenumbers[0], eigenvectors[0] = CP2K_Wavenumber_and_Vectors(Coordinate_file, Parameter_file, Output)
         for i in range(1,7):
-            wavenumbers[i], eigenvectors[i] = CP2K_Wavenumber_and_Vectors(Expanded_Coordinate_file[i-1], Parameter_file)
+            wavenumbers[i], eigenvectors[i] = CP2K_Wavenumber_and_Vectors(Expanded_Coordinate_file[i-1], Parameter_file, Output)
 
 
     # Weighting the modes matched together
@@ -533,32 +535,41 @@ def Tinker_Wavenumber_and_Vectors(Coordinate_file, Parameter_file):
     return wavenumbers, eigenvectors
 
 
-def CP2K_Wavenumber_and_Vectors(Coordinate_file, Parameter_file):
-    # Calling Tinker's vibrate executable and extracting the eigenvectors and wavenumbers of the respective
-    # Hessian and mass-weighted Hessian
-    os.system('cp ' + Coordinate_file + ' vector_temp.xyz')
-    output = subprocess.check_output("vibrate vector_temp.xyz -k %s  A |  grep -oP '[-+]*[0-9]*\.[0-9]{2,9}'"
-                                                          % (Parameter_file), shell=True)
-
-    os.system('rm vector_temp.*')
-
-    # Finding the number modes in the system
-    number_of_modes = 3*Pr.Tinker_atoms_per_molecule(Coordinate_file, 1)
-
-    # Splitting the outputs into array form
-    output = output.split('\n')
-    output.remove('')
-    output = np.array(output).astype(float)
-
-    # Grabbing the wavenumbers
-    wavenumbers = np.array(output[number_of_modes: number_of_modes*2]).astype(float)
-
-    # Grabbing the eigenvectors
-    eigenvectors = np.zeros((number_of_modes, number_of_modes))
-    for i in range(number_of_modes):
-        start = number_of_modes*(i + 2) + i + 1
-        finish = start + number_of_modes
-        eigenvectors[i] = output[start: finish] /np.sqrt(np.sum(output[start: finish]**2))
+def CP2K_Wavenumber_and_Vectors(Coordinate_file, Parameter_file, Output):
+    # Calling CP2K's vibrate executable and extracting the eigenvectors and wavenumbers of the respective
+    # .mol file
+    import os.path
+    if os.path.exists(Output+'-VIBRATIONS-1.mol') == True:
+        wavenumbers = np.zeros((3,))
+        wavenumfile = open(Output+'.mol','r')
+        lines = wavenumfile.readlines()
+        iter = 2
+        while '[FR-COORD]' not in lines[iter]:
+            wave = lines[iter].split()
+            wavenumbers = np.append(wavenumbers, float(wave[0]))
+            iter = iter+1
+    else:
+        subprocess.call(['setup_wavenumber', '-t', 'nma', '-h', 'temp'])
+        subprocess.call(['mpirun', '-np','112','cp2k.popt','-i','temp'+'.inp'])
+        subprocess.call(['mv','NMA-VIBRATIONS-1.mol',Output+'.mol'])
+        wavenumbers = np.zeros((3,))
+        wavenumfile = open(Output+'.mol','r')
+        lines = wavenumfile.readlines()
+        iter = 2
+        while '[FR-COORD]' not in lines[iter]:
+            wave = lines[iter].split()
+            wavenumbers = np.append(wavenumbers, float(wave[0]))
+            iter = iter+1
+    nummodes = len(wavenumbers)
+    eigenvectors = np.zeros((nummodes,nummodes))
+    vect = 3
+    for y in range(0,len(lines)):
+        if lines[y].split()[0] == 'vibration':
+            for z in range(1,int(nummodes/3)+1):
+                modecoord = lines[y+z].split()
+                start = int((z-1)*3)
+                eigenvectors[vect,start:start+3] = modecoord[:]
+            vect+=1
     return wavenumbers, eigenvectors
 
 
