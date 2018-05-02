@@ -105,11 +105,10 @@ plt.rc('font', size=16)
 if num_mols != None:
     colors = iter(cm.rainbow(np.linspace(0, 1, (num_mols))))
     plot_list = []*int(num_mols)
-    plot_names = []
     for j in range(0,num_mols):
         new_color = next(colors)
-        plt.plot(volume[1:] / struct_vol, velocity[:,j*atms_per_mol], color = new_color,label = str(j+1))
-        plt.plot(volume[1:] / struct_vol, velocity[:,j*atms_per_mol:(j+1)*atms_per_mol], color = new_color)
+        temp_p = plt.plot(volume[1:] / struct_vol, velocity[:,j*atms_per_mol],color = new_color,  label = str(j+1))
+        plt.plot(volume[1:] / struct_vol, velocity[:,j*atms_per_mol:(j+1)*atms_per_mol], color = temp_p[0].get_color())
     plt.legend()
 else:
     plt.plot(volume[1:] / struct_vol, velocity)
