@@ -52,12 +52,13 @@ for i in range(1, len(args.input_files)):
     matched_modes[i, 3:] = z[:, 1]
     for j in z:
         wavenumbers_matched[i, j[0]] = wavenumbers[i, j[1]]
-        Weight[i - 1, j[0]] = weight[j[0] - 3, j[1] - 3]
+        Weight[i - 1, j[0] - 3] = weight[j[0] - 3, j[1] - 3]
+        if Weight[i - 1, j[0] - 3] == 0.:
+            print(wavenumbers_matched[:, j[0]], Weight[i - 1, j[0] - 3])
 
-print(Weight)
-#print(wavenumbers_matched)
-#print(matched_modes)
-
+np.save('wvn_matched', wavenumbers_matched)
+np.save('matched_modes', matched_modes)
+np.save('weight', Weight)
 
 
 
