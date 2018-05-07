@@ -35,7 +35,7 @@ def Properties(Coordinate_file, wavenumbers, Temperature, Pressure, Program, Sta
         # Potential energy
         properties[7:13] = Tinker_Lattice_Parameters(Coordinate_file)  # Lattice parameters
     elif Program == 'CP2K':
-        properties[3] = CP2K_U() / molecules_in_coord  # Potential energy
+        properties[3] = CP2K_U(Coordinate_file) / molecules_in_coord  # Potential energy
         properties[7:13] = CP2K_Lattice_Parameters(Coordinate_file)  # Lattice parameters
     elif Program == 'Test':
         properties[3] = Test_U(Coordinate_file) / molecules_in_coord  # Potential energy
@@ -248,7 +248,7 @@ def Test_Lattice_Parameters(Coordinate_file):
 #                 CP2K                   #
 ##########################################
 
-def CP2K_U():
+def CP2K_U(coordinate_file):
     """
     This function takes a set of lattice parameters in a .npy file and returns the potential energy
     Random funcitons can be input here to run different tests and implimented new methods efficiently
@@ -256,11 +256,9 @@ def CP2K_U():
     **Required Inputs
     Coordinate_file = File containing lattice parameters
     """
-    l = open('NMA-r-0.out')
+    l = open(coordinate_file)
     lines = l.readlines()
-    for x in range(0,len(lines)):
-        if 'ENERGY| Total FORCE_EVAL ( QS ) energy (a.u.): ' in lines[x]:
-            U = float(lines[x].split()[-1])*627.5	   
+    U = float(lines[0].split()[-1])*627.5	   
     return U
 
 
@@ -341,7 +339,7 @@ def Potential_energy(Program, **keyword_parameters):
     elif Program == 'Test':
         U = Test_U(keyword_parameters['Coordinate_file'])
     elif Program == 'CP2K':
-        U = CP2K_U()
+        U = CP2K_U(keyword_parameters['Coordinate_file'])
     return U
 
 def Lattice_parameters(Program, Coordinate_file):
@@ -534,7 +532,7 @@ def Gibbs_Free_Energy(Temperature, Pressure, Program, wavenumbers, Coordinate_fi
     elif Program == 'Test':
         U = Test_U(Coordinate_file) / molecules_in_coord
     elif Program == 'CP2K':
-        U = CP2K_U()
+        U = CP2K_U(Coordinate_file)
     # Volume
     volume = Volume(Program=Program, Coordinate_file=Coordinate_file)
 

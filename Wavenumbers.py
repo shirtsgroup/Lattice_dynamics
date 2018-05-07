@@ -166,7 +166,7 @@ def Tinker_Wavenumber(Coordinate_file, Parameter_file):
 
 def CP2K_Wavenumber(coordinatefile, parameter_file, Output):
     import os.path
-    if os.path.exists(Output+'-VIBRATIONS-1.mol') == True:
+    if os.path.exists(Output+'.mol') == True:
         wavenumbers = np.zeros((3,))
         wavenumfile = open(Output+'.mol','r')
         lines = wavenumfile.readlines()
@@ -179,9 +179,9 @@ def CP2K_Wavenumber(coordinatefile, parameter_file, Output):
         print('setting up vibrational analysis')
         subprocess.call(['setup_wavenumber', '-t', 'nma', '-h', coordinatefile[0:-4]])
         subprocess.call(['mpirun', '-np','112','cp2k.popt','-i',coordinatefile[0:-4]+'.inp'])
-        subprocess.call(['mv','NMA-VIBRATIONS-1.mol',Output+'.mol'])
+        subprocess.call(['mv','NMA-VIBRATIONS-1.mol',coordinatefile[0:-4]+'.mol'])
         wavenumbers = np.zeros((3,))
-        wavenumfile = open(Output+'.mol','r')
+        wavenumfile = open(coordinate[0:-4]+'.mol','r')
         lines = wavenumfile.readlines()
         iter = 2
         while '[FR-COORD]' not in lines[iter]:
@@ -539,27 +539,19 @@ def CP2K_Wavenumber_and_Vectors(Coordinate_file, Parameter_file, Output):
     # Calling CP2K's vibrate executable and extracting the eigenvectors and wavenumbers of the respective
     # .mol file
     import os.path
-    if os.path.exists(Output+'-VIBRATIONS-1.mol') == True:
-        wavenumbers = np.zeros((3,))
-        wavenumfile = open(Output+'.mol','r')
-        lines = wavenumfile.readlines()
-        iter = 2
-        while '[FR-COORD]' not in lines[iter]:
-            wave = lines[iter].split()
-            wavenumbers = np.append(wavenumbers, float(wave[0]))
-            iter = iter+1
-    else:
-        subprocess.call(['setup_wavenumber', '-t', 'nma', '-h', 'temp'])
-        subprocess.call(['mpirun', '-np','112','cp2k.popt','-i','temp'+'.inp'])
-        subprocess.call(['mv','NMA-VIBRATIONS-1.mol',Output+'.mol'])
-        wavenumbers = np.zeros((3,))
-        wavenumfile = open(Output+'.mol','r')
-        lines = wavenumfile.readlines()
-        iter = 2
-        while '[FR-COORD]' not in lines[iter]:
-            wave = lines[iter].split()
-            wavenumbers = np.append(wavenumbers, float(wave[0]))
-            iter = iter+1
+   
+    if os.path.exists(Coordinate_file[0:-4]+'.mol') == False:    
+        subprocess.call(['setup_wavenumber', '-t', 'nma', '-h', Coordinate_file[0:-4]])
+        subprocess.call(['mpirun', '-np','112','cp2k.popt','-i',Coordinate_file[0:-4]+'.inp'])
+        subprocess.call(['mv','NMA-VIBRATIONS-1.mol',Coordinate_file[0:-4]+'.mol'])
+    wavenumbers = np.zeros((3,))
+    wavenumfile = open(Coordinate_file[0:-4]+'.mol','r')
+    lines = wavenumfile.readlines()
+    iter = 2
+    while '[FR-COORD]' not in lines[iter]:
+        wave = lines[iter].split()
+        wavenumbers = np.append(wavenumbers, float(wave[0]))
+        iter = iter+1
     nummodes = len(wavenumbers)
     eigenvectors = np.zeros((nummodes,nummodes))
     vect = 3
