@@ -7,7 +7,7 @@ Temperature = 0.,10.,20.,30.,40.,50.,60.,70.,80.,90.,100.,110.,120.,130.,140.,15
 
 ## Pressure
 # Only set up for single pressure values
-Pressure = 1.,1000.,10000.,100000.
+Pressure = 1.
 
 ## Method
 # Only one method is accepted currently
@@ -19,7 +19,7 @@ Pressure = 1.,1000.,10000.,100000.
 # GiQg - Gradient isotropic quasi-harmonic approximation with Gruneisen parameter
 # GaQ  - Gradient anisotropic quasi-harmonic approximation
 # GaQg - Gradient anisotropic quasi-harmonic approximation with Gruneisen parameter
-Method = GiQ
+Method = GaQg
 
 ## Output
 # Output name for files
@@ -71,7 +71,7 @@ NumAnalysis_method = RK4
 
 ## Stepsize numerical analysis
 # Right now only temperature is the only input option
-NumAnalysis_step = 70.0
+NumAnalysis_step = 100.0
 
 ## Local gradient presets
 # These options are tuned best for a wide array of options
@@ -101,7 +101,7 @@ Gruneisen_Lat_FracStep = 1.5e-03
 Wavenum_Tol = -1.0
 
 ### Maximum temperature for gradient method
-Gradient_MaxTemp = 70.0
+Gradient_MaxTemp = 300.0
 
 ### Number of Hessians for anistropic local gradient
 # Option - Description
