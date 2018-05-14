@@ -4,7 +4,10 @@ import subprocess
 import Expand as Ex
 import ThermodynamicProperties as Pr
 import numpy as np
-import pylab as plt
+import matplotlib 
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+
 
 def program_cutoff(Program):
     if Program == 'Tinker':
@@ -61,7 +64,7 @@ def isotropic_gradient_settings(Coordinate_file, Program, Parameter_file, molecu
     plt.ylim((0., 2*cutoff))
     plt.axhline(y=cutoff, c='grey', linestyle='--')
     plt.tight_layout()
-    plt.savefig(Output + '_LocGrd_Vol_FracStep.png')
+    plt.savefig(Output + '_LocGrd_Vol_FracStep.pdf')
     plt.close()
 
     # Printing step size
@@ -125,7 +128,7 @@ def anisotropic_gradient_settings(Coordinate_file, Program, Parameter_file, mole
     plt.axhline(y=cutoff, c='grey', linestyle='--')
     plt.legend(loc='upper right',ncol=2, fontsize=18)
     plt.tight_layout()
-    plt.savefig(Output + '_LocGrd_CMatrix_FracStep.png')
+    plt.savefig(Output + '_LocGrd_CMatrix_FracStep.pdf')
     plt.close()
 
     # Printing step size
@@ -175,7 +178,8 @@ def anisotropic_gradient_settings_1D(Coordinate_file, Program, Parameter_file, m
     plt.ylim((0., 2*cutoff))
     plt.axhline(y=cutoff, c='grey', linestyle='--')
     plt.tight_layout()
-    plt.show()
+    plt.savefig(Output + '_LocGrd_Lambda_FracStep.pdf')
+    plt.close()
     print('dLambda used: ', LocGrd_dLambda)
     # returning the value of dV
     return LocGrd_dLambda
