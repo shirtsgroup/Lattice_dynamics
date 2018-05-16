@@ -100,13 +100,14 @@ def anisotropic_gradient_settings(Coordinate_file, Program, Parameter_file, mole
     crystal_matrix_array = Ex.triangle_crystal_matrix_to_array(Ex.Lattice_parameters_to_Crystal_matrix(Pr.Lattice_parameters(Program, Coordinate_file)))
 
     LocGrd_CMatrix_FracStep = np.zeros(6)
+    LocGrd_CMatrix_Step = np.zeros(6)
     for j in range(6):
         plot_marker = False
         for i in range(n_steps):
             dlattice_matrix_array = np.zeros(6)
             dlattice_matrix_array[j] = np.absolute(crystal_matrix_array[j] * steps[i])
             if dlattice_matrix_array[j] < 1e-7:
-                continue
+                dlattice_matrix_array[j] = steps[i]
             dlattice_matrix = Ex.array_to_triangle_crystal_matrix(dlattice_matrix_array)
 
             Ex.Expand_Structure(Coordinate_file, Program, 'crystal_matrix', molecules_in_coord,
@@ -116,6 +117,7 @@ def anisotropic_gradient_settings(Coordinate_file, Program, Parameter_file, mole
             subprocess.call(['rm', Output + file_ending])
             if (U[j, i] - U_0) > cutoff:
                 LocGrd_CMatrix_FracStep[j] = steps[i]
+                LocGrd_CMatrix_Step[j] = np.absolute(dlattice_matrix_array[j])
                 plot_marker = True
                 break
         if plot_marker == True:
@@ -135,7 +137,7 @@ def anisotropic_gradient_settings(Coordinate_file, Program, Parameter_file, mole
     print("After analysis, LocGrd_CMatrix_FracStep = ", LocGrd_CMatrix_FracStep)
 
     # returning the value of dV
-    return np.absolute(LocGrd_CMatrix_FracStep * crystal_matrix_array)
+    return LocGrd_CMatrix_Step
 
 
 def anisotropic_gradient_settings_1D(Coordinate_file, Program, Parameter_file, molecules_in_coord, min_RMS_gradient,
