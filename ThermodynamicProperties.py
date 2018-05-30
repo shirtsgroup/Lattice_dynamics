@@ -414,8 +414,8 @@ def Quantum_Vibrational_A(Temperature, wavenumbers):
     wavenumbers = array of wavenumber (in order with the first three being 0 cm**-1 for the translational modes)
     """
     c = 2.998 * 10 ** 10  # Speed of light in cm/s
-    h = 2.520 * 10 ** (-35)  # Reduced Plank's constant in cal*s
-    k = 3.2998 * 10 ** (-24)  # Boltzmann constant in cal*K
+    h = 2.520 * 10 ** (-38)  # Reduced Plank's constant in kcal/s
+    k = 3.2998 * 10 ** (-27)  # Boltzmann constant in kcal/K
     Na = 6.022 * 10 ** 23  # Avogadro's number
     beta = 1 / (k * Temperature)
     wavenumbers = np.sort(wavenumbers)
@@ -423,13 +423,13 @@ def Quantum_Vibrational_A(Temperature, wavenumbers):
     for i in wavenumbers[3:]:  # Skipping translational modes
         if i > 0:  # Skipping negative wavenumbers
             if Temperature == 0:
-                a = ((h * i * c * np.pi) * Na / 1000 )
+                a = ((h * i * 0.5) )
             else:
-                a = ((h * i * c * np.pi) + (k * Temperature) * np.log(1 - np.exp(-beta * h * i * c * 2 * np.pi))) * Na / 1000
+                a = ((h * i * 0.5) + (k * Temperature) * np.log(1 - np.exp(-beta * h * i * 0.5)))
             A.append(a)
         else:
             pass
-    A = sum(A)
+    A = sum(A)*Na
     return A
 
 def Vibrational_Entropy(Temperature, wavenumbers, Statistical_mechanics):
@@ -490,20 +490,20 @@ def Quantum_Vibrational_S(Temperature, wavenumbers):
     wavenumbers = array of wavenumber (in order with the first three being 0 cm**-1 for the translational modes)
     """
     c = 2.998 * 10 ** 10  # Speed of light in cm/s
-    h = 2.520 * 10 ** (-35)  # Reduced Plank's constant in cal*s
-    k = 3.2998 * 10 ** (-24)  # Boltzmann constant in cal*K
+    h = 2.520 * 10 ** (-38)  # Reduced Plank's constant in cal*s
+    k = 3.2998 * 10 ** (-27)  # Boltzmann constant in cal*K
     Na = 6.022 * 10 ** 23  # Avogadro's number
     beta = 1 / (k * Temperature)
     wavenumbers = np.sort(wavenumbers)
     S = []
     for i in wavenumbers[3:]:
         if i > 0:
-            s = (h * i * c * 2 * np.pi / (Temperature * (np.exp(beta * h * i * c * 2 * np.pi) - 1)) - k * np.log(
-                1 - np.exp(-beta * h * i * c * 2 * np.pi))) * Na / 1000
+            s = ((h * i ) / (Temperature * (np.exp(beta * h * i) - 1)) - k * np.log(
+                1 - np.exp(-beta * h * i )))
             S.append(s)
         else:
             pass
-    S = sum(S)
+    S = sum(S)*Na
     return S
 
 

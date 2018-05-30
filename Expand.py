@@ -296,6 +296,7 @@ def Ouput_CP2K_Coordinate_File(Coordinate_file, Parameter_file, coordinates, lat
     lattice_parameters = lattice parameters as an array ([a,b,c,alpha,beta,gamma])
     Output = file name of new .xyz file
     """
+    coordlines = open(Coordinate_file, 'r').readlines()
     xstr = []
     numatoms = np.shape(coordinates)[0]
     for d in range(3):                  
@@ -306,12 +307,10 @@ def Ouput_CP2K_Coordinate_File(Coordinate_file, Parameter_file, coordinates, lat
         file_out.write('REMARK'+ '\n')
         file_out.write('CRYST1'+str(xstr[0])+xstr[1]+xstr[2]+xstr[3]+xstr[4]+xstr[5]+'\n')
         for x in range(numatoms):
-
-            if (x+1) % 2 == 1:
-                ty = 'C'
-            else:
-                ty = 'H'
-            line =  '{:6s}{:5d} {:^4s}{:1s}{:3s} {:1s}{:4s}{:1s}   {:8.3f}{:8.3f}{:8.3f}{:6.2f}{:6.2f}          {:>2s}{:2s}'.format('ATOM',x+1, ty,'','','','','',coordinates[x,0],coordinates[x,1],coordinates[x,2], 0.0,0.0,ty,'')
+            linenum = coordlines[x+2].split()
+            mol = str(linenum[2])
+            ty = str(linenum[8])
+            line =  '{:6s}{:5d} {:^4s}{:1s}{:3s} {:1s}{:4s}{:1s}   {:8.3f}{:8.3f}{:8.3f}{:6.2f}{:6.2f}          {:>2s}{:2s}'.format('ATOM',x+1, mol,'','','','','',coordinates[x,0],coordinates[x,1],coordinates[x,2], 0.0,0.0,ty,'')
             file_out.write(line+'\n')
         file_out.write('END')
 

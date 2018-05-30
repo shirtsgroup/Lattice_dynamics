@@ -4,6 +4,8 @@ import subprocess
 import Expand as Ex
 import ThermodynamicProperties as Pr
 import numpy as np
+import matplotlib
+matplotlib.use('Agg')
 import pylab as plt
 
 def program_cutoff(Program):
@@ -11,6 +13,8 @@ def program_cutoff(Program):
         cutoff = 5e-04
     elif Program == 'Test':
         cutoff = 5e-05
+    elif Program == 'CP2K':
+        cutoff = 5e-04
     return cutoff
 
 def isotropic_gradient_settings(Coordinate_file, Program, Parameter_file, molecules_in_coord, min_RMS_gradient, Output):

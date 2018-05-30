@@ -181,7 +181,7 @@ def CP2K_Wavenumber(coordinatefile, parameter_file, Output):
         subprocess.call(['mpirun', '-np','112','cp2k.popt','-i',coordinatefile[0:-4]+'.inp'])
         subprocess.call(['mv','NMA-VIBRATIONS-1.mol',coordinatefile[0:-4]+'.mol'])
         wavenumbers = np.zeros((3,))
-        wavenumfile = open(coordinate[0:-4]+'.mol','r')
+        wavenumfile = open(coordinatefile[0:-4]+'.mol','r')
         lines = wavenumfile.readlines()
         iter = 2
         while '[FR-COORD]' not in lines[iter]:
