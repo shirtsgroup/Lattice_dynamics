@@ -10,7 +10,7 @@ import ThermodynamicProperties as Pr
 import Wavenumbers as Wvn
 import Thermal_NumericalAnalysis as TNA
 import Expand as Ex
-import System_sensativity as Ss
+import System_sensitivity as Ss
 
 
 def Temperature_Lattice_Dynamics(Temperature=[0.,300.], Pressure=1., Method='HA', Program='Test',

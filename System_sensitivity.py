@@ -102,7 +102,6 @@ def anisotropic_gradient_settings(Coordinate_file, Program, Parameter_file, mole
     LocGrd_CMatrix_FracStep = np.zeros(6)
     LocGrd_CMatrix_Step = np.zeros(6)
     for j in range(6):
-        plot_marker = False
         for i in range(n_steps):
             dlattice_matrix_array = np.zeros(6)
             dlattice_matrix_array[j] = np.absolute(crystal_matrix_array[j] * steps[i])
@@ -118,10 +117,8 @@ def anisotropic_gradient_settings(Coordinate_file, Program, Parameter_file, mole
             if (U[j, i] - U_0) > cutoff:
                 LocGrd_CMatrix_FracStep[j] = steps[i]
                 LocGrd_CMatrix_Step[j] = np.absolute(dlattice_matrix_array[j])
-                plot_marker = True
                 break
-        if plot_marker == True:
-            plt.plot(np.log10(steps[:i + 1]), U[j, :i + 1] - U_0, linestyle='--', marker='o', label='C' + str(j + 1))
+        plt.plot(np.log10(steps[:i + 1]), U[j, :i + 1] - U_0, linestyle='--', marker='o', label='C' + str(j + 1))
 
     # Plotting the results
     plt.xlabel('$\log({dC/C_{0}})$', fontsize=22)
@@ -138,7 +135,6 @@ def anisotropic_gradient_settings(Coordinate_file, Program, Parameter_file, mole
     print("After analysis, LocGrd_CMatrix_FracStep = ", LocGrd_CMatrix_FracStep)
 
     # returning the value of dV
-    sys.exit()
     return LocGrd_CMatrix_Step
 
 
