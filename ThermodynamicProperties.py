@@ -132,7 +132,7 @@ def Save_Properties(properties, Properties_to_save, Output, Method, Statistical_
             np.save(Output + '_h' + Statistical_mechanics + '_' + Method, properties[:, 7:13])
         if i == 'S':  # Entropy
             print("   ... Saving entropy in: " + Output + "_S" + Statistical_mechanics + "_" + Method + ".npy")
-            np.save(Output + '_S' + Statistical_mechanics + '_' + Method, properties[:, 14])
+            np.save(Output + '_S' + Statistical_mechanics + '_' + Method, properties[:, 13])
 
 
 ##########################################
@@ -387,15 +387,15 @@ def Classical_Vibrational_A(Temperature, wavenumbers):
     wavenumbers = array of wavenumber (in order with the first three being 0 cm**-1 for the translational modes)
     """
     c = 2.998 * 10 ** 10  # Speed of light in cm/s
-    h = 2.520 * 10 ** (-35)  # Reduced Plank's constant in cal*s
-    k = 3.2998 * 10 ** (-24)  # Boltzmann constant in cal*K
+    h = 2.520 * 10 ** (-38)  # Reduced Plank's constant in kcal*s
+    k = 3.2998 * 10 ** (-27)  # Boltzmann constant in kcal/K
     Na = 6.022 * 10 ** 23  # Avogadro's number
     beta = 1 / (k * Temperature)
     wavenumbers = np.sort(wavenumbers)
     A = []
     for i in wavenumbers[3:]:  # Skipping the translational modes
         if i > 0:  # Skipping negative wavenumbers
-            a = (1 / beta) * np.log(beta * h * i * c * 2 * np.pi) * Na / 1000
+            a = (1 / beta) * np.log(beta * h * i * c) * Na
             A.append(a)
         else:
             pass
@@ -467,15 +467,15 @@ def Classical_Vibrational_S(Temperature, wavenumbers):
     wavenumbers = array of wavenumber (in order with the first three being 0 cm**-1 for the translational modes)
     """
     c = 2.998 * 10 ** 10  # Speed of light in cm/s
-    h = 2.520 * 10 ** (-35)  # Reduced Plank's constant in cal*s
-    k = 3.2998 * 10 ** (-24)  # Boltzmann constant in cal*K
+    h = 2.520 * 10 ** (-38)  # Reduced Plank's constant in cal*s
+    k = 3.2998 * 10 ** (-27)  # Boltzmann constant in cal*K
     Na = 6.022 * 10 ** 23  # Avogadro's number
     beta = 1 / (k * Temperature)
     wavenumbers = np.sort(wavenumbers)
     S = []
     for i in wavenumbers[3:]:  # Skipping translational modes
         if i > 0:  # Skipping negative wavenumbers
-            s = k * (1 - np.log(beta * h * i * c * 2 * np.pi)) * Na / 1000
+            s = k * (1 - np.log(beta * h * i * c)) * Na 
             S.append(s)
         else:
             pass
