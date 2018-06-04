@@ -764,9 +764,11 @@ def Anisotropic_Gradient_Expansion(Coordinate_file, Program, molecules_in_coord,
 
         # Changing the applied strain to the new expanded strucutre
         if os.path.isfile('Cords/' + Output + '_' + Method + 'T' + str(temperature[i + 1]) + file_ending):
+            print("   Using expanded structure in 'Cords/' at: " + str(temperature[i + 1]) + " K")
             subprocess.call(['cp', 'Cords/' + Output + '_' + Method + 'T' + str(temperature[i + 1]) + file_ending, './'])
         else:
             # Expanding to the next strucutre using the strain gradient to the next temperature step
+            print("   Expanding to strucutre at: " + str(temperature[i + 1]) + " K")
             Ex.Call_Expansion(Method, 'expand', Program,
                               Output + '_' + Method + 'T' + str(temperature[i]) + file_ending, molecules_in_coord,
                               min_RMS_gradient, Parameter_file=keyword_parameters['Parameter_file'],
@@ -922,17 +924,18 @@ def Anisotropic_Gradient_Expansion_1D(Coordinate_file, Program, molecules_in_coo
     # Finding structures at higher temperatures
     for i in range(len(temperature) - 1):
         print("   Determining local gradient and thermal properties at: " + str(temperature[i]) + " K")
-        if (any(wavenumbers[i, 4:] != 0.) or Method == 'GaQg') and (dLambda_dT[i, 1] != 0.) and \
-                (os.path.isfile('Cords/' + Output + '_' + Method + 'T' + str(temperature[i]) + file_ending)):
+        if (any(wavenumbers[i, 4:] != 0.) or Method == 'GaQg') and (dLambda_dT[i, 1] != 0.):
+#and \
+#                (os.path.isfile('Cords/' + Output + '_' + Method + 'T' + str(temperature[i]) + file_ending)):
             print("   ... Using expansion gradient and wavenumbers previously found")
-            subprocess.call(['mv', 'Cords/' + Output + '_' + Method + 'T' + str(temperature[i]) + file_ending, './'])
+#            subprocess.call(['mv', 'Cords/' + Output + '_' + Method + 'T' + str(temperature[i]) + file_ending, './'])
 
             if Method == 'GaQg':
                 wavenumbers[i + 1, 1:] = Wvn.Call_Wavenumbers(Method, min_RMS_gradient, Gruneisen=Gruneisen,
                                                               Wavenumber_Reference=Wavenumber_Reference,
                                                               ref_crystal_matrix=ref_crystal_matrix, Program=Program,
                                                               Coordinate_file=Output + '_' + Method + 'T' +
-                                                                              str(temperature[i + 1]) + file_ending)
+                                                                              str(temperature[i]) + file_ending)
             pass
         else:
             if NumAnalysis_method == 'RK4':
@@ -970,27 +973,40 @@ def Anisotropic_Gradient_Expansion_1D(Coordinate_file, Program, molecules_in_coo
                                          Parameter_file=keyword_parameters['Parameter_file'])
 
         # Expanding to the next strucutre
-        print("   Expanding to strucutre at: ", str(temperature[i + 1]), " K")
-        Ex.Call_Expansion(Method, 'expand', Program, Output + '_' + Method + 'T' + str(temperature[i]) + file_ending,
-                          molecules_in_coord, min_RMS_gradient, Parameter_file=keyword_parameters['Parameter_file'],
-                          dcrystal_matrix=Ex.array_to_triangle_crystal_matrix(NumAnalysis_step * dLambda_dT[i, 1] *
-                                                                              dC_dLambda),
-                          Output=Output + '_' + Method + 'T' + str(temperature[i + 1]))
-
+        if os.path.isfile('Cords/' + Output + '_' + Method + 'T' + str(temperature[i + 1]) + file_ending):
+            print("   Using expanded structure in 'Cords/' at: " + str(temperature[i + 1]) + " K")
+            subprocess.call(['cp', 'Cords/' + Output + '_' + Method + 'T' + str(temperature[i + 1]) + file_ending, './'])
+        else:
+            print("   Expanding to strucutre at: ", str(temperature[i + 1]), " K")
+            Ex.Call_Expansion(Method, 'expand', Program, Output + '_' + Method + 'T' + str(temperature[i]) + file_ending,
+                              molecules_in_coord, min_RMS_gradient, Parameter_file=keyword_parameters['Parameter_file'],
+                              dcrystal_matrix=Ex.array_to_triangle_crystal_matrix(NumAnalysis_step * dLambda_dT[i, 1] *
+                                                                                  dC_dLambda),
+                              Output=Output + '_' + Method + 'T' + str(temperature[i + 1]))
 
         subprocess.call(['mv', Output + '_' + Method + 'T' + str(temperature[i]) + file_ending, 'Cords/'])
+
         if temperature[i + 1] == temperature[-1]:
-            print("   Determining local gradient and thermal properties at: " + str(temperature[i+1]) + " K")
-            NO.gradient_output(temperature[i + 1], Program, Output + '_' + Method + 'T' + str(temperature[i + 1]) +
-                               file_ending)
-            dLambda_dT[i + 1, 2], wavenumbers[i+1, 1:] = \
-                Ex.Call_Expansion(Method, 'local_gradient', Program, Output + '_' + Method + 'T' +
-                                  str(temperature[i + 1]) + file_ending, molecules_in_coord, min_RMS_gradient,
-                                  Temperature=temperature[i + 1], Pressure=Pressure, LocGrd_dLambda=LocGrd_dLambda,
-                                  dC_dLambda=dC_dLambda,Statistical_mechanics=Statistical_mechanics,
-                                  Parameter_file=keyword_parameters['Parameter_file'],
-                                  Gruneisen=Gruneisen, Wavenumber_Reference=Wavenumber_Reference,
-                                  ref_crystal_matrix=ref_crystal_matrix, Aniso_LocGrad_Type=Aniso_LocGrad_Type)
+            if any(wavenumbers[i + 1, 4:] != 0.) or Method == 'GaQg' and (dLambda_dT[i + 1, 2] != 0.):
+                if Method == 'GaQg':
+                    wavenumbers[i + 1, 1:] = Wvn.Call_Wavenumbers(Method, min_RMS_gradient, Gruneisen=Gruneisen,
+                                                                  Wavenumber_Reference=Wavenumber_Reference,
+                                                                  ref_crystal_matrix=ref_crystal_matrix, Program=Program,
+                                                                  Coordinate_file=Output + '_' + Method + 'T' +
+                                                                  str(temperature[i + 1]) + file_ending)
+            else:
+                print("   Determining local gradient and thermal properties at: " + str(temperature[i+1]) + " K")
+                NO.gradient_output(temperature[i + 1], Program, Output + '_' + Method + 'T' + str(temperature[i + 1]) +
+                                   file_ending)
+                dLambda_dT[i + 1, 2], wavenumbers[i+1, 1:] = \
+                    Ex.Call_Expansion(Method, 'local_gradient', Program, Output + '_' + Method + 'T' +
+                                      str(temperature[i + 1]) + file_ending, molecules_in_coord, min_RMS_gradient,
+                                      Temperature=temperature[i + 1], Pressure=Pressure, LocGrd_dLambda=LocGrd_dLambda,
+                                      dC_dLambda=dC_dLambda,Statistical_mechanics=Statistical_mechanics,
+                                      Parameter_file=keyword_parameters['Parameter_file'],
+                                      Gruneisen=Gruneisen, Wavenumber_Reference=Wavenumber_Reference,
+                                      ref_crystal_matrix=ref_crystal_matrix, Aniso_LocGrad_Type=Aniso_LocGrad_Type)
+
             properties[i+1, :] = Pr.Properties(Output + '_' + Method + 'T' + str(temperature[i + 1]) + file_ending,
                                                wavenumbers[i + 1, 1:], temperature[i + 1], Pressure, Program,
                                                Statistical_mechanics, molecules_in_coord, keyword_parameters['cp2kroot'],
