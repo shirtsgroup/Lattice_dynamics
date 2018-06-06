@@ -86,7 +86,7 @@ def anisotropic_gradient_settings(Coordinate_file, Program, Parameter_file, mole
     cutoff = program_cutoff(Program)
 
     # Fractional step sizes to take
-    steps = np.array([5e-05, 1e-04, 5e-04, 1e-03, 5e-03, 1e-02, 5e-02, 1e-01, 5e-01])
+    steps = np.array([5e-05, 1e-04, 5e-04, 1e-03, 5e-03, 1e-02, 5e-02, 1e-01, 5e-01, 1., 5., 1e01, 5e01, 1e02, 5e02])
 
     # Number of total step sizes
     n_steps = len(steps)
