@@ -152,6 +152,7 @@ def Pressure_setup(Temperature=[0.0, 25.0, 50.0, 75.0, 100.0], Pressure=1., Meth
         V[i] = Pr.Volume(Program=Program, Coordinate_file='temporary' + file_ending)
         subprocess.call(['rm', 'temporary' + file_ending])
 
+    G_out = np.zeros(len(Pressure))
     for i in range(len(Pressure)):
         # Fitting the U + PV energy to a 4th order polynomial
         U_fit = np.polyfit(V, U + Pr.PV_energy(Pressure[i], V), 4)
@@ -168,7 +169,7 @@ def Pressure_setup(Temperature=[0.0, 25.0, 50.0, 75.0, 100.0], Pressure=1., Meth
 #        subprocess.call(['cp', Coordinate_file, 'temporary' + file_ending])
 
         # Running a tighter minimization
-        scipy.optimize.minimize(U_PV, V_min, args=(Pressure[i], file_ending),method='Nelder-Mead', tol=1.e-4)
+        scipy.optimize.minimize(U_PV, V_min, args=(Pressure[i], file_ending),method='Nelder-Mead', tol=1.e-10)
 
         # Making a new directory
         subprocess.call(['mkdir', Output + '_' + str(Pressure[i]) + 'atm'])
@@ -185,7 +186,9 @@ def Pressure_setup(Temperature=[0.0, 25.0, 50.0, 75.0, 100.0], Pressure=1., Meth
                          StepWise_Vol_UpperFrac, Statistical_mechanics, Gruneisen_Vol_FracStep, Gruneisen_Lat_FracStep,
                          Wavenum_Tol, Gradient_MaxTemp, Aniso_LocGrad_Type, min_RMS_gradient,
                          Output + '_' + str(Pressure[i]) + 'atm/input.inp')
+        G_out[i] = (Pr.Potential_energy(Program, Coordinate_file='temporary' + file_ending, Parameter_file=Parameter_file) + Pr.PV_energy(Pressure[i], Pr.Volume(Program=Program, Coordinate_file='temporary' + file_ending))) / molecules_in_coord
         subprocess.call(['rm', 'temporary' + file_ending])
+    np.save(Output + '_G' + Statistical_mechanics + '_' + Method, G_out)
 
 def U_PV(V, Pressure, file_ending):
 #    print(V)
