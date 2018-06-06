@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 from __future__ import print_function
 import subprocess
+import sys
 import Expand as Ex
 import ThermodynamicProperties as Pr
 import numpy as np
@@ -97,7 +98,8 @@ def anisotropic_gradient_settings(Coordinate_file, Program, Parameter_file, mole
     U = np.zeros((6, n_steps))
 
     # Determining the tensor parameters of the input file
-    crystal_matrix_array = Ex.triangle_crystal_matrix_to_array(Ex.Lattice_parameters_to_Crystal_matrix(Pr.Lattice_parameters(Program, Coordinate_file)))
+    crystal_matrix = Ex.Lattice_parameters_to_Crystal_matrix(Pr.Lattice_parameters(Program, Coordinate_file))
+    crystal_matrix_array = Ex.triangle_crystal_matrix_to_array(crystal_matrix)
 
     LocGrd_CMatrix_FracStep = np.zeros(6)
     LocGrd_CMatrix_Step = np.zeros(6)
@@ -105,10 +107,9 @@ def anisotropic_gradient_settings(Coordinate_file, Program, Parameter_file, mole
         for i in range(n_steps):
             dlattice_matrix_array = np.zeros(6)
             dlattice_matrix_array[j] = np.absolute(crystal_matrix_array[j] * steps[i])
-            if dlattice_matrix_array[j] < 1e-7:
+            if np.absolute(crystal_matrix_array[j]) < 1e-4:
                 dlattice_matrix_array[j] = steps[i]
             dlattice_matrix = Ex.array_to_triangle_crystal_matrix(dlattice_matrix_array)
-
             Ex.Expand_Structure(Coordinate_file, Program, 'crystal_matrix', molecules_in_coord,
                                 Output, min_RMS_gradient, Parameter_file=Parameter_file,
                                 dcrystal_matrix=dlattice_matrix)
