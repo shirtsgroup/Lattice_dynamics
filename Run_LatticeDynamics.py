@@ -11,7 +11,7 @@ import Wavenumbers as Wvn
 import Thermal_NumericalAnalysis as TNA
 import Expand as Ex
 import System_sensitivity as Ss
-
+import pressure_setup as ps
 
 def Temperature_Lattice_Dynamics(Temperature=[0.,300.], Pressure=1., Method='HA', Program='Test',
                                  Output='out', Coordinate_file='test.npy', Parameter_file='keyfile.key',
@@ -119,89 +119,6 @@ def Temperature_Lattice_Dynamics(Temperature=[0.,300.], Pressure=1., Method='HA'
         Pr.Save_Properties(properties, properties_to_save, Output, Method, Statistical_mechanics)
         print("Gradient Anisotropic Quasi-Harmonic Approximation is complete!")
 
-def Pressure_setup(Temperature=[0.0, 25.0, 50.0, 75.0, 100.0], Pressure=1., Method='HA', Program='Test',
-                   Output='out', Coordinate_file='molecule.xyz', Parameter_file='keyfile.key',
-                   molecules_in_coord=1, properties_to_save=['G', 'T'], NumAnalysis_method='RK4',
-                   NumAnalysis_step=25.0,
-                   LocGrd_Vol_FracStep='',
-                   LocGrd_CMatrix_FracStep='',
-                   StepWise_Vol_StepFrac=1.5e-3,
-                   StepWise_Vol_LowerFrac=0.97, StepWise_Vol_UpperFrac=1.16,
-                   Statistical_mechanics='Classical', Gruneisen_Vol_FracStep=1.5e-3,
-                   Gruneisen_Lat_FracStep=1.0e-3, Wavenum_Tol=-1., Gradient_MaxTemp=300.0,
-                   Aniso_LocGrad_Type='6D', min_RMS_gradient=0.01, cp2kroot='BNZ_NMA_p2'):
-
-    file_ending = Ex.assign_file_ending(Program)
-
-    # Making an array of volume fractions
-    V_frac = np.arange(StepWise_Vol_LowerFrac, 1.0, StepWise_Vol_StepFrac)
-    V_frac = np.arange(StepWise_Vol_LowerFrac, StepWise_Vol_UpperFrac, StepWise_Vol_StepFrac)
-
-    # Volume of lattice minimum strucutre
-    V0 = Pr.Volume(Program=Program, Coordinate_file=Coordinate_file)
-
-    # Making an array to store the potential energy and volume of each structure
-    U = np.zeros(len(V_frac))
-    V = np.zeros(len(V_frac))
-
-    for i in range(len(V_frac)):
-        # Expanding the structures and saving the required data
-        Ex.Call_Expansion(Method, 'expand', Program, Coordinate_file, molecules_in_coord, min_RMS_gradient,
-                          volume_fraction_change=V_frac[i], Output='temporary', Parameter_file=Parameter_file)
-        U[i] = Pr.Potential_energy(Program, Coordinate_file='temporary' + file_ending, Parameter_file=Parameter_file)
-        V[i] = Pr.Volume(Program=Program, Coordinate_file='temporary' + file_ending)
-        subprocess.call(['rm', 'temporary' + file_ending])
-
-    G_out = np.zeros(len(Pressure))
-    for i in range(len(Pressure)):
-        # Fitting the U + PV energy to a 4th order polynomial
-        U_fit = np.polyfit(V, U + Pr.PV_energy(Pressure[i], V), 4)
-        U_fit = np.poly1d(U_fit)
-
-        # Using a fine volume spacing to determine the minimum energy volume at each pressure
-        V_fine = np.arange(min(V), max(V), 1.)
-        U_fine = U_fit(V_fine)
-        V_min = V_fine[np.where(U_fine == min(U_fine))]
-
-        # Expanding the lattice minimum structure to the minimum energy structure at Pressure i
-        Ex.Call_Expansion(Method, 'expand', Program, Coordinate_file, molecules_in_coord, min_RMS_gradient,
-                          volume_fraction_change=V_min/V0, Output='temporary', Parameter_file=Parameter_file)
-#        subprocess.call(['cp', Coordinate_file, 'temporary' + file_ending])
-
-        # Running a tighter minimization
-        scipy.optimize.minimize(U_PV, V_min, args=(Pressure[i], file_ending),method='Nelder-Mead', tol=1.e-10)
-
-        # Making a new directory
-        subprocess.call(['mkdir', Output + '_' + str(Pressure[i]) + 'atm'])
-
-        # Copying necessary files over
-        subprocess.call(['cp', 'temporary' + file_ending, Output + '_' + str(Pressure[i]) + 'atm/' + Coordinate_file])
-        try:
-            subprocess.call(['cp', Parameter_file, Output + '_' + str(Pressure[i]) + 'atm'])
-        except ValueError:
-            pass
-        write_input_file(Temperature, Pressure[i], Method, Program, Output, Coordinate_file, Parameter_file,
-                         molecules_in_coord, properties_to_save, NumAnalysis_method, NumAnalysis_step, LocGrd_Vol_FracStep,
-                         LocGrd_CMatrix_FracStep, StepWise_Vol_StepFrac, StepWise_Vol_LowerFrac,
-                         StepWise_Vol_UpperFrac, Statistical_mechanics, Gruneisen_Vol_FracStep, Gruneisen_Lat_FracStep,
-                         Wavenum_Tol, Gradient_MaxTemp, Aniso_LocGrad_Type, min_RMS_gradient,
-                         Output + '_' + str(Pressure[i]) + 'atm/input.inp')
-        G_out[i] = (Pr.Potential_energy(Program, Coordinate_file='temporary' + file_ending, Parameter_file=Parameter_file) + Pr.PV_energy(Pressure[i], Pr.Volume(Program=Program, Coordinate_file='temporary' + file_ending))) / molecules_in_coord
-        subprocess.call(['rm', 'temporary' + file_ending])
-    np.save(Output + '_G' + Statistical_mechanics + '_' + Method, G_out)
-
-def U_PV(V, Pressure, file_ending):
-#    print(V)
-    # WARNING: This function should only be used with Pressure_setup !!!
-    V_hold = Pr.Volume(Program=Program, Coordinate_file='temporary' + file_ending)
-    V_frac = V / V_hold
-#    print(V_frac)
-    Ex.Call_Expansion(Method, 'expand', Program, 'temporary' + file_ending, molecules_in_coord, min_RMS_gradient,
-                      volume_fraction_change=V_frac, Output='temporary', Parameter_file=Parameter_file)
-    U = (Pr.Potential_energy(Program, Coordinate_file='temporary' + file_ending, Parameter_file=Parameter_file) \
-           + Pr.PV_energy(Pressure, Pr.Volume(Program=Program, Coordinate_file='temporary' + file_ending))) / molecules_in_coord
-#    print(U)
-    return U
 
 def write_input_file(Temperature, Pressure, Method, Program, Output, Coordinate_file, Parameter_file, 
                      molecules_in_coord, properties_to_save, NumAnalysis_method, NumAnalysis_step, LocGrd_Vol_FracStep,
@@ -505,33 +422,62 @@ if __name__ == '__main__':
                                      cp2kroot=cp2kroot)
     
     else:
+        try:
+            eq_of_state = subprocess.check_output("less " + str(args.Input_file) + " | grep eq_of_state | grep = ", shell=True).decode("utf-8")
+            eq_of_state = str(eq_of_state).split('=')[1].strip()
+            if eq_of_state not in ['None', 'Murnaghan', 'Birch-Murnaghan', 'Rose-Vinet']:
+                print("Input eq_of_state is not supported. Please select from the following:")
+                print("   None, Murnaghan, Birch-Murnaghan, Rose-Vinet")
+                print("Exiting code")
+                sys.exit()
+        except subprocess.CalledProcessError as grepexc:
+            print("No method was selected, will continue using Murnaghan EOS")
+            eq_of_state = 'Murnaghan'
+
+        try:
+            gru_from_0T_0P = subprocess.check_output("less " + str(args.Input_file) + " | grep gru_from_0T_0P"
+                                                                                      " | grep = ", shell=True).decode("utf-8")
+            gru_from_0T_0P = str(gru_from_0T_0P).split('=')[1].strip()
+            if gru_from_0T_0P == 'True':
+                gru_from_0T_0P = True
+            elif gru_from_0T_0P == 'False':
+                gru_from_0T_0P = False
+            else:
+                print("Input option of ", gru_from_0T_0P, " for gru_from_0T_0P is not supported. Will use True.")
+                gru_from_0T_0P = True
+        except subprocess.CalledProcessError as grepexc:
+            gru_from_0T_0P = True
+
+
         if Statistical_mechanics == 'Quantum':
             print("Warning! The scanning of multiple pressures is not yet supported in this code for Qunantum Mechanics.")
             print("... Please contact Nate Abraham (nate.abraham@colorado.edu) with ways to perform this.")
         else:
-            Pressure_setup(Temperature=Temperature,
-                           Pressure=Pressure,
-                           Method=Method,
-                           Program=Program,
-                           Output=Output,
-                           Coordinate_file=Coordinate_file,
-                           Parameter_file=Parameter_file,
-                           molecules_in_coord=molecules_in_coord,
-                           properties_to_save=properties_to_save,
-                           NumAnalysis_method=NumAnalysis_method,
-                           NumAnalysis_step=NumAnalysis_step,
-                           LocGrd_Vol_FracStep=LocGrd_Vol_FracStep,
-                           LocGrd_CMatrix_FracStep=LocGrd_CMatrix_FracStep,
-                           StepWise_Vol_StepFrac=StepWise_Vol_StepFrac,
-                           StepWise_Vol_LowerFrac=StepWise_Vol_LowerFrac,
-                           StepWise_Vol_UpperFrac=StepWise_Vol_UpperFrac,
-                           Statistical_mechanics=Statistical_mechanics,
-                           Gruneisen_Vol_FracStep=Gruneisen_Vol_FracStep,
-                           Gruneisen_Lat_FracStep=Gruneisen_Lat_FracStep,
-                           Wavenum_Tol=Wavenum_Tol,
-                           Gradient_MaxTemp=Gradient_MaxTemp,
-                           Aniso_LocGrad_Type=Aniso_LocGrad_Type,
-                           min_RMS_gradient=min_RMS_gradient,
-                           cp2kroot=cp2kroot)
+            ps.pressure_setup(Temperature=Temperature,
+                              Pressure=Pressure,
+                              Method=Method,
+                              Program=Program,
+                              Output=Output,
+                              Coordinate_file=Coordinate_file,
+                              Parameter_file=Parameter_file,
+                              molecules_in_coord=molecules_in_coord,
+                              properties_to_save=properties_to_save,
+                              NumAnalysis_method=NumAnalysis_method,
+                              NumAnalysis_step=NumAnalysis_step,
+                              LocGrd_Vol_FracStep=LocGrd_Vol_FracStep,
+                              LocGrd_CMatrix_FracStep=LocGrd_CMatrix_FracStep,
+                              StepWise_Vol_StepFrac=StepWise_Vol_StepFrac,
+                              StepWise_Vol_LowerFrac=StepWise_Vol_LowerFrac,
+                              StepWise_Vol_UpperFrac=StepWise_Vol_UpperFrac,
+                              Statistical_mechanics=Statistical_mechanics,
+                              Gruneisen_Vol_FracStep=Gruneisen_Vol_FracStep,
+                              Gruneisen_Lat_FracStep=Gruneisen_Lat_FracStep,
+                              Wavenum_Tol=Wavenum_Tol,
+                              Gradient_MaxTemp=Gradient_MaxTemp,
+                              Aniso_LocGrad_Type=Aniso_LocGrad_Type,
+                              min_RMS_gradient=min_RMS_gradient,
+                              eq_of_state=eq_of_state,
+                              gru_from_0T_0P=gru_from_0T_0P,
+                              cp2kroot=cp2kroot)
 
 

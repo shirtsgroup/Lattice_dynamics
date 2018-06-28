@@ -128,7 +128,6 @@ def anisotropic_gradient_settings(Coordinate_file, Program, Parameter_file, mole
     plt.axhline(y=cutoff, c='grey', linestyle='--')
     plt.legend(loc='upper right',ncol=2, fontsize=18)
     plt.tight_layout()
-    plt.show()
     plt.savefig(Output + '_LocGrd_CMatrix_FracStep.pdf')
     plt.close()
 
