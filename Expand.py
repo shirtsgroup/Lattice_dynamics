@@ -647,7 +647,7 @@ def Isotropic_Local_Gradient(Coordinate_file, Program, Temperature, Pressure, Lo
     NO.iso_gradient(dG, ddG, dS, dS/ddG)
 
     # Removing excess files
-    os.system('rm '+coordinate_plus+' '+coordinate_minus)
+    subprocess.call(['rm', coordinate_plus, coordinate_minus])
     return dS/ddG, wavenumbers, volume
 
 
@@ -815,9 +815,9 @@ def Anisotropic_Local_Gradient(Coordinate_file, Program, Temperature, Pressure, 
 
                 # Removing excess files
                 for d in delta2:
-                    os.system('rm ' + d + file_ending)
+                    subprocess.call(['rm', d + file_ending])
         for d in delta1:
-            os.system('rm ' + d + file_ending)
+            subprocess.call(['rm', d + file_ending])
 
     # Calculating deta/dT for all strains
     dC_dT = np.linalg.lstsq(ddG_ddC, dS_dC)[0]

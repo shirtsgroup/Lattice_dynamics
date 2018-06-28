@@ -177,8 +177,8 @@ def CP2K_Wavenumber(coordinatefile, parameter_file, output):
             iter = iter+1
     else:
         subprocess.call(['setup_wavenumber', '-t', 'nma', '-h', Output])
-        subprocess.call(['mpirun', '-np','112','cp2k.popt','-i',Output+'.inp'])
-        subprocess.call(['mv','NMA-VIBRATIONS-1.mol',Output+'.mol'])
+        subprocess.call(['mpirun', '-np', '112', 'cp2k.popt', '-i', Output + '.inp'])
+        subprocess.call(['mv', 'NMA-VIBRATIONS-1.mol', Output + '.mol'])
         wavenumbers = np.zeros((3,))
         wavenumfile = open(output+'.mol','r')
         lines = wavenumfile.readlines()
@@ -321,7 +321,7 @@ def Setup_Isotropic_Gruneisen(Coordinate_file, Program, Gruneisen_Vol_FracStep, 
                                                                                          np.log(Volume_expand))
 
     # Removing extra files created in process
-    os.system('rm temp'+file_ending)
+    subprocess.call(['rm', 'temp' + file_ending])
     return Gruneisen, Wavenumber_Reference, Volume_Reference
 
 
@@ -376,7 +376,7 @@ def Setup_Anisotropic_Gruneisen(Coordinate_file, Program, strain, molecules_in_c
         for i in range(6):
             # Calculating the Gruneisen parameters
             Gruneisen[3:, i] = -(np.log(Organized_wavenumbers[i + 1, 3:]) - np.log(Wavenumber_Reference[3:])) / strain
-            os.system('rm ' + expanded_coordinates[i] + file_ending)
+            subprocess.call(['rm', expanded_coordinates[i] + file_ending])
 
     elif Program == 'Test':
         file_ending = '.npy'
@@ -389,7 +389,7 @@ def Setup_Anisotropic_Gruneisen(Coordinate_file, Program, strain, molecules_in_c
             Wavenumber_expand = Test_Wavenumber(expanded_coordinates[i] + file_ending,
                                                 Ex.Lattice_parameters_to_Crystal_matrix(Pr.Test_Lattice_Parameters(Coordinate_file)), Gru=True)
             Gruneisen[3:, i] = -(np.log(Wavenumber_expand[3:]) - np.log(Wavenumber_Reference[3:])) / strain
-            os.system('rm ' + expanded_coordinates[i] + file_ending)
+            subprocess.call(['rm', expanded_coordinates[i] + file_ending])
     return Gruneisen, Wavenumber_Reference
 
 
@@ -492,11 +492,11 @@ def CP2K_Gru_organized_wavenumbers(Expansion_type, Coordinate_file, Expanded_Coo
 def Tinker_Wavenumber_and_Vectors(Coordinate_file, Parameter_file):
     # Calling Tinker's vibrate executable and extracting the eigenvectors and wavenumbers of the respective
     # Hessian and mass-weighted Hessian
-    os.system('cp ' + Coordinate_file + ' vector_temp.xyz')
+    subprocess.call(['cp', Coordinate_file, 'vector_temp.xyz'])
     output = subprocess.check_output("vibrate vector_temp.xyz -k %s  A |  grep -oP '[-+]*[0-9]*\.[0-9]{2,9}'"
                                                           % (Parameter_file), shell=True).decode("utf-8")
 
-    os.system('rm vector_temp.*')
+    subprocess.call(['rm', 'vector_temp.*'])
 
     # Finding the number modes in the system
     number_of_modes = int(3*Pr.Tinker_atoms_per_molecule(Coordinate_file, 1))
@@ -521,11 +521,11 @@ def Tinker_Wavenumber_and_Vectors(Coordinate_file, Parameter_file):
 def CP2K_Wavenumber_and_Vectors(Coordinate_file, Parameter_file):
     # Calling Tinker's vibrate executable and extracting the eigenvectors and wavenumbers of the respective
     # Hessian and mass-weighted Hessian
-    os.system('cp ' + Coordinate_file + ' vector_temp.xyz')
+    subprocess.call(['cp', Coordinate_file, 'vector_temp.xyz'])
     output = subprocess.check_output("vibrate vector_temp.xyz -k %s  A |  grep -oP '[-+]*[0-9]*\.[0-9]{2,9}'"
                                                           % (Parameter_file), shell=True)
 
-    os.system('rm vector_temp.*')
+    subprocess.call(['rm', 'vector_temp.*'])
 
     # Finding the number modes in the system
     number_of_modes = 3*Pr.Tinker_atoms_per_molecule(Coordinate_file, 1)

@@ -47,7 +47,7 @@ def Temperature_Lattice_Dynamics(Temperature=[0.,300.], Pressure=1., Method='HA'
     else:
         if os.path.isdir('Cords') != True:
             print("Creating directory 'Cords/' to store structures along Gibbs free energy path")
-            os.system('mkdir Cords')
+            subprocess.call(['mkdir', 'Cords'])
 
     if (Method == 'SiQ') or (Method == 'SiQg'):
         # Stepwise Isotropic QHA

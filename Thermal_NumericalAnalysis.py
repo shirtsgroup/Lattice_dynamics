@@ -57,7 +57,7 @@ def Runge_Kutta_Fourth_Order(Method, Coordinate_file, Program, Temperature, Pres
     RK_multiply = np.array([1. / 6., 1. / 3., 1. / 3., 1. / 6.])
 
     # Copying the coordinate file to a seperate file to work with
-    os.system('cp ' + Coordinate_file + ' RK4' + file_ending)
+    subprocess.call(['cp', Coordinate_file, ' RK4' + file_ending])
 
     # Setting the different temperature stepsizes
     temperature_steps = np.array([0., RK4_stepsize / 2., RK4_stepsize / 2., RK4_stepsize])
@@ -169,7 +169,7 @@ def Runge_Kutta_Fourth_Order(Method, Coordinate_file, Program, Temperature, Pres
     numerical_gradient = np.sum(RK_grad, axis=0)
 
     # Removign excess files
-    os.system('rm RK4' + file_ending)
+    subprocess.call(['rm', 'RK4' + file_ending])
     return numerical_gradient, wavenumbers, volume, k1
 
 def RK_Dense_Output(theta, y_0, y_1, f_0, f_1, h):
@@ -315,7 +315,7 @@ def Spline_Intermediate_Points(Output, Method, Program, properties, Temperature,
     properties_out[-1] = properties[-1]
 
     # Removing the temporary strucutre
-    os.system('rm temp' + file_ending)
+    subprocess.call(['rm', 'temp' + file_ending])
     return properties_out
 
 
@@ -403,14 +403,14 @@ def Isotropic_Stepwise_Expansion(StepWise_Vol_StepFrac, StepWise_Vol_LowerFrac, 
     # Finding all expanded structures
     previous_volume = 1.0
     lattice_volume = Pr.Volume(Program=Program, Coordinate_file=Coordinate_file)
-    os.system('cp ' + Coordinate_file + ' ' + Output + '_' + Method + str(previous_volume) + file_ending)
+    subprocess.call(['cp', Coordinate_file, Output + '_' + Method + str(previous_volume) + file_ending])
     for i in range(len(volume_fraction)):
         print("   Performing volume fraction of: " + str(volume_fraction[i]))
         if os.path.isfile('Cords/' + Output + '_' + Method + str(volume_fraction[i]) + file_ending):
             print("   ... Coordinate file Cords/" + Output + "_" + Method + str(volume_fraction[i]) + file_ending + \
                   "already exists")
             # Skipping structures if they've already been constructed
-            os.system('cp Cords/' + Output + '_' + Method + str(volume_fraction[i]) + file_ending + ' ./')
+            subprocess.call(['cp', 'Cords/' + Output + '_' + Method + str(volume_fraction[i]) + file_ending, ' ./'])
         else:
             Ex.Call_Expansion(Method, 'expand', Program, Output + '_' + Method + str(previous_volume) + file_ending,
                               molecules_in_coord, min_RMS_gradient, Parameter_file=keyword_parameters['Parameter_file'],
@@ -448,7 +448,7 @@ def Isotropic_Stepwise_Expansion(StepWise_Vol_StepFrac, StepWise_Vol_LowerFrac, 
             print("      ... Properties will be bypassed for this paricular strucutre.")
             properties[i, :, :] = np.nan
 
-    os.system('mv ' + Output + '_' + Method + '*' + file_ending + ' Cords/')
+    subprocess.call(['mv', Output + '_' + Method + '*' + file_ending, 'Cords/'])
 
     # Saving the raw data before minimizing
     print("   All properties have been saved in " + Output + "_raw.npy")
@@ -550,16 +550,13 @@ def Isotropic_Gradient_Expansion(Coordinate_file, Program, molecules_in_coord, O
     properties = np.zeros((len(temperature), 14))
 
     # Holding lattice structures as the structure at 0K
-    os.system('cp ' + Coordinate_file + ' ' + Output + '_' + Method + 'T' + str(temperature[0]) + file_ending)
+    subprocess.call(['cp', Coordinate_file, Output + '_' + Method + 'T' + str(temperature[0]) + file_ending])
 
     # Finding structures at higher temperatures
     for i in range(len(temperature) - 1):
         print("   Determining local gradient and thermal properties at: " + str(temperature[i]) + " K")
         if any(wavenumbers[i, 4:] != 0.) or Method == 'GiQg' and (volume_gradient[i, 1] != 0.): 
-# and \
-#                (os.path.isfile('Cords/' + Output + '_' + Method + 'T' + str(temperature[i]) + file_ending)):
             print("   ... Using expansion gradient and wavenumbers previously found")
-#            os.system('mv ' 'Cords/' + Output + '_' + Method + 'T' + str(temperature[i]) + file_ending + ' ./')
             volume = Pr.Volume(Program=Program, Coordinate_file=Output + '_' + Method + 'T' + str(temperature[i])
                                + file_ending)
             if Method == 'GiQg':
@@ -610,7 +607,7 @@ def Isotropic_Gradient_Expansion(Coordinate_file, Program, molecules_in_coord, O
                               molecules_in_coord, min_RMS_gradient, Parameter_file=keyword_parameters['Parameter_file'],
                               volume_fraction_change=(volume + volume_gradient[i, 1]*NumAnalysis_step)/volume,
                               Output=Output + '_' + Method + 'T' + str(temperature[i + 1]))
-        os.system('mv ' + Output + '_' + Method + 'T' + str(temperature[i]) + file_ending + ' Cords/')
+        subprocess.call(['mv', Output + '_' + Method + 'T' + str(temperature[i]) + file_ending, 'Cords/'])
 
         if temperature[i + 1] == temperature[-1]:
             if any(wavenumbers[i + 1, 4:] != 0.) or Method == 'GiQg' and (volume_gradient[i + 1, 2] != 0.):            
@@ -636,7 +633,7 @@ def Isotropic_Gradient_Expansion(Coordinate_file, Program, molecules_in_coord, O
                                                wavenumbers[i + 1, 1:], temperature[i + 1], Pressure, Program,
                                                Statistical_mechanics, molecules_in_coord, keyword_parameters['cp2kroot'],
                                                Parameter_file=keyword_parameters['Parameter_file'])
-            os.system('mv ' + Output + '_' + Method + 'T' + str(temperature[i + 1]) + file_ending + ' Cords/')
+            subprocess.call(['mv', Output + '_' + Method + 'T' + str(temperature[i + 1]) + file_ending, 'Cords/'])
             if Method == 'GiQ':
                 np.save(Output + '_WVN_' + Method, wavenumbers)
             np.save(Output + '_dV_' + Method, volume_gradient)
@@ -709,7 +706,7 @@ def Anisotropic_Gradient_Expansion(Coordinate_file, Program, molecules_in_coord,
     properties = np.zeros((len(temperature), 14))
 
     # Original coordinate file is used for 0K
-    os.system('cp ' + Coordinate_file + ' ' + Output + '_' + Method + 'T' + str(temperature[0]) + file_ending)
+    subprocess.call(['cp', Coordinate_file, Output + '_' + Method + 'T' + str(temperature[0]) + file_ending])
 
     # Keeping track of the strain applied to the system [3 diagonal, 3 off-diagonal]
     ref_crystal_matrix = Ex.Lattice_parameters_to_Crystal_matrix(Pr.Lattice_parameters(Program, Coordinate_file))
@@ -782,7 +779,7 @@ def Anisotropic_Gradient_Expansion(Coordinate_file, Program, molecules_in_coord,
                                          Parameter_file=keyword_parameters['Parameter_file'])
 
         # Moving the current strucutre to the Cords directory
-        os.system('mv ' + Output + '_' + Method + 'T' + str(temperature[i]) + file_ending + ' Cords/')
+        subprocess.call(['mv', Output + '_' + Method + 'T' + str(temperature[i]) + file_ending, 'Cords/'])
 
         if temperature[i + 1] == temperature[-1]:
             # Completing the run for the final structure
@@ -816,7 +813,7 @@ def Anisotropic_Gradient_Expansion(Coordinate_file, Program, molecules_in_coord,
                                                  Parameter_file=keyword_parameters['Parameter_file'])
 
             # Moving the final strucutre to the Cords directory
-            os.system('mv ' + Output + '_' + Method + 'T' + str(temperature[i + 1]) + file_ending + ' Cords/')
+            subprocess.call(['mv', Output + '_' + Method + 'T' + str(temperature[i + 1]) + file_ending, 'Cords/'])
 
             if Method == 'GaQ':
                 # Saving the wavenumbers for the non-Gruneisen methods 
@@ -905,7 +902,7 @@ def Anisotropic_Gradient_Expansion_1D(Coordinate_file, Program, molecules_in_coo
     properties = np.zeros((len(temperature), 14))
 
     # Original coordinate file is used for 0K
-    os.system('cp ' + Coordinate_file + ' ' + Output + '_' + Method + 'T' + str(temperature[0]) + file_ending)
+    subprocess.call(['cp', Coordinate_file, Output + '_' + Method + 'T' + str(temperature[0]) + file_ending])
 
     LocGrd_dLambda = Ss.anisotropic_gradient_settings_1D(Coordinate_file, Program, keyword_parameters['Parameter_file'],
                                                          molecules_in_coord, min_RMS_gradient, Output, dC_dLambda)
