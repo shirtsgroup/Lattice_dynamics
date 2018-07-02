@@ -57,7 +57,7 @@ def Runge_Kutta_Fourth_Order(Method, Coordinate_file, Program, Temperature, Pres
     RK_multiply = np.array([1. / 6., 1. / 3., 1. / 3., 1. / 6.])
 
     # Copying the coordinate file to a seperate file to work with
-    subprocess.call(['cp', Coordinate_file, ' RK4' + file_ending])
+    subprocess.call(['cp', Coordinate_file, 'RK4' + file_ending])
 
     # Setting the different temperature stepsizes
     temperature_steps = np.array([0., RK4_stepsize / 2., RK4_stepsize / 2., RK4_stepsize])
@@ -448,7 +448,7 @@ def Isotropic_Stepwise_Expansion(StepWise_Vol_StepFrac, StepWise_Vol_LowerFrac, 
             print("      ... Properties will be bypassed for this paricular strucutre.")
             properties[i, :, :] = np.nan
 
-    subprocess.call(['mv', Output + '_' + Method + '*' + file_ending, 'Cords/'])
+    subprocess.call(['mv', Output + '_' + Method + '*' + file_ending, 'Cords/'], shell=True)
 
     # Saving the raw data before minimizing
     print("   All properties have been saved in " + Output + "_raw.npy")

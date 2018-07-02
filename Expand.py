@@ -147,8 +147,6 @@ def Output_Tinker_New_Coordinate_File(Coordinate_file, Parameter_file, coordinat
     """   
     Ouput_Tinker_Coordinate_File(Coordinate_file, Parameter_file, coordinates, lattice_parameters, Output)
     
-#    subprocess.call(['minimize', Output + '.xyz', '-k', Parameter_file, str(min_RMS_gradient)], stdout=open(os.devnull, 'wb'))
-#    subprocess.call(['mv', Output + '.xyz_2', Output + '.xyz'])
     Tinker_minimization(Parameter_file, Output + '.xyz', Output, min_RMS_gradient)
 
 
@@ -316,10 +314,9 @@ def Ouput_CP2K_Coordinate_File(Coordinate_file, Parameter_file, coordinates, lat
 
 
 def CP2K_minimization(Parameter_file, Coordinate_file, Output, min_RMS_gradient):
-    
-    subprocess.call(['setup_wavenumber','-t','geoopt','-h',Output])
-    subprocess.call(['mpirun', '-np','112','cp2k.popt','-i',Output+'.inp'])
-    subprocess.call(['python','pulllastframe.py','-f','GEOOPT-GEOOPT.pdb-pos-1.pdb','-n',Output+'.pdb'])
+    subprocess.call(['setup_wavenumber', '-t', 'geoopt', '-h', Output])
+    subprocess.call(['mpirun', '-np', '112', 'cp2k.popt', '-i', Output + '.inp'])
+    subprocess.call(['python', 'pulllastframe.py', '-f', 'GEOOPT-GEOOPT.pdb-pos-1.pdb', '-n', Output + '.pdb'])
 
 
 ##########################################

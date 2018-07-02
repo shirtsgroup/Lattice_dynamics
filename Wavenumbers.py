@@ -496,7 +496,7 @@ def Tinker_Wavenumber_and_Vectors(Coordinate_file, Parameter_file):
     output = subprocess.check_output("vibrate vector_temp.xyz -k %s  A |  grep -oP '[-+]*[0-9]*\.[0-9]{2,9}'"
                                                           % (Parameter_file), shell=True).decode("utf-8")
 
-    subprocess.call(['rm', 'vector_temp.*'])
+    subprocess.call(['rm vector_temp.*'], shell=True)
 
     # Finding the number modes in the system
     number_of_modes = int(3*Pr.Tinker_atoms_per_molecule(Coordinate_file, 1))
@@ -525,7 +525,7 @@ def CP2K_Wavenumber_and_Vectors(Coordinate_file, Parameter_file):
     output = subprocess.check_output("vibrate vector_temp.xyz -k %s  A |  grep -oP '[-+]*[0-9]*\.[0-9]{2,9}'"
                                                           % (Parameter_file), shell=True)
 
-    subprocess.call(['rm', 'vector_temp.*'])
+    subprocess.call(['rm vector_temp.*'], shell=True)
 
     # Finding the number modes in the system
     number_of_modes = 3*Pr.Tinker_atoms_per_molecule(Coordinate_file, 1)
