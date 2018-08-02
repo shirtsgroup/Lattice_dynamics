@@ -20,7 +20,8 @@ def Temperature_Lattice_Dynamics(Temperature=[0.,300.], Pressure=1., Method='HA'
                                  StepWise_Vol_StepFrac=1e-3, StepWise_Vol_LowerFrac=0.97, StepWise_Vol_UpperFrac=1.16,
                                  Statistical_mechanics='Classical', Gruneisen_Vol_FracStep=1.5e-3, 
                                  Gruneisen_Lat_FracStep=1.e-3, Wavenum_Tol=-1., Gradient_MaxTemp=300.0, 
-                                 Aniso_LocGrad_Type='6D', min_RMS_gradient=0.0001, cp2kroot='BNZ_NMA_p3'):
+                                 Aniso_LocGrad_Type='6D', min_RMS_gradient=0.0001, cp2kroot='BNZ_NMA_p3',
+                                 eq_of_state='None'):
     Temperature = np.array(Temperature).astype(float)
     if Method == 'HA':
         print("Performing Harmonic Approximation")
@@ -43,7 +44,6 @@ def Temperature_Lattice_Dynamics(Temperature=[0.,300.], Pressure=1., Method='HA'
             np.save(Output + '_raw', properties)
             print("   Saving user specified properties in indipendent files:")
             Pr.Save_Properties(properties, properties_to_save, Output, Method, Statistical_mechanics)
-            print("Harmonic Approximation is complete!")
     else:
         if os.path.isdir('Cords') != True:
             print("Creating directory 'Cords/' to store structures along Gibbs free energy path")
@@ -61,7 +61,6 @@ def Temperature_Lattice_Dynamics(Temperature=[0.,300.], Pressure=1., Method='HA'
                                                       cp2kroot=cp2kroot)
         print("   Saving user specified properties in indipendent files:")
         Pr.Save_Properties(properties, properties_to_save, Output, Method, Statistical_mechanics)
-        print("Stepwise Isotropic Quasi-Harmonic Approximation is complete!")
 
     elif (Method == 'GiQ') or (Method == 'GiQg'):
         if LocGrd_Vol_FracStep == 0.:
@@ -81,7 +80,6 @@ def Temperature_Lattice_Dynamics(Temperature=[0.,300.], Pressure=1., Method='HA'
                                                       cp2kroot=cp2kroot)
         print("   Saving user specified properties in indipendent files:")
         Pr.Save_Properties(properties, properties_to_save, Output, Method, Statistical_mechanics)
-        print("Gradient Isotropic Quasi-Harmonic Approximation is complete!")
 
     elif ((Method == 'GaQ') or (Method == 'GaQg')) and (Aniso_LocGrad_Type != '1D'):
         if any(LocGrd_CMatrix_FracStep != 0.):
@@ -99,7 +97,6 @@ def Temperature_Lattice_Dynamics(Temperature=[0.,300.], Pressure=1., Method='HA'
                                                         Parameter_file=Parameter_file, cp2kroot=cp2kroot)
         print("   Saving user specified properties in indipendent files:")
         Pr.Save_Properties(properties, properties_to_save, Output, Method, Statistical_mechanics)
-        print("Gradient Anisotropic Quasi-Harmonic Approximation is complete!")
 
     elif (Method == 'GaQ') or (Method == 'GaQg') and (Aniso_LocGrad_Type == '1D'):
         if any(LocGrd_CMatrix_FracStep != 0.):
@@ -115,10 +112,18 @@ def Temperature_Lattice_Dynamics(Temperature=[0.,300.], Pressure=1., Method='HA'
                                                            NumAnalysis_method, Aniso_LocGrad_Type, Temperature,
                                                            min_RMS_gradient, Gruneisen_Lat_FracStep=Gruneisen_Lat_FracStep,
                                                            Parameter_file=Parameter_file, cp2kroot=cp2kroot)
-        print("   Saving user specified properties in indipendent files:")
+        print("   Saving user specified properties in independent files:")
         Pr.Save_Properties(properties, properties_to_save, Output, Method, Statistical_mechanics)
-        print("Gradient Anisotropic Quasi-Harmonic Approximation is complete!")
 
+    elif Method == 'SaQply':
+        print("Performing Quasi-Anisotropic Quasi-Harmonic Approximation")
+        properties = TNA.stepwise_expansion(StepWise_Vol_StepFrac, StepWise_Vol_LowerFrac, StepWise_Vol_UpperFrac,
+                                            Coordinate_file, Program, Temperature, Pressure, Output, Method,
+                                            molecules_in_coord, Wavenum_Tol, Statistical_mechanics, min_RMS_gradient,
+                                            eq_of_state, Parameter_file=Parameter_file, cp2kroot=cp2kroot)
+        print("   Saving user specified properties in independent files:")
+        Pr.Save_Properties(properties, properties_to_save, Output, Method, Statistical_mechanics)
+    print("Lattice dynamic calculation is complete!")
 
 def write_input_file(Temperature, Pressure, Method, Program, Output, Coordinate_file, Parameter_file, 
                      molecules_in_coord, properties_to_save, NumAnalysis_method, NumAnalysis_step, LocGrd_Vol_FracStep,
@@ -169,7 +174,7 @@ if __name__ == '__main__':
     try:
         Method = subprocess.check_output("less " + str(args.Input_file) + " | grep Method | grep = ", shell=True).decode("utf-8")
         Method = str(Method).split('=')[1].strip()
-        if Method not in ['HA', 'SiQ', 'SiQg', 'GiQ', 'GiQg', 'GaQ', 'GaQg']:
+        if Method not in ['HA', 'SiQ', 'SiQg', 'GiQ', 'GiQg', 'GaQ', 'GaQg', 'SaQply']:
             print("Input method is not supported. Please select from the following:")
             print("   HA, SiQ, SiQg, GiQ, GiQg, GaQ, GaQg")
             print("Exiting code")
@@ -395,6 +400,18 @@ if __name__ == '__main__':
     except subprocess.CalledProcessError as grepexc:
         cp2kroot = 'BNZ_NMA_p2'
 
+    try:
+        eq_of_state = subprocess.check_output("less " + str(args.Input_file) + " | grep eq_of_state | grep = ", shell=True).decode("utf-8")
+        eq_of_state = str(eq_of_state).split('=')[1].strip()
+        if eq_of_state not in ['None', 'Murnaghan', 'Birch-Murnaghan', 'Rose-Vinet']:
+            print("Input eq_of_state is not supported. Please select from the following:")
+            print("   None, Murnaghan, Birch-Murnaghan, Rose-Vinet")
+            print("Exiting code")
+            sys.exit()
+    except subprocess.CalledProcessError as grepexc:
+        print("No method was selected, will continue using no EOS")
+        eq_of_state = 'None'
+
     if pressure_scan == False: 
         Temperature_Lattice_Dynamics(Temperature=Temperature,
                                      Pressure=Pressure,
@@ -419,21 +436,10 @@ if __name__ == '__main__':
                                      Gradient_MaxTemp=Gradient_MaxTemp,
                                      Aniso_LocGrad_Type=Aniso_LocGrad_Type,
                                      min_RMS_gradient=min_RMS_gradient,
-                                     cp2kroot=cp2kroot)
+                                     cp2kroot=cp2kroot,
+                                     eq_of_state=eq_of_state)
     
     else:
-        try:
-            eq_of_state = subprocess.check_output("less " + str(args.Input_file) + " | grep eq_of_state | grep = ", shell=True).decode("utf-8")
-            eq_of_state = str(eq_of_state).split('=')[1].strip()
-            if eq_of_state not in ['None', 'Murnaghan', 'Birch-Murnaghan', 'Rose-Vinet']:
-                print("Input eq_of_state is not supported. Please select from the following:")
-                print("   None, Murnaghan, Birch-Murnaghan, Rose-Vinet")
-                print("Exiting code")
-                sys.exit()
-        except subprocess.CalledProcessError as grepexc:
-            print("No method was selected, will continue using Murnaghan EOS")
-            eq_of_state = 'Murnaghan'
-
         try:
             gru_from_0T_0P = subprocess.check_output("less " + str(args.Input_file) + " | grep gru_from_0T_0P"
                                                                                       " | grep = ", shell=True).decode("utf-8")
