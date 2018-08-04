@@ -4,6 +4,7 @@ from __future__ import print_function
 import subprocess
 import numpy as np
 import itertools as it
+import Expand as Ex
 
 ##########################################
 #           Export PROPERTIES            #
@@ -37,6 +38,9 @@ def Properties(Coordinate_file, wavenumbers, Temperature, Pressure, Program, Sta
     elif Program == 'CP2K':
         properties[3] = CP2K_U(Coordinate_file) / molecules_in_coord  # Potential energy
         properties[7:13] = CP2K_Lattice_Parameters(Coordinate_file)  # Lattice parameters
+    elif Program == 'QE':
+        properties[3] = QE_U(Coordinate_file) / molecules_in_coord
+        properties[7:13] = QE_Lattice_Parameters(Coordinate_file)
     elif Program == 'Test':
         properties[3] = Test_U(Coordinate_file) / molecules_in_coord  # Potential energy
         properties[7:13] = Test_Lattice_Parameters(Coordinate_file)  # Lattice parameters
@@ -294,6 +298,39 @@ def CP2K_atoms_per_molecule(Coordinate_file, molecules_in_coord):
     atoms_per_molecule = numatoms / molecules_in_coord
     return atoms_per_molecule
 
+def QE_U(Coordinate_file):
+    print('getting energy from'+Coordinate_file)
+    with open(Coordinate_file,'r') as lines:
+        rlines = lines.readlines()
+        energy = float(rlines[2].split()[5]) *313.754
+    return energy
+
+def QE_Lattice_Parameters(Coordinate_file):
+    lfile = open(Coordinate_file+'bv')
+    lines = lfile.readlines()
+    matrix = np.zeros((3,3))
+    for x in range(0,3):
+        vect = lines[x+1]
+        matrix[x,0] = float(vect.split()[0])
+        matrix[x,1] = float(vect.split()[1])
+        matrix[x,2] = float(vect.split()[2])
+    lattice_parameters = Ex.crystal_matrix_to_lattice_parameters(np.transpose(matrix))
+    return lattice_parameters
+
+
+
+
+def QE_atoms_per_molecule(Coordinate_file, molecules_in_coord):
+    lfile = open(Coordinate_file)
+    filelines = lfile.readlines()
+    numatom = 0
+    for x in range(0,len(filelines)):
+        if filelines[x].split()[0] in ['C','H','O','S','I','Cl','N']:
+            numatom+=1
+    atoms_per_molecule = numatom / molecules_in_coord
+    return atoms_per_molecule
+
+
 
 ##########################################
 #           THERMO-PROPERTIES            #
@@ -325,7 +362,9 @@ def Volume(**keyword_parameters):
         elif program == 'CP2K':
             # Retrieving lattice parameters of a test coordinate file
             lattice_parameters = CP2K_Lattice_Parameters(coordinate_file)
-
+        elif program == 'QE':
+            print('gettinc lattice from'+coordinate_file)
+            lattice_parameters = QE_Lattice_Parameters(coordinate_file)
     V = lattice_parameters[0] * lattice_parameters[1] * lattice_parameters[2] * np.sqrt(
         1 - np.cos(np.radians(lattice_parameters[3])) ** 2 - np.cos(np.radians(lattice_parameters[4])) ** 2 - np.cos(
             np.radians(lattice_parameters[5])) ** 2 + 2 * np.cos(np.radians(lattice_parameters[3])) * np.cos(
@@ -340,6 +379,8 @@ def Potential_energy(Program, **keyword_parameters):
         U = Test_U(keyword_parameters['Coordinate_file'])
     elif Program == 'CP2K':
         U = CP2K_U(keyword_parameters['Coordinate_file'])
+    elif Program == 'QE':
+        U = QE_U(keyword_parameters['Coordinate_file'])
     return U
 
 def Lattice_parameters(Program, Coordinate_file):
@@ -349,6 +390,8 @@ def Lattice_parameters(Program, Coordinate_file):
         lattice_parameters = Test_Lattice_Parameters(Coordinate_file)
     elif Program == 'CP2K':
         lattice_parameters = CP2K_Lattice_Parameters(Coordinate_file)
+    elif Program == 'QE':
+        lattice_parameters = QE_Lattice_Parameters(Coordinate_file)
     return lattice_parameters
 
 def RotationFree_StrainArray_from_CrystalMatrix(ref_crystal_matrix, new_crystal_matrix):
@@ -423,9 +466,9 @@ def Quantum_Vibrational_A(Temperature, wavenumbers):
     for i in wavenumbers[3:]:  # Skipping translational modes
         if i > 0:  # Skipping negative wavenumbers
             if Temperature == 0:
-                a = ((h * i * 0.5) )
+                a = ((h * i * c / (4 * np.pi)) )
             else:
-                a = ((h * i * 0.5) + (k * Temperature) * np.log(1 - np.exp(-beta * h * i * 0.5)))
+                a = ((h * i * c / (4 *np.pi)) + (k * Temperature) * np.log(1 - np.exp(-beta * h * i * c / (2 * np.pi))))
             A.append(a)
         else:
             pass
@@ -498,8 +541,7 @@ def Quantum_Vibrational_S(Temperature, wavenumbers):
     S = []
     for i in wavenumbers[3:]:
         if i > 0:
-            s = ((h * i ) / (Temperature * (np.exp(beta * h * i) - 1)) - k * np.log(
-                1 - np.exp(-beta * h * i )))
+            s = ((h * i * c / (2 * np.pi))/(Temperature*(np.exp(h * i * c * beta / (2* np.pi))-1))) - (k*Temperature*np.log(1-np.exp(-h * i * c * beta / (2 *np.pi))))
             S.append(s)
         else:
             pass
@@ -533,6 +575,8 @@ def Gibbs_Free_Energy(Temperature, Pressure, Program, wavenumbers, Coordinate_fi
         U = Test_U(Coordinate_file) / molecules_in_coord
     elif Program == 'CP2K':
         U = CP2K_U(Coordinate_file)
+    elif Program == 'QE':
+        U = QE_U(Coordinate_file)
     # Volume
     volume = Volume(Program=Program, Coordinate_file=Coordinate_file)
 

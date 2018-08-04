@@ -250,7 +250,7 @@ if __name__ == '__main__':
     try:
         Program = subprocess.check_output("less " + str(args.Input_file) + " | grep Program | grep = ", shell=True).decode("utf-8")
         Program = Program.split('=')[1].strip()
-        if Program not in ['Tinker', 'Test', 'CP2K']:
+        if Program not in ['Tinker', 'Test', 'CP2K', 'QE']:
             print("Input program is not supported. Please select from the following:")
             print("   Tinker, Test")
             print("Exiting code")

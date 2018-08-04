@@ -9,7 +9,7 @@ import ThermodynamicProperties as Pr
 import Wavenumbers as Wvn
 import Numerical_Outputs as NO
 import System_sensativity as Ss
-
+import shutil
 ##########################################
 #           Numerical Methods            #
 ##########################################
@@ -58,7 +58,9 @@ def Runge_Kutta_Fourth_Order(Method, Coordinate_file, Program, Temperature, Pres
 
     # Copying the coordinate file to a seperate file to work with
     os.system('cp ' + Coordinate_file + ' RK4' + file_ending)
-
+    if Program == 'QE':
+        print(Coordinate_file, 'copying bv file')
+        os.system('cp ' + Coordinate_file + 'bv' + ' RK4' + file_ending + 'bv')
     # Setting the different temperature stepsizes
     temperature_steps = np.array([0., RK4_stepsize / 2., RK4_stepsize / 2., RK4_stepsize])
 
@@ -359,6 +361,9 @@ def Isotropic_Stepwise_Expansion(StepWise_Vol_StepFrac, StepWise_Vol_LowerFrac, 
     elif Program =='CP2K':
         file_ending = '.pdb'
         number_of_wavenumbers = Pr.CP2K_atoms_per_molecule(Coordinate_file,1)*3
+    elif Program == 'QE':
+        file_ending = '.pw'
+        number_of_wavenumbers = Pr.QE_atoms_per_molecule(Coordinate_file, 1)*3
 
     # Setting up array of volume fractions from the lattice structure
     lower_volume_fraction = np.arange(StepWise_Vol_LowerFrac, 1.0, StepWise_Vol_StepFrac)[::-1]
@@ -401,9 +406,26 @@ def Isotropic_Stepwise_Expansion(StepWise_Vol_StepFrac, StepWise_Vol_LowerFrac, 
     properties = np.zeros((len(volume_fraction), len(Temperature), 14))
 
     # Finding all expanded structures
-    previous_volume = 1.0
+    previous_volume = 1.0    
     lattice_volume = Pr.Volume(Program=Program, Coordinate_file=Coordinate_file)
+    if Program == 'QE':
+        lattfile = Coordinate_file+'bv' 
+        newlattfile = Output + '_' + Method + str(previous_volume) + file_ending+'bv'
+        shutil.copyfile(lattfile, newlattfile)
     os.system('cp ' + Coordinate_file + ' ' + Output + '_' + Method + str(previous_volume) + file_ending)
+    #os.system('cp ' + lattfile + ' ' + Output + '_' + Method + str(previous_volume) + file_ending+'bv')
+    #if Program == 'QE':
+    #    tocopy =  (Coordinate_file  + 'bv')
+    #    file1 = open(tocopy,'r')
+    #    copyto = (Output + '_' + Method + str(previous_volume) + file_ending+'bv')
+    #    file2 = open(copyto,'w+')
+    #    lines = file1.readlines()
+    #    for linenum in lines:
+    #        print(file2.readlines())
+    #        file2.write(linenum)
+    #    file2.close()
+        
+       
     for i in range(len(volume_fraction)):
         print("   Performing volume fraction of: " + str(volume_fraction[i]))
         if os.path.isfile('Cords/' + Output + '_' + Method + str(volume_fraction[i]) + file_ending):
@@ -411,6 +433,8 @@ def Isotropic_Stepwise_Expansion(StepWise_Vol_StepFrac, StepWise_Vol_LowerFrac, 
                   "already exists")
             # Skipping structures if they've already been constructed
             os.system('cp Cords/' + Output + '_' + Method + str(volume_fraction[i]) + file_ending + ' ./')
+            if Program == 'QE':
+                os.system('cp Cords/' + Output + '_' + Method + str(volume_fraction[i]) + file_ending + 'bv' + ' ./')
         else:
             Ex.Call_Expansion(Method, 'expand', Program, Output + '_' + Method + str(previous_volume) + file_ending,
                               molecules_in_coord, min_RMS_gradient, Parameter_file=keyword_parameters['Parameter_file'],
@@ -430,6 +454,7 @@ def Isotropic_Stepwise_Expansion(StepWise_Vol_StepFrac, StepWise_Vol_LowerFrac, 
 #
 #        if find_wavenumbers == True:
         else:
+           
             wavenumbers[i, 1:] = Wvn.Call_Wavenumbers(Method, min_RMS_gradient, Program=Program, Gruneisen=Gruneisen,
                                                       Wavenumber_Reference=Wavenumber_Reference,
                                                       Volume_Reference=Volume_Reference,
@@ -452,7 +477,7 @@ def Isotropic_Stepwise_Expansion(StepWise_Vol_StepFrac, StepWise_Vol_LowerFrac, 
                                                                  keyword_parameters['cp2kroot'],
                                                                  Parameter_file=keyword_parameters['Parameter_file'])
         else:
-            print("   ... WARNING: wavenumbers are lower than tolerance of: " + str(Wavenum_Tol) + " cm^-1")
+            print(wavenumbers[i,:],"   ... WARNING: wavenumbers are lower than tolerance of: " + str(Wavenum_Tol) + " cm^-1")
             print("      ... Properties will be bypassed for this paricular strucutre.")
             properties[i, :, :] = np.nan
 
@@ -509,6 +534,9 @@ def Isotropic_Gradient_Expansion(Coordinate_file, Program, molecules_in_coord, O
     elif Program =='CP2K':
         file_ending = '.pdb'
         number_of_wavenumbers = int(Pr.CP2K_atoms_per_molecule(Coordinate_file, 1)*3)
+    elif Program == 'QE':
+        file_ending = '.pw'
+        number_of_wavenumbers = int(Pr.QE_atoms_per_molecule(Coordinate_file, 1)*3)
     # Setting the temperature array
     temperature = np.arange(0, Gradient_MaxTemp + 1., NumAnalysis_step)
 
@@ -559,7 +587,8 @@ def Isotropic_Gradient_Expansion(Coordinate_file, Program, molecules_in_coord, O
 
     # Holding lattice structures as the structure at 0K
     os.system('cp ' + Coordinate_file + ' ' + Output + '_' + Method + 'T' + str(temperature[0]) + file_ending)
-
+    if Program == 'QE':
+        os.system('cp ' + Coordinate_file + 'bv' + ' ' + Output + '_' + Method + 'T' + str(temperature[0]) + file_ending+'bv')
     # Finding structures at higher temperatures
     for i in range(len(temperature) - 1):
         print("   Determining local gradient and thermal properties at: " + str(temperature[i]) + " K")

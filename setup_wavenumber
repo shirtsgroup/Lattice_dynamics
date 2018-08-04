@@ -63,7 +63,7 @@ ba3=$( less ${pdbfile} | grep "CRYST1" | awk '{print $7}' )
 sed -i "s/AAA/${bv1}/g" ${hinge}.inp
 sed -i "s/BBB/${bv2}/g" ${hinge}.inp
 sed -i "s/CCC/${bv3}/g" ${hinge}.inp
-sed -i "s/ALPHA/${ba1}/g" ${hinge}.inp
+sed -i "s/ANGLE1/${ba1}/g" ${hinge}.inp
 sed -i "s/BETA/${ba2}/g" ${hinge}.inp
 sed -i "s/GAMMA/${ba3}/g" ${hinge}.inp
 #

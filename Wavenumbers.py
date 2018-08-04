@@ -50,6 +50,8 @@ def Call_Wavenumbers(Method, min_RMS_gradient, **keyword_parameters):
             wavenumbers = Tinker_Wavenumber(keyword_parameters['Coordinate_file'], keyword_parameters['Parameter_file'])
         elif keyword_parameters['Program'] == 'CP2K':
             wavenumbers = CP2K_Wavenumber(keyword_parameters['Coordinate_file'], keyword_parameters['Parameter_file'], Output=keyword_parameters['Output'])
+        elif keyword_parameters['Program'] == 'QE':
+            wavenumbers = QE_Wavenumber(keyword_parameters['Coordinate_file'], keyword_parameters['Parameter_file'], Output=keyword_parameters['Output'])
 
         elif keyword_parameters['Program'] == 'Test':
             if Method == 'GaQ':
@@ -191,6 +193,35 @@ def CP2K_Wavenumber(coordinatefile, parameter_file, Output):
     return wavenumbers
 
 	 
+def QE_Wavenumber(Coordinate_file, parameter_file, Output):
+    import os.path
+    if os.path.exists(Output+'.mold') == True:
+        wavenumbers = np.zeros((0,))
+        wavenumfile = open(Output+'.mold','r')
+        lines = wavenumfile.readlines()
+        iter = 2
+        while '[FR-COORD]' not in lines[iter]:
+            wave = lines[iter].split()
+            wavenumbers = np.append(wavenumbers, float(wave[0]))
+            iter = iter+1
+    else:
+        if os.path.exists(Coordinate_file[0:-4]+'.mold') == False:
+            subprocess.call(['setup_wavenumberQE', '-t', 'nma', '-h', Coordinate_file[0:-3]])
+            subprocess.call(['mpirun', '-np','112','pw.x','-i',Coordinate_file[0:-3]+'scf.qe'])
+            subprocess.call(['mpirun', '-np','112','ph.x','-i',Coordinate_file[0:-3]+'phonon.qe'])
+            subprocess.call(['mpirun', '-np','112','dynmat.x','-i',Coordinate_file[0:-3]+'matdyn.qe'])
+    
+       
+        wavenumbers = np.zeros((0,))
+        wavenumfile = open(Coordinate_file[0:-3]+'.mold','r')
+        lines = wavenumfile.readlines()
+        iter = 2
+        while '[FR-COORD]' not in lines[iter]:
+            wave = lines[iter].split()
+            wavenumbers = np.append(wavenumbers, float(wave[0]))
+            iter = iter+1
+    return wavenumbers
+
     
 
 ##########################################
@@ -304,6 +335,16 @@ def Setup_Isotropic_Gruneisen(Coordinate_file, Program, Gruneisen_Vol_FracStep, 
         Wavenumber_expand = Organized_wavenumbers[1]
         lattice_parameters = Pr.CP2K_Lattice_Parameters(Coordinate_file)
         file_ending = '.pdb'
+    elif Program == 'QE':
+        Ex.Expand_Structure(Coordinate_file, Program, 'lattice_parameters', molecules_in_coord, 'temp', min_RMS_gradient,
+			    dlattice_parameters=dLattice_Parameters,
+                            Parameter_file=keyword_parameters['Parameter_file'])
+        Organized_wavenumbers = QE_Gru_organized_wavenumbers('Isotropic', Coordinate_file, 'temp.pw', keyword_parameters['Parameter_file'], keyword_parameters['Output'])
+        Wavenumber_Reference = Organized_wavenumbers[0]
+        Wavenumber_expand = Organized_wavenumbers[1]
+        lattice_parameters = Pr.QE_Lattice_Parameters(Coordinate_file)
+        file_ending = '.pw'
+
     elif Program == 'Test':
         Ex.Expand_Structure(Coordinate_file, Program, 'lattice_parameters', molecules_in_coord, 'temp', min_RMS_gradient,
                             dlattice_parameters=dLattice_Parameters)
@@ -320,7 +361,9 @@ def Setup_Isotropic_Gruneisen(Coordinate_file, Program, Gruneisen_Vol_FracStep, 
     Gruneisen = np.zeros(len(Wavenumber_Reference))
     Gruneisen[3:] = -(np.log(Wavenumber_Reference[3:]) - np.log(Wavenumber_expand[3:]))/(np.log(Volume_Reference) -
                                                                                          np.log(Volume_expand))
-
+    for x in range(0,len(Gruneisen)):
+        if Wavenumber_Reference[x] == 0:
+            Gruneisen[x] = 0.0
     # Removing extra files created in process
     os.system('rm temp'+file_ending)
     return Gruneisen, Wavenumber_Reference, Volume_Reference
@@ -505,6 +548,51 @@ def CP2K_Gru_organized_wavenumbers(Expansion_type, Coordinate_file, Expanded_Coo
             wavenumbers_out[k, i[0]] = wavenumbers[k, i[1]]
     return wavenumbers_out
 
+def QE_Gru_organized_wavenumbers(Expansion_type, Coordinate_file, Expanded_Coordinate_file, Parameter_file, Output):
+    from munkres import Munkres, print_matrix
+    m = Munkres()
+
+    number_of_modes = 3*Pr.QE_atoms_per_molecule(Coordinate_file, 1)
+    print(number_of_modes)
+    if Expansion_type == 'Isotropic':
+        wavenumbers = np.zeros((2, number_of_modes))
+        eigenvectors = np.zeros((2, number_of_modes, number_of_modes))
+        wavenumbers[0], eigenvectors[0] = QE_Wavenumber_and_Vectors(Coordinate_file, Parameter_file, Output)
+        
+        wavenumbers[1], eigenvectors[1] = QE_Wavenumber_and_Vectors(Expanded_Coordinate_file, Parameter_file, Output)
+    elif Expansion_type == 'Anisotropic':
+        wavenumbers = np.zeros((7, number_of_modes))
+        eigenvectors = np.zeros((7, number_of_modes, number_of_modes))
+        wavenumbers[0], eigenvectors[0] = QE_Wavenumber_and_Vectors(Coordinate_file, Parameter_file, Output)
+        for i in range(1,7):
+            wavenumbers[i], eigenvectors[i] = QE_Wavenumber_and_Vectors(Expanded_Coordinate_file[i-1], Parameter_file, Output)
+
+
+    # Weighting the modes matched together
+    wavenumbers_out = np.zeros((len(wavenumbers[:, 0]), number_of_modes))
+    wavenumbers_out[0] = wavenumbers[0]
+    for k in range(1, len(wavenumbers[:, 0])):
+        weight = np.zeros((number_of_modes - 3, number_of_modes - 3))
+        for i in range(3, number_of_modes):
+            diff = np.linalg.norm(np.dot(eigenvectors[0, i], eigenvectors[k, i]))/(np.linalg.norm(eigenvectors[0, i])*np.linalg.norm(eigenvectors[k, i]))
+            if diff > 0.95:
+                weight[i - 3] = 10000000.
+                weight[i - 3, i - 3] = 1. - diff
+            else:
+                for j in range(3, number_of_modes):
+                    weight[i - 3, j - 3] = 1 - np.linalg.norm(np.dot(eigenvectors[0, i], eigenvectors[k, j]))/(np.linalg.norm(eigenvectors[0, i])*np.linalg.norm(eigenvectors[k, j]))
+
+        # Using the Hungarian algorithm to match wavenumbers
+        Wgt = m.compute(weight)
+        x,y = zip(*Wgt)
+        z = np.column_stack((x,y))
+        z = z +3
+
+    # Re-organizing the expanded wavenumbers
+        for i in z:
+            wavenumbers_out[k, i[0]] = wavenumbers[k, i[1]]
+    return wavenumbers_out
+
 
 def Tinker_Wavenumber_and_Vectors(Coordinate_file, Parameter_file):
     # Calling Tinker's vibrate executable and extracting the eigenvectors and wavenumbers of the respective
@@ -555,6 +643,39 @@ def CP2K_Wavenumber_and_Vectors(Coordinate_file, Parameter_file, Output):
     nummodes = len(wavenumbers)
     eigenvectors = np.zeros((nummodes,nummodes))
     vect = 3
+    for y in range(0,len(lines)):
+        if lines[y].split()[0] == 'vibration':
+            for z in range(1,int(nummodes/3)+1):
+                modecoord = lines[y+z].split()
+                start = int((z-1)*3)
+                eigenvectors[vect,start:start+3] = modecoord[:]
+            vect+=1
+    return wavenumbers, eigenvectors
+
+def QE_Wavenumber_and_Vectors(Coordinate_file, Parameter_file, Output):
+
+    import os.path
+    print('getting wavenumbers')
+    if os.path.exists(Coordinate_file[0:-3]+'.mold') == False:
+        print(Coordinate_file)
+        subprocess.call(['setup_wavenumberQE', '-t', 'nma', '-h', Coordinate_file[0:-3]])
+        #subprocess.call(['mpirun', '-np','112','pw.x','-i',Coordinate_file[0:-3]+'scf.qe'])
+        #subprocess.call(['mpirun', '-np','112','ph.x','-i',Coordinate_file[0:-3]+'phonon.qe'])
+        #subprocess.call(['mpirun', '-np','112','dynmat.x','-i',Coordinate_file[0:-3]+'matdyn.qe'])
+        os.system('mpirun -np 112 pw.x -i '+Coordinate_file[0:-3]+'scf.qe > '+Coordinate_file[0:-3]+'scf.out')
+        os.system('mpirun -np 112 ph.x -i '+Coordinate_file[0:-3]+'phonon.qe > '+Coordinate_file[0:-3]+'phonon.out')
+        os.system('mpirun -np 112 dynmat.x -i '+Coordinate_file[0:-3]+'matdyn.qe > '+Coordinate_file[0:-3]+'matdyn.out')
+    wavenumbers = np.zeros((0,))
+    wavenumfile = open(Coordinate_file[0:-3]+'.mold','r')
+    lines = wavenumfile.readlines()
+    iter = 2
+    while '[FR-COORD]' not in lines[iter]:
+        wave = lines[iter].split()
+        wavenumbers = np.append(wavenumbers, float(wave[0]))
+        iter = iter+1
+    nummodes = len(wavenumbers)
+    eigenvectors = np.zeros((nummodes,nummodes))
+    vect = 0
     for y in range(0,len(lines)):
         if lines[y].split()[0] == 'vibration':
             for z in range(1,int(nummodes/3)+1):
