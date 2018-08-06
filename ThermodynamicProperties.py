@@ -154,14 +154,17 @@ def Save_Properties(properties, Properties_to_save, Output, Method, Statistical_
             np.save(Output + '_S' + Statistical_mechanics + '_' + Method, properties[:, 13])
 
 def polynomial_properties_optimize(volumes, V0, wavenumbers, eigenvectors, molecules_in_coord, Statistical_mechanics,
-                                   Temperature, Pressure, eq_of_state, poly_order, prop_0K, Output):
+                                   Temperature, Pressure, eq_of_state, poly_order, prop_0K, Output, Program):
     # Organize vibrational modes
     wavenumbers_organized = np.zeros((len(volumes), len(wavenumbers[0, 1:])))
     basis_placement = np.where(np.around(V0, 3) == np.around(volumes, 3))[0][0]
     number_of_modes = len(wavenumbers[0, 1:])
     for i in range(len(volumes)):
-        z, _ = Wvn.matching_eigenvectors_of_modes(number_of_modes, eigenvectors[basis_placement], eigenvectors[i])
-        wavenumbers_organized[i] = Wvn.reorder_modes(z, wavenumbers[i, 1:])
+        if Program == 'Test':
+            wavenumbers_organized[i] = wavenumbers[i, 1:]
+        else:
+            z, _ = Wvn.matching_eigenvectors_of_modes(number_of_modes, eigenvectors[basis_placement], eigenvectors[i])
+            wavenumbers_organized[i] = Wvn.reorder_modes(z, wavenumbers[i, 1:])
 
     # Create polynomials for vibrational modes as a function of volume
     wavenumber_poly = np.zeros((number_of_modes, poly_order + 1))

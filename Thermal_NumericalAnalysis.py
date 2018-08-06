@@ -468,7 +468,7 @@ def stepwise_expansion(StepWise_Vol_StepFrac, StepWise_Vol_LowerFrac, StepWise_V
     # Setting up array of volume fractions from the lattice structure
     V0 = Pr.Volume(Program=Program, Coordinate_file=Coordinate_file)
     dV = StepWise_Vol_StepFrac * V0
-    volumes = np.arange(StepWise_Vol_LowerFrac * V0, StepWise_Vol_UpperFrac * V0, StepWise_Vol_StepFrac * V0)
+    volumes = np.arange(StepWise_Vol_LowerFrac * V0, StepWise_Vol_UpperFrac * V0 + 0.000001, StepWise_Vol_StepFrac * V0)
 
     # Setting up a matrix to store the wavenumbers in
     wavenumbers = np.zeros((len(volumes), number_of_modes + 1))
@@ -491,7 +491,7 @@ def stepwise_expansion(StepWise_Vol_StepFrac, StepWise_Vol_LowerFrac, StepWise_V
     for i in [-1, 1]:
         V = V0
         subprocess.call(['cp', Coordinate_file, 'hold' + file_ending])
-        while volumes[0] <= V <= volumes[-1]:
+        while volumes[0] <= V + i * dV <= volumes[-1]:
             placement = np.where(np.around(V + i * dV, 3) == np.around(volumes, 3))
             if os.path.isfile('Cords/' + Output + '_' + Method + str(round((V + i * dV) / V0, 4)) + file_ending):
                 subprocess.call(['cp', 'Cords/' + Output + '_' + Method + str(round((V + i * dV) / V0, 4)) + file_ending,
@@ -535,7 +535,7 @@ def stepwise_expansion(StepWise_Vol_StepFrac, StepWise_Vol_LowerFrac, StepWise_V
         minimum_gibbs_properties = Pr.polynomial_properties_optimize(properties[:, 0, 6], V0, wavenumbers, eigenvectors,
                                                                      molecules_in_coord, Statistical_mechanics,
                                                                      Temperature, Pressure, eq_of_state, poly_order,
-                                                                     properties[:, 0, :], Output)
+                                                                     properties[:, 0, :], Output, Program)
         
     else:
         minimum_gibbs_properties = np.zeros((len(Temperature), 14))
