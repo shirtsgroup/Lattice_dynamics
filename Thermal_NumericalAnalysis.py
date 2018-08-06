@@ -241,7 +241,7 @@ def Spline_Intermediate_Points(Output, Method, Program, properties, Temperature,
     # Setting up an array to store the output properties
     properties_out = np.zeros((len(np.unique(np.append(Temperature, properties[:, 0]))), len(properties[0, :])))
 
-    # Setting a count on where to place the properites in the output matrix
+    # Setting a count on where to place the properties in the output matrix
     count = 0
 
     # Pulling up starting structure
@@ -349,16 +349,8 @@ def Isotropic_Stepwise_Expansion(StepWise_Vol_StepFrac, StepWise_Vol_LowerFrac, 
     Gruneisen_Vol_FracStep: volume fraction step used to determine the Gruneisen parameter 
     """
     # Setting file endings and determining how many wavenumbers there will be
-    if Program == 'Tinker':
-        file_ending = '.xyz'
-        number_of_wavenumbers = int(Pr.Tinker_atoms_per_molecule(Coordinate_file, 1)*3)
-    elif Program == 'Test':
-        file_ending = '.npy'
-        number_of_wavenumbers = len(Wvn.Test_Wavenumber(Coordinate_file, True))
-        keyword_parameters['Parameter_file'] = ''
-    elif Program =='CP2K':
-        file_ending = '.pdb'
-        number_of_wavenumbers = Pr.CP2K_atoms_per_molecule(Coordinate_file,1)*3
+    file_ending = Ex.assign_file_ending(Program)
+    number_of_modes = int(Pr.atoms_count(Program, Coordinate_file) * 3)
 
     # Setting up array of volume fractions from the lattice structure
     lower_volume_fraction = np.arange(StepWise_Vol_LowerFrac, 1.0, StepWise_Vol_StepFrac)[::-1]
@@ -369,7 +361,7 @@ def Isotropic_Stepwise_Expansion(StepWise_Vol_StepFrac, StepWise_Vol_LowerFrac, 
     volume_fraction = np.append(lower_volume_fraction, upper_volume_fraction)
 
     # Setting up a matrix to store the wavenumbers in
-    wavenumbers = np.zeros((len(volume_fraction), number_of_wavenumbers+1))
+    wavenumbers = np.zeros((len(volume_fraction), number_of_modes + 1))
     wavenumbers[:, 0] = volume_fraction
 
     # Setting parameters for the Gruneisen parameter and loading in previously found wavenumbers for SiQ
@@ -410,7 +402,7 @@ def Isotropic_Stepwise_Expansion(StepWise_Vol_StepFrac, StepWise_Vol_LowerFrac, 
             print("   ... Coordinate file Cords/" + Output + "_" + Method + str(volume_fraction[i]) + file_ending + \
                   "already exists")
             # Skipping structures if they've already been constructed
-            subprocess.call(['cp', 'Cords/' + Output + '_' + Method + str(volume_fraction[i]) + file_ending, ' ./'])
+            subprocess.call(['cp', 'Cords/' + Output + '_' + Method + str(volume_fraction[i]) + file_ending, './'])
         else:
             Ex.Call_Expansion(Method, 'expand', Program, Output + '_' + Method + str(previous_volume) + file_ending,
                               molecules_in_coord, min_RMS_gradient, Parameter_file=keyword_parameters['Parameter_file'],
@@ -428,7 +420,8 @@ def Isotropic_Stepwise_Expansion(StepWise_Vol_StepFrac, StepWise_Vol_LowerFrac, 
                                                       New_Volume=volume_fraction[i]*lattice_volume,
                                                       Coordinate_file=(Output + '_' + Method + str(volume_fraction[i])
                                                                        + file_ending),
-                                                      Parameter_file=keyword_parameters['Parameter_file'], cp2kroot=keyword_parameters['cp2kroot'])
+                                                      Parameter_file=keyword_parameters['Parameter_file'],
+                                                      cp2kroot=keyword_parameters['cp2kroot'])
 
         # Saving the wavenumbers if the Gruneisen parameter is not being used
         if Method == 'SiQ':
@@ -448,7 +441,7 @@ def Isotropic_Stepwise_Expansion(StepWise_Vol_StepFrac, StepWise_Vol_LowerFrac, 
             print("      ... Properties will be bypassed for this paricular strucutre.")
             properties[i, :, :] = np.nan
 
-    subprocess.call(['mv', Output + '_' + Method + '*' + file_ending, 'Cords/'], shell=True)
+    subprocess.call(['mv ' + Output + '_' + Method + '*' + file_ending + ' Cords/'], shell=True)
 
     # Saving the raw data before minimizing
     print("   All properties have been saved in " + Output + "_raw.npy")
@@ -461,6 +454,98 @@ def Isotropic_Stepwise_Expansion(StepWise_Vol_StepFrac, StepWise_Vol_LowerFrac, 
             if properties[j, i, 2] == np.nanmin(properties[:, i, 2]):
                 minimum_gibbs_properties[i, :] = properties[j, i, :]
     return minimum_gibbs_properties
+
+##########################################
+#    generalized stepwise expansion      #
+##########################################
+def stepwise_expansion(StepWise_Vol_StepFrac, StepWise_Vol_LowerFrac, StepWise_Vol_UpperFrac, Coordinate_file, Program,
+                       Temperature, Pressure, Output, Method, molecules_in_coord, Wavenum_Tol, Statistical_mechanics,
+                       min_RMS_gradient, eq_of_state, **keyword_parameters):
+    # Setting file endings and determining how many wavenumbers there will be
+    file_ending = Ex.assign_file_ending(Program)
+    number_of_modes = int(Pr.atoms_count(Program, Coordinate_file) * 3)
+
+    # Setting up array of volume fractions from the lattice structure
+    V0 = Pr.Volume(Program=Program, Coordinate_file=Coordinate_file)
+    dV = StepWise_Vol_StepFrac * V0
+    volumes = np.arange(StepWise_Vol_LowerFrac * V0, StepWise_Vol_UpperFrac * V0 + 0.000001, StepWise_Vol_StepFrac * V0)
+
+    # Setting up a matrix to store the wavenumbers in
+    wavenumbers = np.zeros((len(volumes), number_of_modes + 1))
+    wavenumbers[:, 0] = volumes
+    placement = np.where(np.around(volumes, 3) == np.around(V0, 3))
+    if Method == 'SaQply':
+        eigenvectors = np.zeros((len(volumes), number_of_modes, number_of_modes))
+        wavenumbers[placement, 1:], eigenvectors[placement] = \
+            Wvn.Call_Wavenumbers(Method, min_RMS_gradient, Program=Program, Coordinate_file=Coordinate_file,
+                                 Parameter_file=keyword_parameters['Parameter_file'],
+                                 cp2kroot=keyword_parameters['cp2kroot'])
+
+    # setting a matrix for properties versus temperature and pressure
+    properties = np.zeros((len(volumes), len(Temperature), 14))
+    properties[placement, :] = Pr.Properties_with_Temperature(Coordinate_file, wavenumbers[np.where(volumes == V0), 1:],
+                                                              Temperature, Pressure, Program, Statistical_mechanics,
+                                                              molecules_in_coord, keyword_parameters['cp2kroot'],
+                                                              Parameter_file=keyword_parameters['Parameter_file'])
+
+    for i in [-1, 1]:
+        V = V0
+        subprocess.call(['cp', Coordinate_file, 'hold' + file_ending])
+        while volumes[0] <= V + i * dV <= volumes[-1]:
+            placement = np.where(np.around(V + i * dV, 3) == np.around(volumes, 3))
+            if os.path.isfile('Cords/' + Output + '_' + Method + str(round((V + i * dV) / V0, 4)) + file_ending):
+                subprocess.call(['cp', 'Cords/' + Output + '_' + Method + str(round((V + i * dV) / V0, 4)) + file_ending,
+                                 './'])
+                subprocess.call(['cp', 'Cords/' + Output + '_' + Method + str(round((V + i * dV) / V0, 4)) + file_ending,
+                                 'hold' + file_ending])
+            else:
+                Ex.Call_Expansion('GiQ', 'expand', Program, 'hold' + file_ending, molecules_in_coord, min_RMS_gradient,
+                                  Parameter_file=keyword_parameters['Parameter_file'], volume_fraction_change=(V + i * dV) / V,
+                                  Output=Output + '_' + Method + str(round((V + i * dV) / V0, 4)))
+    
+                if Method == 'SaQply':
+                    Ex.V_constraind_lattice_minimization(Output + '_' + Method + str(round((V + i * dV) / V0, 4)) + file_ending,
+                                                         Program, molecules_in_coord, min_RMS_gradient,
+                                                         Parameter_file=keyword_parameters['Parameter_file'])
+    
+                subprocess.call(['cp', Output + '_' + Method + str(round((V + i * dV) / V0, 4)) + file_ending,
+                                 'hold' + file_ending])
+
+            wavenumbers_hold = Wvn.Call_Wavenumbers(Method, min_RMS_gradient, Program=Program,
+                                                    Coordinate_file=Output + '_' + Method + str(round((V + i * dV) / V0, 4)) + file_ending,
+                                                    Parameter_file=keyword_parameters['Parameter_file'],
+                                                    cp2kroot=keyword_parameters['cp2kroot'])
+            if Method == 'SaQply':
+                wavenumbers[placement, 1:] = wavenumbers_hold[0]
+                eigenvectors[placement] = wavenumbers_hold[1]
+            else:
+                wavenumbers[placement, 1:] = wavenumbers_hold
+            properties[placement, :] = Pr.Properties_with_Temperature(Output + '_' + Method +
+                                                                      str(round((V + i * dV) / V0, 4)) + file_ending,
+                                                                      wavenumbers[placement, 1:], Temperature, Pressure,
+                                                                      Program, Statistical_mechanics,
+                                                                      molecules_in_coord,
+                                                                      keyword_parameters['cp2kroot'], Parameter_file=
+                                                                      keyword_parameters['Parameter_file'])
+            V = V + i * dV
+    subprocess.call(['mv ' + Output + '_' + Method + '* ./Cords'], shell=True)
+    subprocess.call(['rm', 'hold' + file_ending])
+    if Method == 'SaQply':
+        poly_order = 3
+        minimum_gibbs_properties = Pr.polynomial_properties_optimize(properties[:, 0, 6], V0, wavenumbers, eigenvectors,
+                                                                     molecules_in_coord, Statistical_mechanics,
+                                                                     Temperature, Pressure, eq_of_state, poly_order,
+                                                                     properties[:, 0, :], Output, Program)
+        
+    else:
+        minimum_gibbs_properties = np.zeros((len(Temperature), 14))
+        for i in range(len(properties[0, :, 0])):
+            for j in range(len(properties[:, 0, 0])):
+                if properties[j, i, 2] == np.min(properties[:, i, 2]):
+                    minimum_gibbs_properties[i, :] = properties[j, i, :]
+    return minimum_gibbs_properties
+
+
 
 ##########################################
 #      Gradient Isotropic Expansion      #
@@ -491,16 +576,9 @@ def Isotropic_Gradient_Expansion(Coordinate_file, Program, molecules_in_coord, O
     Gruneisen_Vol_FracStep: volume fraction step used to determine the Gruneisen parameter 
     """
     # Setting file endings and determining how many wavenumbers there will be
-    if Program == 'Tinker':
-        file_ending = '.xyz'
-        number_of_wavenumbers = int(Pr.Tinker_atoms_per_molecule(Coordinate_file, 1)*3)
-    elif Program == 'Test':
-        file_ending = '.npy'
-        number_of_wavenumbers = len(Wvn.Test_Wavenumber(Coordinate_file, True))
-        keyword_parameters['Parameter_file'] = ''
-    elif Program =='CP2K':
-        file_ending = '.pdb'
-        number_of_wavenumbers = int(Pr.CP2K_atoms_per_molecule(Coordinate_file, 1)*3)
+    file_ending = Ex.assign_file_ending(Program)
+    number_of_modes = int(Pr.atoms_count(Program, Coordinate_file) * 3)
+
     # Setting the temperature array
     temperature = np.arange(0, Gradient_MaxTemp + 1., NumAnalysis_step)
 
@@ -516,7 +594,7 @@ def Isotropic_Gradient_Expansion(Coordinate_file, Program, molecules_in_coord, O
                 volume_gradient[:len(volume_gradient_hold[:, 0]), :] = volume_gradient_hold
 
     # Setting up a matrix to store the wavenumbers in
-    wavenumbers = np.zeros((len(temperature), number_of_wavenumbers+1))
+    wavenumbers = np.zeros((len(temperature), number_of_modes + 1))
     wavenumbers[:, 0] = temperature
 
     # Setting parameters for the Gruneisen parameter and loading in previously found wavenumbers for SiQ
@@ -656,11 +734,7 @@ def Anisotropic_Gradient_Expansion(Coordinate_file, Program, molecules_in_coord,
                                    Aniso_LocGrad_Type, Temperature, min_RMS_gradient, **keyword_parameters):
     # Setting file endings and determining how many wavenumbers there will be
     file_ending = Ex.assign_file_ending(Program)
-    if Program == 'Tinker':
-        number_of_wavenumbers = Pr.Tinker_atoms_per_molecule(Coordinate_file, 1) * 3
-    elif Program == 'Test':
-        number_of_wavenumbers = len(Wvn.Test_Wavenumber(Coordinate_file, True))
-        keyword_parameters['Parameter_file'] = ''
+    number_of_modes = int(Pr.atoms_count(Program, Coordinate_file) * 3)
 
     # Setting the temperature array
     temperature = np.arange(0, Gradient_MaxTemp + 1, NumAnalysis_step)
@@ -677,7 +751,7 @@ def Anisotropic_Gradient_Expansion(Coordinate_file, Program, molecules_in_coord,
                 crystal_matrix_gradient[:len(crystal_matrix_gradient_hold[:, 0, 0]), :, :] = crystal_matrix_gradient_hold
 
     # Setting up a matrix to store the wavenumbers in
-    wavenumbers = np.zeros((len(temperature), int(number_of_wavenumbers) + 1))
+    wavenumbers = np.zeros((len(temperature), number_of_modes + 1))
     wavenumbers[:, 0] = temperature
 
     if Method == 'GaQg':
@@ -841,17 +915,13 @@ def Anisotropic_Gradient_Expansion_1D(Coordinate_file, Program, molecules_in_coo
                                       Aniso_LocGrad_Type, Temperature, min_RMS_gradient, **keyword_parameters):
     # Setting file endings and determining how many wavenumbers there will be
     file_ending = Ex.assign_file_ending(Program)
-    if Program == 'Tinker':
-        number_of_wavenumbers = Pr.Tinker_atoms_per_molecule(Coordinate_file, 1) * 3
-    elif Program == 'Test':
-        number_of_wavenumbers = len(Wvn.Test_Wavenumber(Coordinate_file, True))
-        keyword_parameters['Parameter_file'] = ''
+    number_of_modes = int(Pr.atoms_count(Program, Coordinate_file) * 3)
 
     # Setting the temperature array
     temperature = np.arange(0, Gradient_MaxTemp + 1, NumAnalysis_step)
 
     # Setting up a matrix to store the wavenumbers in
-    wavenumbers = np.zeros((len(temperature), int(number_of_wavenumbers) + 1))
+    wavenumbers = np.zeros((len(temperature), number_of_modes + 1))
     wavenumbers[:, 0] = temperature
 
     if Method == 'GaQg':

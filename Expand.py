@@ -8,6 +8,7 @@ import ThermodynamicProperties as Pr
 import Wavenumbers as Wvn
 import Numerical_Outputs as NO
 import subprocess
+import scipy.optimize
 import fileinput
 
 ##########################################
@@ -850,8 +851,8 @@ def Anisotropic_Local_Gradient_1D(Coordinate_file, Program, Temperature, Pressur
     S = np.zeros(3)
 
     G[1], U[1], Av[1] = Pr.Gibbs_Free_Energy(Temperature, Pressure, Program, wavenumbers, Coordinate_file,
-                                                   Statistical_mechanics, molecules_in_coord,
-                                                   Parameter_file=keyword_parameters['Parameter_file'])
+                                             Statistical_mechanics, molecules_in_coord,
+                                             Parameter_file=keyword_parameters['Parameter_file'])
 
     crystal_matrix_array = LocGrd_dLambda * dC_dLambda
     # Straining the input structure by the current diagonal
@@ -889,4 +890,90 @@ def Anisotropic_Local_Gradient_1D(Coordinate_file, Program, Temperature, Pressur
     dLambda_dT = dS_dLambda / ddG_ddLambda
     NO.aniso_gradient_1D(dG_dLambda, ddG_ddLambda, dS_dLambda, dLambda_dT)
     return dLambda_dT, wavenumbers
+
+###################################################
+#      Anisotropic Constrained Minimization       #
+###################################################
+def V_constraind_lattice_minimization(Coordinate_file, Program, molecules_in_coord, min_RMS_gradient,
+                                      Parameter_file=''):
+    # Determining the file ending of the coordinate file
+    file_ending = assign_file_ending(Program)
+
+    # Determining the lattice parameters and volume of the input coordinate file
+    lattice_parameters_0 = Pr.Lattice_parameters(Program, Coordinate_file)
+    V0 = Pr.Volume(lattice_parameters=lattice_parameters_0)
+
+    # Copy input coordinate file into a temporary file
+    subprocess.call(['cp', Coordinate_file, 'temporary' + file_ending])
+#    bnds = ((lattice_parameters_0[0] * 0.9, lattice_parameters_0[0] * 1.1), 
+#            (lattice_parameters_0[1] * 0.9, lattice_parameters_0[1] * 1.1),
+#            (lattice_parameters_0[2] * 0.9, lattice_parameters_0[2] * 1.1),
+#            (lattice_parameters_0[3] * 0.95, lattice_parameters_0[3] * 1.05),
+#            (lattice_parameters_0[4] * 0.95, lattice_parameters_0[4] * 1.05),
+#            (lattice_parameters_0[5] * 0.95, lattice_parameters_0[5] * 1.05), (0,1))
+
+    # Minimizing the systems potential energy by changing the lattice parameters while constraining the volume
+#    scipy.optimize.minimize(Return_U_from_Aniso_Expand, lattice_parameters_0, ('temporary' + file_ending,
+#                                                                               Parameter_file, Program, 'temporary',
+#                                                                               molecules_in_coord, min_RMS_gradient, V0), method='SLSQP',
+#                            constraints=({'type': 'eq', 'fun': lambda lattice_parameters:
+#                            np.absolute(Pr.Volume(lattice_parameters=lattice_parameters) - V0)}),
+#                            bounds=bnds, tol=1e-20)
+
+#    output = scipy.optimize.minimize(dfunc, np.append(lattice_parameters_0, 1.), ('temporary' + file_ending,
+#                                                                               Parameter_file, Program, 'temporary',
+#                                                                               molecules_in_coord, min_RMS_gradient, V0), method='BFGS')
+
+    output = scipy.optimize.fsolve(dfunc, np.append(lattice_parameters_0, 0.), ('temporary' + file_ending,
+                                                                               Parameter_file, Program, 'temporary',
+                                                                               molecules_in_coord, min_RMS_gradient, V0), xtol=min_RMS_gradient)
+
+    print(V0, Pr.Volume(lattice_parameters=output[:6]))
+    dfunc(output, 'temporary' + file_ending, Parameter_file, Program, 'temporary',
+                                                 molecules_in_coord, min_RMS_gradient, V0, minimizing=False)
+
+    # Replacing the coordinate file with the new minimized structure
+#    subprocess.call(['mv', 'temporary' + file_ending, Coordinate_file])
+
+
+
+def Return_U_from_Aniso_Expand(new_lattice_parameters, coordinate_file, Parameter_file, Program, output_file_name,
+                               molecules_in_coord, min_RMS_gradient, V0, L=False):
+    # Determining the file ending of the coordinate file
+    file_ending = assign_file_ending(Program)
+
+    # Determine the input coordinate files lattice parameters
+    old_lattice_parameters = Pr.Lattice_parameters(Program, coordinate_file)
+
+    # Expand input coordinate file using the new lattice parameters
+    Expand_Structure(coordinate_file, Program, 'lattice_parameters', molecules_in_coord, output_file_name,
+                     min_RMS_gradient, dlattice_parameters=new_lattice_parameters[:6] - old_lattice_parameters,
+                     Parameter_file=Parameter_file)
+
+    # Computing the potential energy of the new expanded structure
+    U = Pr.Potential_energy('temporary' + file_ending, Program, Parameter_file=Parameter_file) / molecules_in_coord
+    if L == False:
+        return U
+    else:
+        L = new_lattice_parameters[6]
+        return U +  L * (V0 - Pr.Volume(lattice_parameters=new_lattice_parameters[:6]))
+
+
+def dfunc(x, coordinate_file, Parameter_file, Program, output_file_name,
+                               molecules_in_coord, min_RMS_gradient, V0, minimizing=True):
+    dLambda = np.zeros(len(x))
+    h = [1e-02, 1e-02, 1e-02, 1e-02, 1e-02, 1e-02, 1e-01]
+    for i in range(len(x)):
+        dX = np.zeros(len(x))
+        dX[i] = h[i]
+        dLambda[i] = (Return_U_from_Aniso_Expand(x + dX, coordinate_file, Parameter_file, Program, output_file_name,
+                               molecules_in_coord, min_RMS_gradient, V0, L=True) -
+                      Return_U_from_Aniso_Expand(x - dX, coordinate_file, Parameter_file, Program, output_file_name,
+                               molecules_in_coord, min_RMS_gradient, V0, L=True)) / (h[i])
+#    print(np.around(dLambda, 10))
+    if minimizing == True:
+        return dLambda    #np.sum(np.absolute(dLambda))
+    else:
+        print(dLambda)
+
 

@@ -115,12 +115,19 @@ Gradient_MaxTemp = 300.0
 
 ### Type of anisotropic expansion
 # Option - Description
-# 1D - NOT YET AN OPTION!
+# 1D - Computes the 0K gradients of all six lattice parameters, those gradients remain in ratio with each other as the crystal is expanded
 # 3D - Only considers the diagonals of the crystal matrix tensor
 # 6D - Performs full anisotropic expansion
 # matrix
-Aniso_LocGrad_Type = 73
+Aniso_LocGrad_Type = 6D
 
 # Gradient for minimization
 min_RMS_gradient = 0.0001
+
+# Equation of state to be used
+# Options: None, Murnaghan, Birch-Murnaghan, Rose-Vinet, polynomial
+eq_of_state = None
+
+# Order of the polynomial fit
+poly_order = 3
 

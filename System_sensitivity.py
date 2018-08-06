@@ -32,7 +32,7 @@ def isotropic_gradient_settings(Coordinate_file, Program, Parameter_file, molecu
     n_steps = len(steps)
 
     # Potential energy of input file and a place to store the expanded structures potential energy
-    U_0 = (Pr.Potential_energy(Program, Coordinate_file=Coordinate_file, Parameter_file=Parameter_file) \
+    U_0 = (Pr.Potential_energy(Coordinate_file, Program, Parameter_file=Parameter_file) \
            + Pr.PV_energy(Pressure, Pr.Volume(Program=Program, Coordinate_file=Coordinate_file))) / \
           molecules_in_coord
     U = np.zeros((n_steps))
@@ -46,7 +46,7 @@ def isotropic_gradient_settings(Coordinate_file, Program, Parameter_file, molecu
                             min_RMS_gradient, Parameter_file=Parameter_file, dlattice_parameters=dlattice_parameters)
 
         # Computing the potential energy
-        U[i] = (Pr.Potential_energy(Program, Coordinate_file=Output + file_ending, Parameter_file=Parameter_file) \
+        U[i] = (Pr.Potential_energy(Output + file_ending, Program, Parameter_file=Parameter_file) \
                 + Pr.PV_energy(Pressure, Pr.Volume(Program=Program, Coordinate_file=Output + file_ending))) / \
                 molecules_in_coord
         subprocess.call(['rm', Output + file_ending])
@@ -93,7 +93,7 @@ def anisotropic_gradient_settings(Coordinate_file, Program, Parameter_file, mole
     n_steps = len(steps)
 
     # Potential energy of input file and a place to store the expanded structures potential energy
-    U_0 = Pr.Potential_energy(Program, Coordinate_file=Coordinate_file, Parameter_file=Parameter_file) / \
+    U_0 = Pr.Potential_energy(Coordinate_file, Program, Parameter_file=Parameter_file) / \
           molecules_in_coord
     U = np.zeros((6, n_steps))
 
@@ -113,7 +113,7 @@ def anisotropic_gradient_settings(Coordinate_file, Program, Parameter_file, mole
             Ex.Expand_Structure(Coordinate_file, Program, 'crystal_matrix', molecules_in_coord,
                                 Output, min_RMS_gradient, Parameter_file=Parameter_file,
                                 dcrystal_matrix=dlattice_matrix)
-            U[j, i] = Pr.Potential_energy(Program, Coordinate_file=Output + file_ending, Parameter_file=Parameter_file) / molecules_in_coord
+            U[j, i] = Pr.Potential_energy(Output + file_ending, Program, Parameter_file=Parameter_file) / molecules_in_coord
             subprocess.call(['rm', Output + file_ending])
             if (U[j, i] - U_0) > cutoff:
                 LocGrd_CMatrix_FracStep[j] = steps[i]
@@ -153,7 +153,7 @@ def anisotropic_gradient_settings_1D(Coordinate_file, Program, Parameter_file, m
     n_steps = len(steps)
 
     # Potential energy of input file and a place to store the expanded structures potential energy
-    U_0 = Pr.Potential_energy(Program, Coordinate_file=Coordinate_file, Parameter_file=Parameter_file) / \
+    U_0 = Pr.Potential_energy(Coordinate_file, Program, Parameter_file=Parameter_file) / \
           molecules_in_coord
     U = np.zeros(n_steps)
 
@@ -163,7 +163,7 @@ def anisotropic_gradient_settings_1D(Coordinate_file, Program, Parameter_file, m
         Ex.Expand_Structure(Coordinate_file, Program, 'crystal_matrix', molecules_in_coord,
                             Output, min_RMS_gradient, Parameter_file=Parameter_file,
                             dcrystal_matrix=dlattice_matrix)
-        U[i] = Pr.Potential_energy(Program, Coordinate_file=Output + file_ending, Parameter_file=Parameter_file) / \
+        U[i] = Pr.Potential_energy(Output + file_ending, Program, Parameter_file=Parameter_file) / \
                molecules_in_coord
         subprocess.call(['rm', Output + file_ending])
         if (U[i] - U_0) > cutoff:
