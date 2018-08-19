@@ -361,7 +361,6 @@ def Lattice_parameters_to_Crystal_matrix(lattice_parameters):
     crystal_matrix = np.matrix([[Vxx, Vxy, Vxz], [0., Vyy, Vyz], [0., 0., Vzz]])
     return crystal_matrix
 
-
 def crystal_matrix_to_lattice_parameters(crystal_matrix):
     """
     This function takes any strained crystal lattice matrix and return the lattice parameters
@@ -900,45 +899,36 @@ def V_constraind_lattice_minimization(Coordinate_file, Program, molecules_in_coo
     file_ending = assign_file_ending(Program)
 
     # Determining the lattice parameters and volume of the input coordinate file
-    lattice_parameters_0 = Pr.Lattice_parameters(Program, Coordinate_file)
-    V0 = Pr.Volume(lattice_parameters=lattice_parameters_0)
-
+    lp_0 = Pr.Lattice_parameters(Program, Coordinate_file)
+    V0 = Pr.Volume(lattice_parameters=lp_0)
+    lp_0 = triangle_crystal_matrix_to_array(Lattice_parameters_to_Crystal_matrix(lp_0))
     # Copy input coordinate file into a temporary file
     subprocess.call(['cp', Coordinate_file, 'temporary' + file_ending])
-#    bnds = ((lattice_parameters_0[0] * 0.9, lattice_parameters_0[0] * 1.1), 
-#            (lattice_parameters_0[1] * 0.9, lattice_parameters_0[1] * 1.1),
-#            (lattice_parameters_0[2] * 0.9, lattice_parameters_0[2] * 1.1),
-#            (lattice_parameters_0[3] * 0.95, lattice_parameters_0[3] * 1.05),
-#            (lattice_parameters_0[4] * 0.95, lattice_parameters_0[4] * 1.05),
-#            (lattice_parameters_0[5] * 0.95, lattice_parameters_0[5] * 1.05), (0,1))
-
+    bnds = ((lp_0[0] - lp_0[0]*0.2, lp_0[0] + lp_0[0]*0.2), 
+            (lp_0[1] - lp_0[1]*0.2, lp_0[1] + lp_0[1]*0.2),
+            (lp_0[2] - lp_0[2]*0.2, lp_0[2] + lp_0[2]*0.2),
+            (lp_0[3] - lp_0[0]*0.2, lp_0[3] + lp_0[0]*0.2),
+            (lp_0[4] - lp_0[0]*0.2, lp_0[4] + lp_0[0]*0.2),
+            (lp_0[5] - lp_0[0]*0.2, lp_0[5] + lp_0[0]*0.2))
     # Minimizing the systems potential energy by changing the lattice parameters while constraining the volume
-#    scipy.optimize.minimize(Return_U_from_Aniso_Expand, lattice_parameters_0, ('temporary' + file_ending,
-#                                                                               Parameter_file, Program, 'temporary',
-#                                                                               molecules_in_coord, min_RMS_gradient, V0), method='SLSQP',
-#                            constraints=({'type': 'eq', 'fun': lambda lattice_parameters:
-#                            np.absolute(Pr.Volume(lattice_parameters=lattice_parameters) - V0)}),
-#                            bounds=bnds, tol=1e-20)
-
-#    output = scipy.optimize.minimize(dfunc, np.append(lattice_parameters_0, 1.), ('temporary' + file_ending,
-#                                                                               Parameter_file, Program, 'temporary',
-#                                                                               molecules_in_coord, min_RMS_gradient, V0), method='BFGS')
-
-    output = scipy.optimize.fsolve(dfunc, np.append(lattice_parameters_0, 0.), ('temporary' + file_ending,
+    output = scipy.optimize.minimize(Return_U_from_Aniso_Expand, lp_0, ('temporary' + file_ending,
                                                                                Parameter_file, Program, 'temporary',
-                                                                               molecules_in_coord, min_RMS_gradient, V0), xtol=min_RMS_gradient)
-
-    print(V0, Pr.Volume(lattice_parameters=output[:6]))
-    dfunc(output, 'temporary' + file_ending, Parameter_file, Program, 'temporary',
-                                                 molecules_in_coord, min_RMS_gradient, V0, minimizing=False)
+                                                                               molecules_in_coord, min_RMS_gradient, V0), method='SLSQP',
+                            constraints=({'type': 'eq', 'fun': lambda lp:
+#                            Pr.Volume(lattice_parameters=lp) - V0}),
+                            np.linalg.det(array_to_triangle_crystal_matrix(lp)) - V0}),
+                            bounds=bnds, tol=1e-10)
+    dfunc(output.x, 'temporary' + file_ending, Parameter_file, Program, 'temporary',
+                                                 molecules_in_coord, min_RMS_gradient, V0)
 
     # Replacing the coordinate file with the new minimized structure
-#    subprocess.call(['mv', 'temporary' + file_ending, Coordinate_file])
+    subprocess.call(['mv', 'temporary' + file_ending, Coordinate_file])
 
 
 
 def Return_U_from_Aniso_Expand(new_lattice_parameters, coordinate_file, Parameter_file, Program, output_file_name,
-                               molecules_in_coord, min_RMS_gradient, V0, L=False):
+                               molecules_in_coord, min_RMS_gradient, V0):
+    new_lattice_parameters = crystal_matrix_to_lattice_parameters(array_to_triangle_crystal_matrix(new_lattice_parameters))
     # Determining the file ending of the coordinate file
     file_ending = assign_file_ending(Program)
 
@@ -949,31 +939,86 @@ def Return_U_from_Aniso_Expand(new_lattice_parameters, coordinate_file, Paramete
     Expand_Structure(coordinate_file, Program, 'lattice_parameters', molecules_in_coord, output_file_name,
                      min_RMS_gradient, dlattice_parameters=new_lattice_parameters[:6] - old_lattice_parameters,
                      Parameter_file=Parameter_file)
-
     # Computing the potential energy of the new expanded structure
-    U = Pr.Potential_energy('temporary' + file_ending, Program, Parameter_file=Parameter_file) / molecules_in_coord
-    if L == False:
-        return U
-    else:
-        L = new_lattice_parameters[6]
-        return U +  L * (V0 - Pr.Volume(lattice_parameters=new_lattice_parameters[:6]))
+    U = Pr.Potential_energy(output_file_name + file_ending, Program, Parameter_file=Parameter_file) / molecules_in_coord
+    return U
+
+#def dfunc(x, coordinate_file, Parameter_file, Program, output_file_name,
+#                               molecules_in_coord, min_RMS_gradient, V0):
+#    dU = np.zeros(len(x))
+#    dV = np.zeros(len(x))
+#    h = [1e-02, 1e-02, 1e-02, 1e-02, 1e-02, 1e-02]
+#    for i in range(len(x)):
+#        dX = np.zeros(len(x))
+#        dX[i] = h[i]
+#        dU[i] = (Return_U_from_Aniso_Expand(x + dX, coordinate_file, Parameter_file, Program, 'temp',
+#                               molecules_in_coord, min_RMS_gradient, V0, L=False) -
+#                 Return_U_from_Aniso_Expand(x - dX, coordinate_file, Parameter_file, Program, 'temp',
+#                               molecules_in_coord, min_RMS_gradient, V0, L=False)) / (2 * h[i])
+#        dV[i] = (Pr.Volume(lattice_parameters=x+dX) - Pr.Volume(lattice_parameters=x-dX)) / (2*h[i])
+#    output = scipy.optimize.fsolve(lagrangian, 1., (x, dU, V0,dV))
+#    print('dU', dU)
+#    print('dV', dV)
+#    print('lambda', lagrangian(output, x, dU, V0, dV))
+#
+#def lagrangian(L, x, dU, V0, dV):
+#    x = np.append(x, L)
+#    value = np.sqrt(1 - np.cos(np.radians(x[3])) ** 2 - np.cos(np.radians(x[4])) ** 2 - np.cos(np.radians(x[5])) ** 2 + 
+#                    2 * np.cos(np.radians(x[3])) * np.cos(np.radians(x[4])) * np.cos(np.radians(x[5])))
+#    value_dalpha = np.sin(np.radians(x[3])) * (np.cos(np.radians(x[3])) - np.cos(np.radians(x[4])) * np.cos(np.radians(x[5])))
+#    value_dbeta = np.sin(np.radians(x[4])) * (np.cos(np.radians(x[4])) - np.cos(np.radians(x[3])) * np.cos(np.radians(x[5])))
+#    value_dgamma = np.sin(np.radians(x[5])) * (np.cos(np.radians(x[5])) - np.cos(np.radians(x[3])) * np.cos(np.radians(x[4])))
+#
+#    eq0 = dU[0] - x[6] * dV[0]
+#    eq1 = dU[1] - x[6] * dV[1]
+#    eq2 = dU[2] - x[6] * dV[2]
+#
+#    eq3 = dU[3] - x[6] * dV[3]
+#    eq4 = dU[4] - x[6] * dV[4]
+#    eq5 = dU[5] - x[6] * dV[5]
+#
+#    eq6 = V0 - x[0] * x[1] * x[2] * value
+#    return eq0, eq1, eq2, eq3, eq4, eq5, eq6
 
 
 def dfunc(x, coordinate_file, Parameter_file, Program, output_file_name,
-                               molecules_in_coord, min_RMS_gradient, V0, minimizing=True):
-    dLambda = np.zeros(len(x))
-    h = [1e-02, 1e-02, 1e-02, 1e-02, 1e-02, 1e-02, 1e-01]
-    for i in range(len(x)):
+                               molecules_in_coord, min_RMS_gradient, V0):
+    
+    file_ending = assign_file_ending(Program)
+    dU = np.zeros(len(x))
+#    dV = np.zeros(len(x))
+    h = [1e-02, 1e-02, 1e-02, 1e-2, 1e-2, 1e-2]
+    for i in [4]: #range(len(x)):
         dX = np.zeros(len(x))
         dX[i] = h[i]
-        dLambda[i] = (Return_U_from_Aniso_Expand(x + dX, coordinate_file, Parameter_file, Program, output_file_name,
-                               molecules_in_coord, min_RMS_gradient, V0, L=True) -
-                      Return_U_from_Aniso_Expand(x - dX, coordinate_file, Parameter_file, Program, output_file_name,
-                               molecules_in_coord, min_RMS_gradient, V0, L=True)) / (h[i])
-#    print(np.around(dLambda, 10))
-    if minimizing == True:
-        return dLambda    #np.sum(np.absolute(dLambda))
-    else:
-        print(dLambda)
+#        x_p = triangle_crystal_matrix_to_array(Lattice_parameters_to_Crystal_matrix(x))
+#        x_m = crystal_matrix_to_lattice_parameters(array_to_triangle_crystal_matrix(x_p - dX))
+#        x_p = crystal_matrix_to_lattice_parameters(array_to_triangle_crystal_matrix(x_p + dX))
+
+
+        dU[i] = (Return_U_from_Aniso_Expand(x + dX, coordinate_file, Parameter_file, Program, 'temp',
+                               molecules_in_coord, min_RMS_gradient, V0) -
+                 Return_U_from_Aniso_Expand(x - dX, coordinate_file, Parameter_file, Program, 'temp',
+                               molecules_in_coord, min_RMS_gradient, V0)) / (2 * h[i])
+#        dV[i] = (Pr.Volume(lattice_parameters=x_p) - Pr.Volume(lattice_parameters=x_m)) / (2*h[i])
+        subprocess.call(['rm', 'temp' + file_ending])
+    output = scipy.optimize.fsolve(lagrangian, 1., (x, dU, V0))
+    np.set_printoptions(suppress=True)
+    grad = lagrangian(output, x, dU, V0)
+    print('grad:', grad)
+    return grad
+
+def lagrangian(L, x, dU, V0):
+    eq0 = dU[0] - L * x[1] *x[2] #dV[0]
+    eq1 = dU[1] - L * x[0] *x[2] #dV[1]
+    eq2 = dU[2] - L * x[0] *x[1] #dV[2]
+
+    eq3 = dU[3] #- L * dV[3]
+    eq4 = dU[4] #- L * dV[4]
+    eq5 = dU[5] #- L * dV[5]
+
+    eq6 = V0 - np.linalg.det(array_to_triangle_crystal_matrix(x))
+    return eq0, eq1, eq2, eq3, eq4, eq5, eq6
+
 
 
