@@ -206,11 +206,16 @@ def QE_Wavenumber(Coordinate_file, parameter_file, Output):
             iter = iter+1
     else:
         if os.path.exists(Coordinate_file[0:-4]+'.mold') == False:
-            subprocess.call(['setup_wavenumberQE', '-t', 'nma', '-h', Coordinate_file[0:-3]])
-            subprocess.call(['mpirun', '-np','112','pw.x','-i',Coordinate_file[0:-3]+'scf.qe'])
-            subprocess.call(['mpirun', '-np','112','ph.x','-i',Coordinate_file[0:-3]+'phonon.qe'])
-            subprocess.call(['mpirun', '-np','112','dynmat.x','-i',Coordinate_file[0:-3]+'matdyn.qe'])
-    
+            if 'D3' not in os.getcwd():
+                subprocess.call(['setup_wavenumberQE', '-t', 'nma', '-h', Coordinate_file[0:-3]])
+                subprocess.call(['mpirun', '-np','112','pw.x','-i',Coordinate_file[0:-3]+'scf.qe'])
+                subprocess.call(['mpirun', '-np','112','ph.x','-i',Coordinate_file[0:-3]+'phonon.qe'])
+                subprocess.call(['mpirun', '-np','112','dynmat.x','-i',Coordinate_file[0:-3]+'matdyn.qe'])
+            else:
+                subprocess.call(['setup_wavenumberQE', '-t', 'nma', '-h', Coordinate_file[0:-3]])
+                subprocess.call(['mpirun', '-np','112','/home/schieber/q-e/bin/pw.x','-i',Coordinate_file[0:-3]+'scf.qe'])
+                subprocess.call(['mpirun', '-np','112','/home/schieber/q-e/bin/ph.x','-i',Coordinate_file[0:-3]+'phonon.qe'])
+                subprocess.call(['mpirun', '-np','112','/home/schieber/q-e/bin/dynmat.x','-i',Coordinate_file[0:-3]+'matdyn.qe'])
        
         wavenumbers = np.zeros((0,))
         wavenumfile = open(Coordinate_file[0:-3]+'.mold','r')

@@ -374,7 +374,11 @@ def QE_minimization(Parameter_file, Coordinate_file, Output, min_RMS_gradient):
     print(Coordinate_file)
     subprocess.call(['setup_wavenumberQE','-t','geoopt','-h',Output])
     #subprocess.call(['mpirun', '-np','112','pw.x','-i',Output+'.qe' ,'>',Output+'.out'])
-    os.system('mpirun -np 112 pw.x -i '+Output+'.qe > '+Output+'.out')
+    #os.system('mpirun -np 112 pw.x -i '+Output+'.qe > '+Output+'.out')
+    if 'D3' in os.getcwd(): 
+        os.system('mpirun -np 112 /home/schieber/q-e/bin/pw.x -i '+Output+'.qe > '+Output+'.out')
+    else:
+        os.system('mpirun -np 112 pw.x -i '+Output+'.qe > '+Output+'.out')
     subprocess.call(['pulllastframeQE', '-f', Output+'.out' ,'-n', Output+'.pw'])
 
 
