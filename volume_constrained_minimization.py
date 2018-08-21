@@ -19,8 +19,10 @@ def constrained_minimization(Coordinate_file, Program, molecules_in_coord=1, min
     V0 = Pr.Volume(lattice_parameters=lp_0)
     cm_0 = Ex.triangle_crystal_matrix_to_array(Ex.Lattice_parameters_to_Crystal_matrix(lp_0))
 
+    U0 = Pr.Potential_energy(Coordinate_file, Program, Parameter_file=Parameter_file)
+
     # Copy input coordinate file into a temporary file
-    subprocess.call(['cp', Coordinate_file, 'temp_constV_minimize' + file_ending])
+    subprocess.call(['cp', Coordinate_file, 'constV_minimize' + file_ending])
 
     minimize = True
     count = 0
@@ -33,7 +35,7 @@ def constrained_minimization(Coordinate_file, Program, molecules_in_coord=1, min
                           [cm_0[4] - cm_0[0] * 0.2, cm_0[4] + cm_0[0] * 0.2],
                           [cm_0[5] - cm_0[0] * 0.2, cm_0[5] + cm_0[0] * 0.2]])
         # Minimizing the systems potential energy by changing the lattice parameters while constraining the volume
-        output = scipy.optimize.minimize(Return_U_from_Aniso_Expand, cm_0, ('temp_constV_minimize' + file_ending,
+        output = scipy.optimize.minimize(Return_U_from_Aniso_Expand, cm_0, ('constV_minimize' + file_ending,
                                                                             Parameter_file, Program,
                                                                             'temp_constV_minimize', molecules_in_coord,
                                                                             min_RMS_gradient), method='SLSQP',
@@ -41,49 +43,56 @@ def constrained_minimization(Coordinate_file, Program, molecules_in_coord=1, min
                                          np.linalg.det(Ex.array_to_triangle_crystal_matrix(cm)) - V0}), bounds=bnds,
                                          tol=1e-07)
 
-        gradients = dfunc('temp_constV_minimize' + file_ending, Parameter_file, Program, molecules_in_coord,
-                          min_RMS_gradient, V0)
-
-#        output = Ex.triangle_crystal_matrix_to_array(Ex.Lattice_parameters_to_Crystal_matrix(Pr.Lattice_parameters(Program, 'temp_constV_minimize' + file_ending)))
-
-        if np.any(np.absolute(gradients[3:6]) > 1e-03):
-            print("off diags")
-            print(gradients)
-            # Determining where the values are to large
-            placement = np.where(np.absolute(gradients[3:6]) > 1e-03)[0] + 3
-
-            scipy.optimize.minimize(off_diag_minimization, output.x[placement], ('temp_constV_minimize' + file_ending,
-                                                                                 Parameter_file, Program,
-                                                                                 'temp_constV_minimize',
-                                                                                 molecules_in_coord,
-                                                                                 min_RMS_gradient, placement),
-                                    method='Nelder-Mead',
-                                    #bounds=bnds[placement],
-                                    tol=1e-07)
+        U = Pr.Potential_energy('temp_constV_minimize' + file_ending, Program, Parameter_file=Parameter_file)
+        # Will only move on if the energy is less than the preivous structure
+        if U < U0:
             gradients = dfunc('temp_constV_minimize' + file_ending, Parameter_file, Program, molecules_in_coord,
                               min_RMS_gradient, V0)
             print(gradients)
-        elif np.any(np.absolute(gradients[:3]) > 1e-03) and np.any(np.absolute(gradients[3:6]) < 1e-03):
-            print("diags")
-            print(gradients)
-            pass
+
+            subprocess.call(['mv', 'temp_constV_minimize' + file_ending, 'constV_minimize' + file_ending])
+            U0 = 1. * U
+
+            if np.any(np.absolute(gradients[3:6]) > 1e-03):
+                # Determining where the values are to large
+                placement = np.where(np.absolute(gradients[3:6]) > 1e-03)[0] + 3
+    
+                scipy.optimize.minimize(off_diag_minimization, output.x[placement], ('constV_minimize' + file_ending,
+                                                                                     Parameter_file, Program,
+                                                                                     'temp_constV_minimize',
+                                                                                     molecules_in_coord,
+                                                                                     min_RMS_gradient, placement),
+                                        method='Nelder-Mead',
+                                        #bounds=bnds[placement],
+                                        tol=1e-07)
+                U = Pr.Potential_energy('temp_constV_minimize' + file_ending, Program, Parameter_file=Parameter_file)
+                if U < U0:
+                    U0 = 1. * U
+                    gradients = dfunc('temp_constV_minimize' + file_ending, Parameter_file, Program, molecules_in_coord,
+                                      min_RMS_gradient, V0)
+                    print(gradients)
+                    subprocess.call(['mv', 'temp_constV_minimize' + file_ending, 'constV_minimize' + file_ending])
+            elif np.any(np.absolute(gradients[:3]) > 1e-03) and np.any(np.absolute(gradients[3:6]) < 1e-03):
+                pass
+            else:
+                minimize = False
         else:
-            print(gradients)
             minimize = False
 
+        # Exiting if it's been running too long
         if count == 10:
-            print("Exiting early")
             minimize = False
 
         cm_0 = Ex.triangle_crystal_matrix_to_array(Ex.Lattice_parameters_to_Crystal_matrix(
-            Pr.Lattice_parameters(Program, 'temp_constV_minimize' + file_ending)))
+            Pr.Lattice_parameters(Program, 'constV_minimize' + file_ending)))
         count = count + 1
 
-        subprocess.call(['cp', 'temp_constV_minimize' + file_ending, 'hold_for_failure' + file_ending])
+        subprocess.call(['cp', 'constV_minimize' + file_ending, 'hold_for_failure' + file_ending])
 
 
     # Replacing the coordinate file with the new minimized structure
-    subprocess.call(['mv', 'temp_constV_minimize' + file_ending, Coordinate_file])
+    subprocess.call(['rm', 'hold_for_failure' + file_ending, 'temp_constV_minimize' + file_ending])
+    subprocess.call(['mv', 'constV_minimize' + file_ending, Coordinate_file])
 
 def Return_U_from_Aniso_Expand(new_crystal_matrix, coordinate_file, Parameter_file, Program, output_file_name,
                                molecules_in_coord, min_RMS_gradient):
