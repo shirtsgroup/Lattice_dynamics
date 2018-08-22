@@ -43,6 +43,11 @@ def constrained_minimization(Coordinate_file, Program, molecules_in_coord=1, min
                                          np.linalg.det(Ex.array_to_triangle_crystal_matrix(cm)) - V0}), bounds=bnds,
                                          tol=1e-07)
 
+        dlattice_parameters = Ex.crystal_matrix_to_lattice_parameters(Ex.array_to_triangle_crystal_matrix(output.x)) - Pr.Lattice_parameters(Program, 'constV_minimize' + file_ending)
+        Ex.Expand_Structure('constV_minimize' + file_ending, Program, 'lattice_parameters', molecules_in_coord, 'temp_constV_minimize',
+                            min_RMS_gradient, dlattice_parameters=dlattice_parameters,
+                            Parameter_file=Parameter_file)
+
         U = Pr.Potential_energy('temp_constV_minimize' + file_ending, Program, Parameter_file=Parameter_file)
         # Will only move on if the energy is less than the preivous structure
         if U < U0:
@@ -57,14 +62,20 @@ def constrained_minimization(Coordinate_file, Program, molecules_in_coord=1, min
                 # Determining where the values are to large
                 placement = np.where(np.absolute(gradients[3:6]) > 1e-03)[0] + 3
     
-                scipy.optimize.minimize(off_diag_minimization, output.x[placement], ('constV_minimize' + file_ending,
+                output_2 = scipy.optimize.minimize(off_diag_minimization, output.x[placement], ('constV_minimize' + file_ending,
                                                                                      Parameter_file, Program,
                                                                                      'temp_constV_minimize',
                                                                                      molecules_in_coord,
                                                                                      min_RMS_gradient, placement),
                                         method='Nelder-Mead',
-                                        #bounds=bnds[placement],
                                         tol=1e-07)
+
+                new_crystal_array = 1. * output.x
+                new_crystal_array[placement] = output_2.x
+                dlattice_parameters =  Ex.crystal_matrix_to_lattice_parameters(Ex.array_to_triangle_crystal_matrix(new_crystal_array)) - Ex.crystal_matrix_to_lattice_parameters(Ex.array_to_triangle_crystal_matrix(output.x))
+                Ex.Expand_Structure('constV_minimize' + file_ending, Program, 'lattice_parameters', molecules_in_coord, 'temp_constV_minimize',
+                            min_RMS_gradient, dlattice_parameters=dlattice_parameters,
+                            Parameter_file=Parameter_file)
                 U = Pr.Potential_energy('temp_constV_minimize' + file_ending, Program, Parameter_file=Parameter_file)
                 if U < U0:
                     U0 = 1. * U
