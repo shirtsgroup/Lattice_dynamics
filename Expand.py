@@ -927,7 +927,7 @@ def V_constraind_lattice_minimization(Coordinate_file, Program, molecules_in_coo
 
 
 def Return_U_from_Aniso_Expand(new_lattice_parameters, coordinate_file, Parameter_file, Program, output_file_name,
-                               molecules_in_coord, min_RMS_gradient, V0):
+                               molecules_in_coord, min_RMS_gradient):
     new_lattice_parameters = crystal_matrix_to_lattice_parameters(array_to_triangle_crystal_matrix(new_lattice_parameters))
     # Determining the file ending of the coordinate file
     file_ending = assign_file_ending(Program)
