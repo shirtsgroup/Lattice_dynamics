@@ -65,15 +65,15 @@ def constrained_minimization(Coordinate_file, Program, molecules_in_coord=1, min
 
         U = Pr.Potential_energy('temp_constV_minimize' + file_ending, Program, Parameter_file=Parameter_file)
         # Will only move on if the energy is less than the preivous structure
+        gradients = dfunc('temp_constV_minimize' + file_ending, Parameter_file, Program, molecules_in_coord,
+                          min_RMS_gradient, V0)
         if U <= U0:
-            gradients = dfunc('temp_constV_minimize' + file_ending, Parameter_file, Program, molecules_in_coord,
-                              min_RMS_gradient, V0)
             #print(gradients)
 
             subprocess.call(['mv', 'temp_constV_minimize' + file_ending, 'constV_minimize' + file_ending])
             U0 = 1. * U
 
-            if np.any(np.absolute(gradients[3:6]) > 1e-03):
+            if np.any(np.absolute(gradients[3:6]) > 1e-05):
                 # Determining where the values are to large
                 placement = np.where(np.absolute(gradients[3:6]) > 1e-03)[0] + 3
     
@@ -98,16 +98,18 @@ def constrained_minimization(Coordinate_file, Program, molecules_in_coord=1, min
                                       min_RMS_gradient, V0)
                     #print(gradients)
                     subprocess.call(['mv', 'temp_constV_minimize' + file_ending, 'constV_minimize' + file_ending])
-            elif np.any(np.absolute(gradients[:3]) > 1e-03) and np.any(np.absolute(gradients[3:6]) < 1e-03):
+            elif np.any(np.absolute(gradients[:3]) > 1e-05) and np.any(np.absolute(gradients[3:6]) < 1e-05):
                 pass
             else:
                 minimize = False
         else:
+            print("Lattice energy has not been reduced, exiting run"
             subprocess.call(['rm', 'temp_constV_minimize' + file_ending])
             minimize = False
 
         # Exiting if it's been running too long
         if count == 10:
+            print("Have run sub-routine 10 times, exiting.")
             minimize = False
 
         cm_0 = Ex.triangle_crystal_matrix_to_array(Ex.Lattice_parameters_to_Crystal_matrix(
