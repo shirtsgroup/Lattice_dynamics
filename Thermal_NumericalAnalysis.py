@@ -9,6 +9,7 @@ import ThermodynamicProperties as Pr
 import Wavenumbers as Wvn
 import Numerical_Outputs as NO
 import System_sensitivity as Ss
+import volume_constrained_minimization as vcm
 
 ##########################################
 #           Numerical Methods            #
@@ -504,9 +505,9 @@ def stepwise_expansion(StepWise_Vol_StepFrac, StepWise_Vol_LowerFrac, StepWise_V
                                   Output=Output + '_' + Method + str(round((V + i * dV) / V0, 4)))
     
                 if Method == 'SaQply':
-                    Ex.V_constraind_lattice_minimization(Output + '_' + Method + str(round((V + i * dV) / V0, 4)) + file_ending,
-                                                         Program, molecules_in_coord, min_RMS_gradient,
-                                                         Parameter_file=keyword_parameters['Parameter_file'])
+                    vcm.constrained_minimization(Output + '_' + Method + str(round((V + i * dV) / V0, 4)) + file_ending,
+                                                 Program, molecules_in_coord=molecules_in_coord, min_RMS_gradient=min_RMS_gradient,
+                                                 Parameter_file=keyword_parameters['Parameter_file'])
     
                 subprocess.call(['cp', Output + '_' + Method + str(round((V + i * dV) / V0, 4)) + file_ending,
                                  'hold' + file_ending])
