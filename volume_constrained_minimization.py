@@ -103,7 +103,7 @@ def constrained_minimization(Coordinate_file, Program, molecules_in_coord=1, min
             else:
                 minimize = False
         else:
-            print("Lattice energy has not been reduced, exiting run"
+            print("Lattice energy has not been reduced, exiting run")
             subprocess.call(['rm', 'temp_constV_minimize' + file_ending])
             minimize = False
 
