@@ -73,7 +73,7 @@ def constrained_minimization(Coordinate_file, Program, molecules_in_coord=1, min
             subprocess.call(['mv', 'temp_constV_minimize' + file_ending, 'constV_minimize' + file_ending])
             U0 = 1. * U
 
-            if np.any(np.absolute(gradients[3:6]) > 1e-03):
+            if np.any(np.absolute(gradients[3:6]) > 1e-05):
                 # Determining where the values are to large
                 placement = np.where(np.absolute(gradients[3:6]) > 1e-03)[0] + 3
     
@@ -98,7 +98,7 @@ def constrained_minimization(Coordinate_file, Program, molecules_in_coord=1, min
                                       min_RMS_gradient, V0)
                     #print(gradients)
                     subprocess.call(['mv', 'temp_constV_minimize' + file_ending, 'constV_minimize' + file_ending])
-            elif np.any(np.absolute(gradients[:3]) > 1e-03) and np.any(np.absolute(gradients[3:6]) < 1e-03):
+            elif np.any(np.absolute(gradients[:3]) > 1e-05) and np.any(np.absolute(gradients[3:6]) < 1e-05):
                 pass
             else:
                 minimize = False
