@@ -24,6 +24,9 @@ def constrained_minimization(Coordinate_file, Program, molecules_in_coord=1, min
     # Copy input coordinate file into a temporary file
     subprocess.call(['cp', Coordinate_file, 'constV_minimize' + file_ending])
 
+    isotropic_gradients = dfunc('constV_minimize' + file_ending, Parameter_file, Program, molecules_in_coord,
+                                      min_RMS_gradient, V0)
+
     minimize = True
     count = 0
     while minimize == True:
@@ -35,25 +38,37 @@ def constrained_minimization(Coordinate_file, Program, molecules_in_coord=1, min
                           [cm_0[4] - cm_0[0] * 0.2, cm_0[4] + cm_0[0] * 0.2],
                           [cm_0[5] - cm_0[0] * 0.2, cm_0[5] + cm_0[0] * 0.2]])
         # Minimizing the systems potential energy by changing the lattice parameters while constraining the volume
-        output = scipy.optimize.minimize(Return_U_from_Aniso_Expand, cm_0, ('constV_minimize' + file_ending,
-                                                                            Parameter_file, Program,
-                                                                            'temp_constV_minimize', molecules_in_coord,
-                                                                            min_RMS_gradient), method='SLSQP',
-                                         constraints=({'type': 'eq', 'fun': lambda cm:
-                                         np.linalg.det(Ex.array_to_triangle_crystal_matrix(cm)) - V0}), bounds=bnds,
-                                         tol=1e-07)
+        if count == 0:
+            output = scipy.optimize.minimize(Return_U_from_Aniso_Expand, cm_0, ('constV_minimize' + file_ending,
+                                                                                Parameter_file, Program,
+                                                                                'temp_constV_minimize', molecules_in_coord,
+                                                                                min_RMS_gradient), method='SLSQP',
+                                             constraints=({'type': 'eq', 'fun': lambda cm:
+                                             np.linalg.det(Ex.array_to_triangle_crystal_matrix(cm)) - V0}), bounds=bnds,
+                                             tol=1e-07)
+            output = output.x
+        else:
+            output = scipy.optimize.minimize(off_diag_minimization, cm_0[:3], ('constV_minimize' + file_ending,
+                                                                                Parameter_file, Program,
+                                                                                'temp_constV_minimize', molecules_in_coord,
+                                                                                min_RMS_gradient, np.array([0,1,2])), method='SLSQP',
+                                             constraints=({'type': 'eq', 'fun': lambda cm:
+                                             cm[0] * cm[1] * cm[2] - V0}), bounds=bnds[:3],
+                                             tol=1e-07)
+            output = np.append(output.x, cm_0[3:])
+        
 
-        dlattice_parameters = Ex.crystal_matrix_to_lattice_parameters(Ex.array_to_triangle_crystal_matrix(output.x)) - Pr.Lattice_parameters(Program, 'constV_minimize' + file_ending)
+        dlattice_parameters = Ex.crystal_matrix_to_lattice_parameters(Ex.array_to_triangle_crystal_matrix(output)) - Pr.Lattice_parameters(Program, 'constV_minimize' + file_ending)
         Ex.Expand_Structure('constV_minimize' + file_ending, Program, 'lattice_parameters', molecules_in_coord, 'temp_constV_minimize',
                             min_RMS_gradient, dlattice_parameters=dlattice_parameters,
                             Parameter_file=Parameter_file)
 
         U = Pr.Potential_energy('temp_constV_minimize' + file_ending, Program, Parameter_file=Parameter_file)
         # Will only move on if the energy is less than the preivous structure
-        if U < U0:
+        if U <= U0:
             gradients = dfunc('temp_constV_minimize' + file_ending, Parameter_file, Program, molecules_in_coord,
                               min_RMS_gradient, V0)
-            print(gradients)
+            #print(gradients)
 
             subprocess.call(['mv', 'temp_constV_minimize' + file_ending, 'constV_minimize' + file_ending])
             U0 = 1. * U
@@ -62,7 +77,7 @@ def constrained_minimization(Coordinate_file, Program, molecules_in_coord=1, min
                 # Determining where the values are to large
                 placement = np.where(np.absolute(gradients[3:6]) > 1e-03)[0] + 3
     
-                output_2 = scipy.optimize.minimize(off_diag_minimization, output.x[placement], ('constV_minimize' + file_ending,
+                output_2 = scipy.optimize.minimize(off_diag_minimization, output[placement], ('constV_minimize' + file_ending,
                                                                                      Parameter_file, Program,
                                                                                      'temp_constV_minimize',
                                                                                      molecules_in_coord,
@@ -70,24 +85,25 @@ def constrained_minimization(Coordinate_file, Program, molecules_in_coord=1, min
                                         method='Nelder-Mead',
                                         tol=1e-07)
 
-                new_crystal_array = 1. * output.x
+                new_crystal_array = 1. * output
                 new_crystal_array[placement] = output_2.x
-                dlattice_parameters =  Ex.crystal_matrix_to_lattice_parameters(Ex.array_to_triangle_crystal_matrix(new_crystal_array)) - Ex.crystal_matrix_to_lattice_parameters(Ex.array_to_triangle_crystal_matrix(output.x))
+                dlattice_parameters =  Ex.crystal_matrix_to_lattice_parameters(Ex.array_to_triangle_crystal_matrix(new_crystal_array)) - Ex.crystal_matrix_to_lattice_parameters(Ex.array_to_triangle_crystal_matrix(output))
                 Ex.Expand_Structure('constV_minimize' + file_ending, Program, 'lattice_parameters', molecules_in_coord, 'temp_constV_minimize',
                             min_RMS_gradient, dlattice_parameters=dlattice_parameters,
                             Parameter_file=Parameter_file)
                 U = Pr.Potential_energy('temp_constV_minimize' + file_ending, Program, Parameter_file=Parameter_file)
-                if U < U0:
+                if U <= U0:
                     U0 = 1. * U
                     gradients = dfunc('temp_constV_minimize' + file_ending, Parameter_file, Program, molecules_in_coord,
                                       min_RMS_gradient, V0)
-                    print(gradients)
+                    #print(gradients)
                     subprocess.call(['mv', 'temp_constV_minimize' + file_ending, 'constV_minimize' + file_ending])
             elif np.any(np.absolute(gradients[:3]) > 1e-03) and np.any(np.absolute(gradients[3:6]) < 1e-03):
                 pass
             else:
                 minimize = False
         else:
+            subprocess.call(['rm', 'temp_constV_minimize' + file_ending])
             minimize = False
 
         # Exiting if it's been running too long
@@ -100,9 +116,9 @@ def constrained_minimization(Coordinate_file, Program, molecules_in_coord=1, min
 
         subprocess.call(['cp', 'constV_minimize' + file_ending, 'hold_for_failure' + file_ending])
 
-
+    print(np.around(np.array(gradients)[:6] / np.array(isotropic_gradients)[:6],4))
     # Replacing the coordinate file with the new minimized structure
-    subprocess.call(['rm', 'hold_for_failure' + file_ending, 'temp_constV_minimize' + file_ending])
+    subprocess.call(['rm', 'hold_for_failure' + file_ending])
     subprocess.call(['mv', 'constV_minimize' + file_ending, Coordinate_file])
 
 def Return_U_from_Aniso_Expand(new_crystal_matrix, coordinate_file, Parameter_file, Program, output_file_name,
@@ -135,6 +151,17 @@ def dfunc(coordinate_file, Parameter_file, Program, molecules_in_coord, min_RMS_
     file_ending = Ex.assign_file_ending(Program)
 
     # Setting an array for energy gradients
+    dU = compute_dU(x, coordinate_file, Parameter_file, Program, molecules_in_coord, min_RMS_gradient, file_ending)
+
+    # Solving for the value of lambda that minimizes the lagrangian equation
+    L = compute_Lambda(x, dU)
+    return constrained_minimization_gradients(L, x, dU, V0)
+
+def compute_Lambda(x, dU):
+    return (x[1] * x[2] * dU[0] + x[0] * x[2] * dU[1] + x[0] * x[1] * dU[2]) / ((x[1] * x[2]) ** 2 + (x[0] * x[2]) ** 2 + (x[0] * x[1]) ** 2)
+
+def compute_dU(x, coordinate_file, Parameter_file, Program, molecules_in_coord, min_RMS_gradient, file_ending):
+    # Setting an array for energy gradients
     dU = np.zeros(len(x))
 
     # Numerical step sizes for dU
@@ -153,16 +180,12 @@ def dfunc(coordinate_file, Parameter_file, Program, molecules_in_coord, min_RMS_
 
         # Removing excess files
         subprocess.call(['rm', 'temp' + file_ending])
+    return dU
 
-    # Solving for the value of lambda that minimizes the lagrangian equation
-    output = scipy.optimize.fsolve(lagrangian, 1., (x, dU, V0))
-    return lagrangian(output, x, dU, V0)
-
-
-def lagrangian(L, x, dU, V0):
-    eq0 = dU[0] - L[0] * x[1] * x[2]
-    eq1 = dU[1] - L[0] * x[0] * x[2]
-    eq2 = dU[2] - L[0] * x[0] * x[1]
+def constrained_minimization_gradients(L, x, dU, V0):
+    eq0 = dU[0] - L * x[1] * x[2]
+    eq1 = dU[1] - L * x[0] * x[2]
+    eq2 = dU[2] - L * x[0] * x[1]
 
     eq3 = dU[3]
     eq4 = dU[4]
