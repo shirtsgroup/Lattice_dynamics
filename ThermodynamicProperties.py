@@ -136,7 +136,7 @@ def Save_Properties(properties, Properties_to_save, Output, Method, Statistical_
             np.save(Output + '_h' + Statistical_mechanics + '_' + Method, properties[:, 7:13])
         if i == 'S':  # Entropy
             print("   ... Saving entropy in: " + Output + "_S" + Statistical_mechanics + "_" + Method + ".npy")
-            np.save(Output + '_S' + Statistical_mechanics + '_' + Method, properties[:, 14])
+            np.save(Output + '_S' + Statistical_mechanics + '_' + Method, properties[:, 13])
 
 
 ##########################################

@@ -365,7 +365,7 @@ def Output_QE_Coordinate_File(Coordinate_file, Parameter_file, coordinates, latt
         atomtype = coordlines[x].split()[0]
         struct.write(atomtype+'    '+str(coordinates[x-4,0])+'   '+str(coordinates[x-4,1])+'    '+str(coordinates[x-4,2])+'\n')
     latt.write('CELL_PARAMETERS angstrom'+'\n')
-    lattice_parameters = Lattice_parameters_to_Crystal_matrix(np.transpose(lattice_parameters)) 
+    lattice_parameters = np.transpose(Lattice_parameters_to_Crystal_matrix(lattice_parameters))
     for x in range(0,3):
         latt.write(str(lattice_parameters[x,0])+'   '+str(lattice_parameters[x,1])+'   '+str(lattice_parameters[x,2])+'\n')
 
