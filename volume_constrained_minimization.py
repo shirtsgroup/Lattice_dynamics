@@ -55,6 +55,8 @@ def constrained_minimization(Coordinate_file, Program, molecules_in_coord=1, min
                                              constraints=({'type': 'eq', 'fun': lambda cm:
                                              cm[0] * cm[1] * cm[2] - V0}), bounds=bnds[:3],
                                              tol=1e-07)
+            #gradients = dfunc('temp_constV_minimize' + file_ending, Parameter_file, Program, molecules_in_coord,
+            #                  min_RMS_gradient, V0)
             output = np.append(output.x, cm_0[3:])
         
 
@@ -167,7 +169,7 @@ def compute_dU(x, coordinate_file, Parameter_file, Program, molecules_in_coord, 
     dU = np.zeros(len(x))
 
     # Numerical step sizes for dU
-    h = [1e-02, 1e-02, 1e-02, 1e-2, 1e-2, 1e-2]
+    h = [1e-03, 1e-03, 1e-03, 1e-3, 1e-3, 1e-3]
 
     for i in range(len(x)):
         # Setting the change in the crystal matrix parameters
