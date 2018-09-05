@@ -477,14 +477,16 @@ def stepwise_expansion(StepWise_Vol_StepFrac, StepWise_Vol_LowerFrac, StepWise_V
     placement = np.where(np.around(volumes, 3) == np.around(V0, 3))
     if Method == 'SaQply':
         eigenvectors = np.zeros((len(volumes), number_of_modes, number_of_modes))
-        wavenumbers[placement, 1:], eigenvectors[placement] = \
+        #wavenumbers[placement, 1:], eigenvectors[placement] = \
+        wavenumbers_hold = \
             Wvn.Call_Wavenumbers(Method, min_RMS_gradient, Program=Program, Coordinate_file=Coordinate_file,
                                  Parameter_file=keyword_parameters['Parameter_file'],
                                  cp2kroot=keyword_parameters['cp2kroot'])
 
     # setting a matrix for properties versus temperature and pressure
     properties = np.zeros((len(volumes), len(Temperature), 14))
-    properties[placement, :] = Pr.Properties_with_Temperature(Coordinate_file, wavenumbers[np.where(volumes == V0), 1:],
+#    properties[placement, :] = Pr.Properties_with_Temperature(Coordinate_file, wavenumbers[np.where(volumes == V0), 1:],
+    properties[placement, :] = Pr.Properties_with_Temperature(Coordinate_file, wavenumbers_hold[0],
                                                               Temperature, Pressure, Program, Statistical_mechanics,
                                                               molecules_in_coord, keyword_parameters['cp2kroot'],
                                                               Parameter_file=keyword_parameters['Parameter_file'])
@@ -523,7 +525,8 @@ def stepwise_expansion(StepWise_Vol_StepFrac, StepWise_Vol_LowerFrac, StepWise_V
                 wavenumbers[placement, 1:] = wavenumbers_hold
             properties[placement, :] = Pr.Properties_with_Temperature(Output + '_' + Method +
                                                                       str(round((V + i * dV) / V0, 4)) + file_ending,
-                                                                      wavenumbers[placement, 1:], Temperature, Pressure,
+                                                                      #wavenumbers[placement, 1:], Temperature, Pressure,
+                                                                      wavenumbers_hold[0], Temperature, Pressure,
                                                                       Program, Statistical_mechanics,
                                                                       molecules_in_coord,
                                                                       keyword_parameters['cp2kroot'], Parameter_file=
@@ -531,20 +534,23 @@ def stepwise_expansion(StepWise_Vol_StepFrac, StepWise_Vol_LowerFrac, StepWise_V
             V = V + i * dV
     subprocess.call(['mv ' + Output + '_' + Method + '* ./Cords'], shell=True)
     subprocess.call(['rm', 'hold' + file_ending])
-    if Method == 'SaQply':
-        poly_order = 3
-        minimum_gibbs_properties = Pr.polynomial_properties_optimize(properties[:, 0, 6], V0, wavenumbers, eigenvectors,
-                                                                     molecules_in_coord, Statistical_mechanics,
-                                                                     Temperature, Pressure, eq_of_state, poly_order,
-                                                                     properties[:, 0, :], Output, Program)
-        
-    else:
-        minimum_gibbs_properties = np.zeros((len(Temperature), 14))
-        for i in range(len(properties[0, :, 0])):
-            for j in range(len(properties[:, 0, 0])):
-                if properties[j, i, 2] == np.min(properties[:, i, 2]):
-                    minimum_gibbs_properties[i, :] = properties[j, i, :]
-    return minimum_gibbs_properties
+
+    np.save('out_raw', properties)
+    sys.exit()
+#    if Method == 'SaQply':
+#        poly_order = 3
+#        minimum_gibbs_properties = Pr.polynomial_properties_optimize(properties[:, 0, 6], V0, wavenumbers, eigenvectors,
+#                                                                     molecules_in_coord, Statistical_mechanics,
+#                                                                     Temperature, Pressure, eq_of_state, poly_order,
+#                                                                     properties[:, 0, :], Output, Program)
+#        
+#    else:
+#        minimum_gibbs_properties = np.zeros((len(Temperature), 14))
+#        for i in range(len(properties[0, :, 0])):
+#            for j in range(len(properties[:, 0, 0])):
+#                if properties[j, i, 2] == np.min(properties[:, i, 2]):
+#                    minimum_gibbs_properties[i, :] = properties[j, i, :]
+#    return minimum_gibbs_properties
 
 
 

@@ -90,7 +90,6 @@ def Properties_with_Temperature(Coordinate_file, wavenumbers, Temperature, Press
     properties[:, 7:13] = properties[0, 7:13]
     properties[:, 6] = properties[0, 6]
     properties[:, 5] = properties[0, 5]
-    
     for i in range(1, len(Temperature)):
         properties[i, 4] = Vibrational_Helmholtz(Temperature[i], wavenumbers, Statistical_mechanics) / molecules_in_coord
         properties[i, 13] = Vibrational_Entropy(Temperature[i], wavenumbers, Statistical_mechanics) / molecules_in_coord
