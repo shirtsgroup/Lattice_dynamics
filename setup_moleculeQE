@@ -4,11 +4,11 @@ SETRUN_ARGS="$@"
 #Default Values
 molecule="benzene"
 polymorph_list="p1 p2"
-ty="cellopt"
+ty="geoopt"
 nummol="4"
 hinge=""
 runfiles="/home/schieber/runfiles_HA"
-
+runfiles2="/pylon5/ct4s8bp/schieber/QHA_Paper_Data/QE_finalruns/optimized_structures"
 
 
 #options passed in from the users
@@ -44,29 +44,37 @@ cp ${runfiles}/*.UPF ${runname}/
 
 if [ $ty == "cellopt" ]; then
         qefile="${molecule}_${polymorph_num}_${nummol}.pw"
-        cp ${runfiles}/${molecule}_${polymorph_num}_${nummol}.pw ${runname}/
-        cp ${runfiles}/${molecule}_${polymorph_num}_${nummol}.pwbv ${runname}/
-        cat ${runfiles}/${ty}.qe ${runfiles}/${molecule}_${polymorph_num}_${nummol}.pw ${runfiles}/QEkpoints ${runfiles}/${molecule}_${polymorph_num}_${nummol}.pwbv > ${runname}/${ty}.qe
-        natom=$( less ${runfiles}/${molecule}_${polymorph_num}_${nummol}.pw | grep "natoms" | awk '{print $4}' )
-        ntype=$( less ${runfiles}/${molecule}_${polymorph_num}_${nummol}.pw | grep "ntype" | awk '{print $4}' )
+#        cp ${runfiles}/${molecule}_${polymorph_num}_${nummol}.pw ${runname}/
+#        cp ${runfiles}/${molecule}_${polymorph_num}_${nummol}.pwbv ${runname}/
+#        cat ${runfiles}/${ty}.qe ${runfiles}/${molecule}_${polymorph_num}_${nummol}.pw ${runfiles}/QEkpoints ${runfiles}/${molecule}_${polymorph_num}_${nummol}.pwbv > ${runname}/${ty}.qe
+        cp ${runfiles2}/${molecule}${polymorph_num}geoopt.pw ${runname}/
+        cp ${runfiles2}/${molecule}${polymorph_num}geoopt.pwbv ${runname}/
+        cat ${runfiles}/${ty}.qe ${runfiles2}/${molecule}${polymorph_num}geoopt.pw ${runfiles}/QEkpoints ${runfiles2}/${molecule}${polymorph_num}geoopt.pwbv > ${runname}/${ty}.qe
+	natom=$( less ${runname}/${molecule}${polymorph_num}geoopt.pw | grep "numatoms" | awk '{print $4}' )
+	ntype=$( less ${runname}/${molecule}${polymorph_num}geoopt.pw | grep "ntype" | awk '{print $4}' )
+#	natom=$( less ${runfiles}/${molecule}_${polymorph_num}_${nummol}.pw | grep "numatoms" | awk '{print $3}' )
+#        ntype=$( less ${runfiles}/${molecule}_${polymorph_num}_${nummol}.pw | grep "ntype" | awk '{print $4}' )
         caltype="vc-relax"
-
+	echo ${runname}/${molecule}${polymorph_num}geoopt.pw
+	echo $natom
+	echo $ntype
+	
 elif [ $ty == "geoopt" ]; then
         qefile="${molecule}${polymorph_num}cellopt.pw"
-        cp ${runfiles}/${molecule}${polymorph_num}cellopt.pw ${runname}/
-        cp ${runfiles}/${molecule}${polymorph_num}cellopt.pwbv ${runname}/
-        cat ${runfiles}/${ty}.qe ${runfiles}/${molecule}${polymorph_num}cellopt.pw ${runfiles}/QEkpoints ${runfiles}/${molecule}${polymorph_num}cellopt.pwbv > ${runname}/${ty}.qe
-        natom=$( less ${runfiles}/${molecule}_${polymorph_num}_${nummol}.pw | grep "natoms" | awk '{print $4}' )
+        cp ${runfiles2}/${molecule}${polymorph_num}geoopt.pw ${runname}/
+        cp ${runfiles2}/${molecule}${polymorph_num}geoopt.pwbv ${runname}/
+        cat ${runfiles}/${ty}.qe ${runfiles2}/${molecule}${polymorph_num}geoopt.pw ${runfiles}/QEkpoints ${runfiles2}/${molecule}${polymorph_num}geoopt.pwbv > ${runname}/${ty}.qe
+        natom=$( less ${runfiles}/${molecule}_${polymorph_num}_${nummol}.pw | grep "numatoms" | awk '{print $4}' )
         ntype=$( less ${runfiles}/${molecule}_${polymorph_num}_${nummol}.pw | grep "ntype" | awk '{print $4}' )
         caltype="relax"
         
 
 else
         qefile="${molecule}${polymorph_num}geoopt.pw"
-        cp ${runfiles}/${molecule}${polymorph_num}geoopt.pw ${runname}/
-        cp ${runfiles}/${molecule}${polymorph_num}geoopt.pwbv ${runname}/
-        cat ${runfiles}/${ty}.qe ${runfiles}/${molecule}${polymorph_num}geoopt.pw ${runfiles}/QEkpoints ${runfiles}/${molecule}${polymorph_num}geoopt.pwbv > ${runname}/${ty}.qe
-        natom=$( less ${runfiles}/${molecule}_${polymorph_num}_${nummol}.pw | grep "natoms" | awk '{print $4}' )
+        cp ${runfiles2}/${molecule}${polymorph_num}geoopt.pw ${runname}/
+        cp ${runfiles2}/${molecule}${polymorph_num}geoopt.pwbv ${runname}/
+        cat ${runfiles}/${ty}.qe ${runfiles2}/${molecule}${polymorph_num}geoopt.pw ${runfiles}/QEkpoints ${runfiles2}/${molecule}${polymorph_num}geoopt.pwbv > ${runname}/${ty}.qe
+        natom=$( less ${runfiles}/${molecule}_${polymorph_num}_${nummol}.pw | grep "numatoms" | awk '{print $4}' )
         ntype=$( less ${runfiles}/${molecule}_${polymorph_num}_${nummol}.pw | grep "ntype" | awk '{print $4}' )
         caltype="scf"
         cp ${runfiles}/submit_cluster.slurmPHONON ${runname}/
@@ -102,6 +110,7 @@ fi
 
 if [[ "$PWD" =~ "D3" ]]; then
         sed -i "s/DFT-D2/DFT-D3/g" cellopt.qe
+        sed -i "s/DFT-D2/DFT-D3/g" geoopt.qe
 	sed -i "s&pw.x&/home/schieber/q-e/bin/pw.x&g" submit_cluster*
 
 fi

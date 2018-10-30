@@ -195,9 +195,12 @@ def CP2K_Wavenumber(coordinatefile, parameter_file, Output):
 	 
 def QE_Wavenumber(Coordinate_file, parameter_file, Output):
     import os.path
-    if os.path.exists(Output+'.mold') == True:
+    print('Getting HA Wavenumbers')
+    if os.path.exists(Coordinate_file[0:-3]+'.mold') == True:
+    #if os.path.exists(Output+'.mold') == True:
+        print('recovering wavenumbers')
         wavenumbers = np.zeros((0,))
-        wavenumfile = open(Output+'.mold','r')
+        wavenumfile = open(Coordinate_file[0:-3]+'.mold','r')
         lines = wavenumfile.readlines()
         iter = 2
         while '[FR-COORD]' not in lines[iter]:
@@ -205,7 +208,7 @@ def QE_Wavenumber(Coordinate_file, parameter_file, Output):
             wavenumbers = np.append(wavenumbers, float(wave[0]))
             iter = iter+1
     else:
-        if os.path.exists(Coordinate_file[0:-4]+'.mold') == False:
+        if os.path.exists(Coordinate_file[0:-3]+'.mold') == False:
             if 'D3' not in os.getcwd():
                 subprocess.call(['setup_wavenumberQE', '-t', 'nma', '-h', Coordinate_file[0:-3]])
                 subprocess.call(['mpirun', '-np','112','pw.x','-i',Coordinate_file[0:-3]+'scf.qe'])
@@ -341,13 +344,16 @@ def Setup_Isotropic_Gruneisen(Coordinate_file, Program, Gruneisen_Vol_FracStep, 
         lattice_parameters = Pr.CP2K_Lattice_Parameters(Coordinate_file)
         file_ending = '.pdb'
     elif Program == 'QE':
+        Ex.Expand_Structure(Coordinate_file, Program, 'lattice_parameters', molecules_in_coord, Coordinate_file[0:-3], min_RMS_gradient,
+			    dlattice_parameters=[0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                            Parameter_file=keyword_parameters['Parameter_file'])
         Ex.Expand_Structure(Coordinate_file, Program, 'lattice_parameters', molecules_in_coord, 'temp', min_RMS_gradient,
-			    dlattice_parameters=dLattice_Parameters,
+                            dlattice_parameters=dLattice_Parameters,
                             Parameter_file=keyword_parameters['Parameter_file'])
         Organized_wavenumbers = QE_Gru_organized_wavenumbers('Isotropic', Coordinate_file, 'temp.pw', keyword_parameters['Parameter_file'], keyword_parameters['Output'])
         Wavenumber_Reference = Organized_wavenumbers[0]
         Wavenumber_expand = Organized_wavenumbers[1]
-        lattice_parameters = Pr.QE_Lattice_Parameters(Coordinate_file)
+        lattice_parameters, matrix = Pr.QE_Lattice_Parameters(Coordinate_file)
         file_ending = '.pw'
 
     elif Program == 'Test':

@@ -375,9 +375,10 @@ def QE_minimization(Parameter_file, Coordinate_file, Output, min_RMS_gradient):
     subprocess.call(['setup_wavenumberQE','-t','geoopt','-h',Output])
     #subprocess.call(['mpirun', '-np','112','pw.x','-i',Output+'.qe' ,'>',Output+'.out'])
     #os.system('mpirun -np 112 pw.x -i '+Output+'.qe > '+Output+'.out')
+    #if os.path.exists(Coordinate_file[0:-3]+'.out') == False:
     if 'D3' in os.getcwd(): 
         os.system('mpirun -np 112 /home/schieber/q-e/bin/pw.x -i '+Output+'.qe > '+Output+'.out')
-    else:
+    else: 
         os.system('mpirun -np 112 pw.x -i '+Output+'.qe > '+Output+'.out')
     subprocess.call(['pulllastframeQE', '-f', Output+'.out' ,'-n', Output+'.pw'])
 
@@ -491,7 +492,7 @@ def Isotropic_Change_Lattice_Parameters(volume_fraction_change, Program, Coordin
     elif Program == 'CP2K':
         lattice_parameters = Pr.CP2K_Lattice_Parameters(Coordinate_file)
     elif Program == 'QE':
-        lattice_parameters = Pr.QE_Lattice_Parameters(Coordinate_file)
+        lattice_parameters, matrix = Pr.QE_Lattice_Parameters(Coordinate_file)
     # Calculating the new isotropic lattice parameters
     dlattice_parameters = lattice_parameters*volume_fraction_change**(1/3.) - lattice_parameters
 
@@ -568,7 +569,7 @@ def Expand_Structure(Coordinate_file, Program, Expansion_type, molecules_in_coor
             coordinates = Return_CP2K_Coordinates(Coordinate_file)
             lattice_parameters = Pr.CP2K_Lattice_Parameters(Coordinate_file)
         elif Program == 'QE':
-            lattice_parameters = Pr.QE_Lattice_Parameters(Coordinate_file)
+            lattice_parameters, matrix = Pr.QE_Lattice_Parameters(Coordinate_file)
             coordinates = Return_QE_Coordinates(Coordinate_file, lattice_parameters)
            
 

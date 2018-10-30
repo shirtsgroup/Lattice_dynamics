@@ -40,7 +40,7 @@ def Properties(Coordinate_file, wavenumbers, Temperature, Pressure, Program, Sta
         properties[7:13] = CP2K_Lattice_Parameters(Coordinate_file)  # Lattice parameters
     elif Program == 'QE':
         properties[3] = QE_U(Coordinate_file) / molecules_in_coord
-        properties[7:13] = QE_Lattice_Parameters(Coordinate_file)
+        properties[7:13], matrix = QE_Lattice_Parameters(Coordinate_file)
     elif Program == 'Test':
         properties[3] = Test_U(Coordinate_file) / molecules_in_coord  # Potential energy
         properties[7:13] = Test_Lattice_Parameters(Coordinate_file)  # Lattice parameters
@@ -315,7 +315,7 @@ def QE_Lattice_Parameters(Coordinate_file):
         matrix[x,1] = float(vect.split()[1])
         matrix[x,2] = float(vect.split()[2])
     lattice_parameters = Ex.crystal_matrix_to_lattice_parameters(np.transpose(matrix))
-    return lattice_parameters
+    return lattice_parameters, matrix
 
 
 
@@ -364,7 +364,7 @@ def Volume(**keyword_parameters):
             lattice_parameters = CP2K_Lattice_Parameters(coordinate_file)
         elif program == 'QE':
             print('gettinc lattice from'+coordinate_file)
-            lattice_parameters = QE_Lattice_Parameters(coordinate_file)
+            lattice_parameters, matrix = QE_Lattice_Parameters(coordinate_file)
     V = lattice_parameters[0] * lattice_parameters[1] * lattice_parameters[2] * np.sqrt(
         1 - np.cos(np.radians(lattice_parameters[3])) ** 2 - np.cos(np.radians(lattice_parameters[4])) ** 2 - np.cos(
             np.radians(lattice_parameters[5])) ** 2 + 2 * np.cos(np.radians(lattice_parameters[3])) * np.cos(
@@ -391,7 +391,7 @@ def Lattice_parameters(Program, Coordinate_file):
     elif Program == 'CP2K':
         lattice_parameters = CP2K_Lattice_Parameters(Coordinate_file)
     elif Program == 'QE':
-        lattice_parameters = QE_Lattice_Parameters(Coordinate_file)
+        lattice_parameters, matrix = QE_Lattice_Parameters(Coordinate_file)
     return lattice_parameters
 
 def RotationFree_StrainArray_from_CrystalMatrix(ref_crystal_matrix, new_crystal_matrix):

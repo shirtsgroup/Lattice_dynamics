@@ -482,7 +482,8 @@ def Isotropic_Stepwise_Expansion(StepWise_Vol_StepFrac, StepWise_Vol_LowerFrac, 
             properties[i, :, :] = np.nan
 
     os.system('mv ' + Output + '_' + Method + '*' + file_ending + ' Cords/')
-
+    if Program=='QE':
+        os.system('mv ' + Output + '_' + Method + '*' + file_ending +'bv' +' Cords/')
     # Saving the raw data before minimizing
     print("   All properties have been saved in " + Output + "_raw.npy")
     np.save(Output+'_raw', properties)
