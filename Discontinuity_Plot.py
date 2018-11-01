@@ -22,6 +22,7 @@ parser.add_argument('-Th', dest='third',help = 'Specify the path of a third mole
 parser.add_argument('-U', dest='potential_e', action='store_true',help = 'Include this flag to plot the internal energy vs change in volume')
 parser.add_argument('-Av', dest='vibrational_e', action='store_true',help = 'Include this flag to plot the Helmholtz vibrational energy vs change in volume')
 parser.add_argument('-N', dest='n_molecules',help = 'Include this flag with the number of molecules to color code the atomic displacement.')
+parser.add_argument('-O', dest='outliers_plot',action='store_true', help = 'Include this flag to plot online the atomic displacement of outliers.')
 
 args = parser.parse_args()
 temp = args.temp
@@ -39,6 +40,7 @@ if third != None:
 pot_E = args.potential_e
 vib_e = args.vibrational_e
 num_mols = (args.n_molecules)
+outliers = args.outliers_plot
 
 print('Plotting at', plot_temp * 1, ' K.')
 
@@ -102,7 +104,13 @@ if third != None:
 plt.rc('text', usetex=True)
 plt.rc('font', size=16)
 
-if num_mols != None:
+if outliers != None:
+    #n_atm:
+    for n in range(n_atm):
+        temp_mean = np.mean(velocity[:,n])
+        print(temp_mean)
+        temp_std = np.std(velocity[:,n])
+elif num_mols != None:
     colors = iter(cm.rainbow(np.linspace(0, 1, (num_mols))))
     plot_list = []*int(num_mols)
     for j in range(0,num_mols):
