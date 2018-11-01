@@ -53,6 +53,7 @@ def Call_Wavenumbers(Method, min_RMS_gradient, **keyword_parameters):
             wavenumbers = CP2K_Wavenumber(keyword_parameters['Coordinate_file'], keyword_parameters['Parameter_file'], keyword_parameters['cp2kroot'])
 
         elif keyword_parameters['Program'] == 'Test':
+# What the hell is going on here?
             if Method == 'GaQ':
                 wavenumbers = Test_Wavenumber(keyword_parameters['Coordinate_file'],
                                               keyword_parameters['ref_crystal_matrix'])
@@ -130,6 +131,10 @@ def Call_Wavenumbers(Method, min_RMS_gradient, **keyword_parameters):
                 np.save(keyword_parameters['Output'] + '_GRU_' + Method, Gruneisen)
                 np.save(keyword_parameters['Output'] + '_GRUwvn_' + Method, Wavenumber_Reference)
             return Gruneisen, Wavenumber_Reference
+    elif Method == 'SaQply':
+        return Wavenumber_and_Vectors(keyword_parameters['Program'], keyword_parameters['Coordinate_file'],
+                                      keyword_parameters['Parameter_file'])
+
 
 
 ##########################################
@@ -176,9 +181,9 @@ def CP2K_Wavenumber(coordinatefile, parameter_file, output):
             wavenumbers = np.append(wavenumbers, float(wave[0]))
             iter = iter+1
     else:
-        subprocess.call(['setup_wavenumber', '-t', 'nma', '-h', Output])
-        subprocess.call(['mpirun', '-np','112','cp2k.popt','-i',Output+'.inp'])
-        subprocess.call(['mv','NMA-VIBRATIONS-1.mol',Output+'.mol'])
+        subprocess.call(['setup_wavenumber', '-t', 'nma', '-h', output])
+        subprocess.call(['mpirun', '-np', '112', 'cp2k.popt', '-i', output + '.inp'])
+        subprocess.call(['mv', 'NMA-VIBRATIONS-1.mol', output + '.mol'])
         wavenumbers = np.zeros((3,))
         wavenumfile = open(output+'.mol','r')
         lines = wavenumfile.readlines()
@@ -220,6 +225,7 @@ def Test_Wavenumber(Coordinate_file, ref_crystal_matrix, function='Test3', Gru=F
             wavenumbers[i] = wavenumbers[i]*(1.0/15.0)*(2*refx**4.8 + 10*refy**4.2 + 4*np.sin(2*np.pi*refx) +
                                                         3*refz**4.8)
     elif function == 'Test3':
+        # Determining if the wavenumbers at the lattice minimum and the way they change are present
         if os.path.isfile('wvn0_test.npy') and os.path.isfile('wvnChange_test.npy'):
             if np.all(ref_crystal_matrix == True):
                 strain = np.zeros(6)
@@ -321,7 +327,7 @@ def Setup_Isotropic_Gruneisen(Coordinate_file, Program, Gruneisen_Vol_FracStep, 
                                                                                          np.log(Volume_expand))
 
     # Removing extra files created in process
-    os.system('rm temp'+file_ending)
+    subprocess.call(['rm', 'temp' + file_ending])
     return Gruneisen, Wavenumber_Reference, Volume_Reference
 
 
@@ -376,7 +382,7 @@ def Setup_Anisotropic_Gruneisen(Coordinate_file, Program, strain, molecules_in_c
         for i in range(6):
             # Calculating the Gruneisen parameters
             Gruneisen[3:, i] = -(np.log(Organized_wavenumbers[i + 1, 3:]) - np.log(Wavenumber_Reference[3:])) / strain
-            os.system('rm ' + expanded_coordinates[i] + file_ending)
+            subprocess.call(['rm', expanded_coordinates[i] + file_ending])
 
     elif Program == 'Test':
         file_ending = '.npy'
@@ -389,7 +395,7 @@ def Setup_Anisotropic_Gruneisen(Coordinate_file, Program, strain, molecules_in_c
             Wavenumber_expand = Test_Wavenumber(expanded_coordinates[i] + file_ending,
                                                 Ex.Lattice_parameters_to_Crystal_matrix(Pr.Test_Lattice_Parameters(Coordinate_file)), Gru=True)
             Gruneisen[3:, i] = -(np.log(Wavenumber_expand[3:]) - np.log(Wavenumber_Reference[3:])) / strain
-            os.system('rm ' + expanded_coordinates[i] + file_ending)
+            subprocess.call(['rm', expanded_coordinates[i] + file_ending])
     return Gruneisen, Wavenumber_Reference
 
 
@@ -402,16 +408,13 @@ def Get_Aniso_Gruneisen_Wavenumbers(Gruneisen, Wavenumber_Reference, ref_crystal
 
     for i in np.arange(3, len(wavenumbers), 1):
         # Computing the change to each wavenumber due to the curren strain
-#        hold = 0
-#        for j in range(6):
-#            hold = hold + -1 * applied_strain[j] * Gruneisen[i, j]
         wavenumbers[i] = Wavenumber_Reference[i]*np.exp(-1.*np.sum(np.dot(applied_strain, Gruneisen[i])))
-#        wavenumbers[i] = Wavenumber_Reference[i] * np.exp(hold)
     return wavenumbers
 
 ##########################################
 #     Organizing Wavenumbers for Gru     #
 ##########################################
+# To do: Condense the Gru_organized_wavenumbers section (tinker and CP2K can be together
 def Tinker_Gru_organized_wavenumbers(Expansion_type, Coordinate_file, Expanded_Coordinate_file, Parameter_file):
     number_of_modes = int(3*Pr.Tinker_atoms_per_molecule(Coordinate_file, 1))
 
@@ -431,38 +434,49 @@ def Tinker_Gru_organized_wavenumbers(Expansion_type, Coordinate_file, Expanded_C
     wavenumbers_out = np.zeros((len(wavenumbers[:, 0]), number_of_modes))
     wavenumbers_out[0] = wavenumbers[0]
     for k in range(1, len(wavenumbers[:, 0])):
-        z, _ = match_modes(number_of_modes, eigenvectors[0], eigenvectors[k])
+        # Using the eigenvectors to re-order the modes
+        z, _ = matching_eigenvectors_of_modes(number_of_modes, eigenvectors[0], eigenvectors[k])
+
         # Re-organizing the expanded wavenumbers
-        for i in z:
-            wavenumbers_out[k, i[0]] = wavenumbers[k, i[1]]
+        wavenumbers_out[k] = reorder_modes(z, wavenumbers[k])
     return wavenumbers_out
 
-def match_modes(number_of_modes, eigenvectors_1, eigenvectors_2):
+def matching_eigenvectors_of_modes(number_of_modes, eigenvectors_1, eigenvectors_2):
     m = Munkres()
     weight = np.zeros((number_of_modes - 3, number_of_modes - 3))
     for i in range(3, number_of_modes):
-        diff = np.dot(eigenvectors_1[i], eigenvectors_2[i])/(np.linalg.norm(eigenvectors_1[i])*np.linalg.norm(eigenvectors_2[i]))
+        diff = np.dot(eigenvectors_1[i], eigenvectors_2[i]) \
+               / (np.linalg.norm(eigenvectors_1[i]) * np.linalg.norm(eigenvectors_2[i]))
         if np.absolute(diff) > 0.95:
             weight[i - 3] = 10000000.
             weight[i - 3, i - 3] = 1. - diff
         else:
             for j in range(3, number_of_modes):
                 hold_weight = np.zeros(4)
-                hold_weight[0] = 1 - np.dot(-1*eigenvectors_1[i], eigenvectors_2[j])/(np.linalg.norm(-1*eigenvectors_1[i])*np.linalg.norm(eigenvectors_2[j]))
-                hold_weight[1] = 1 - np.dot(eigenvectors_1[i], -1*eigenvectors_2[j])/(np.linalg.norm(eigenvectors_1[i])*np.linalg.norm(-1*eigenvectors_2[j]))
-                hold_weight[2] = 1 - np.dot(eigenvectors_1[i], eigenvectors_2[j])/(np.linalg.norm(eigenvectors_1[i])*np.linalg.norm(eigenvectors_2[j]))
-                hold_weight[3] = 1 - np.dot(-1*eigenvectors_1[i], -1*eigenvectors_2[j])/(np.linalg.norm(-1*eigenvectors_1[i])*np.linalg.norm(-1*eigenvectors_2[j]))
+                hold_weight[0] = 1 - np.dot(-1 * eigenvectors_1[i], eigenvectors_2[j]) \
+                                     / (np.linalg.norm(-1 * eigenvectors_1[i]) * np.linalg.norm(eigenvectors_2[j]))
+                hold_weight[1] = 1 - np.dot(eigenvectors_1[i], -1 * eigenvectors_2[j]) \
+                                     / (np.linalg.norm(eigenvectors_1[i]) * np.linalg.norm(-1 * eigenvectors_2[j]))
+                hold_weight[2] = 1 - np.dot(eigenvectors_1[i], eigenvectors_2[j]) \
+                                     / (np.linalg.norm(eigenvectors_1[i]) * np.linalg.norm(eigenvectors_2[j]))
+                hold_weight[3] = 1 - np.dot(-1 * eigenvectors_1[i], -1 * eigenvectors_2[j]) \
+                                     / (np.linalg.norm(-1 * eigenvectors_1[i])*np.linalg.norm(-1 * eigenvectors_2[j]))
                 weight[i - 3, j - 3] = min(hold_weight)
     # Using the Hungarian algorithm to match wavenumbers
     Wgt = m.compute(weight)
-    x,y = zip(*Wgt)
-    z = np.column_stack((x,y))
-    z = z +3
+    x, y = zip(*Wgt)
+    z = np.column_stack((x, y))
+    z = z + 3
     return z, weight
+
+def reorder_modes(z, wavenumbers):
+    wavenumbers_out = np.zeros(len(wavenumbers))
+    for i in z:
+        wavenumbers_out[i[0]] = wavenumbers[i[1]]
+    return wavenumbers_out
 
 def CP2K_Gru_organized_wavenumbers(Expansion_type, Coordinate_file, Expanded_Coordinate_file, Parameter_file):
     m = Munkres()
-
     number_of_modes = 3*Pr.CP2K_atoms_per_molecule(Coordinate_file, 1)
 
     if Expansion_type == 'Isotropic':
@@ -482,21 +496,34 @@ def CP2K_Gru_organized_wavenumbers(Expansion_type, Coordinate_file, Expanded_Coo
     wavenumbers_out = np.zeros((len(wavenumbers[:, 0]), number_of_modes))
     wavenumbers_out[0] = wavenumbers[0]
     for k in range(1, len(wavenumbers[:, 0])):
-        z, _ = match_modes(number_of_modes, eigenvectors[0], eigenvectors[k])
+        z, _ = matching_eigenvectors_of_modes(number_of_modes, eigenvectors[0], eigenvectors[k])
         # Re-organizing the expanded wavenumbers
         for i in z:
             wavenumbers_out[k, i[0]] = wavenumbers[k, i[1]]
     return wavenumbers_out
 
 
+# Getting the wavenumbers and vectors from the programs
+def Wavenumber_and_Vectors(Program, Coordinate_file, Parameter_file):
+    if Program == 'Tinker':
+        wavenumbers, eigenvectors = Tinker_Wavenumber_and_Vectors(Coordinate_file, Parameter_file)
+    elif Program == 'Test':
+        wavenumbers = Test_Wavenumber(Coordinate_file, True)
+        eigenvectors = np.diag(np.ones(len(wavenumbers)))
+        eigenvectors = np.ones((len(wavenumbers), len(wavenumbers)))
+        np.fill_diagonal(eigenvectors, 0)
+    elif Program == 'CP2K':
+        wavenumbers, eigenvectors = CP2K_Wavenumber_and_Vectors(Coordinate_file, Parameter_file)
+    return wavenumbers, eigenvectors
+
 def Tinker_Wavenumber_and_Vectors(Coordinate_file, Parameter_file):
     # Calling Tinker's vibrate executable and extracting the eigenvectors and wavenumbers of the respective
     # Hessian and mass-weighted Hessian
-    os.system('cp ' + Coordinate_file + ' vector_temp.xyz')
+    subprocess.call(['cp', Coordinate_file, 'vector_temp.xyz'])
     output = subprocess.check_output("vibrate vector_temp.xyz -k %s  A |  grep -oP '[-+]*[0-9]*\.[0-9]{2,9}'"
                                                           % (Parameter_file), shell=True).decode("utf-8")
 
-    os.system('rm vector_temp.*')
+    subprocess.call(['rm vector_temp.*'], shell=True)
 
     # Finding the number modes in the system
     number_of_modes = int(3*Pr.Tinker_atoms_per_molecule(Coordinate_file, 1))
@@ -514,18 +541,19 @@ def Tinker_Wavenumber_and_Vectors(Coordinate_file, Parameter_file):
     for i in range(number_of_modes):
         start = number_of_modes*(i + 2) + i + 1
         finish = start + number_of_modes
-        eigenvectors[i] = output[start: finish] /np.sqrt(np.sum(output[start: finish]**2))
+        eigenvectors[i] = output[start: finish] / np.sqrt(np.sum(output[start: finish]**2))
     return wavenumbers, eigenvectors
+
 
 
 def CP2K_Wavenumber_and_Vectors(Coordinate_file, Parameter_file):
     # Calling Tinker's vibrate executable and extracting the eigenvectors and wavenumbers of the respective
     # Hessian and mass-weighted Hessian
-    os.system('cp ' + Coordinate_file + ' vector_temp.xyz')
+    subprocess.call(['cp', Coordinate_file, 'vector_temp.xyz'])
     output = subprocess.check_output("vibrate vector_temp.xyz -k %s  A |  grep -oP '[-+]*[0-9]*\.[0-9]{2,9}'"
                                                           % (Parameter_file), shell=True)
 
-    os.system('rm vector_temp.*')
+    subprocess.call(['rm vector_temp.*'], shell=True)
 
     # Finding the number modes in the system
     number_of_modes = 3*Pr.Tinker_atoms_per_molecule(Coordinate_file, 1)

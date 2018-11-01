@@ -4,12 +4,20 @@ from __future__ import print_function
 import subprocess
 import numpy as np
 import itertools as it
+import Expand as Ex
+import Wavenumbers as Wvn
+import equations_of_state as eos
+import scipy.optimize
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+
 
 ##########################################
 #           Export PROPERTIES            #
 ##########################################
 def Properties(Coordinate_file, wavenumbers, Temperature, Pressure, Program, Statistical_mechanics, molecules_in_coord, cp2kroot,
-               **keyword_parameters):
+               Parameter_file=''):
     """
     Function to calculate all properties for a single temperature and pressure
 
@@ -31,7 +39,7 @@ def Properties(Coordinate_file, wavenumbers, Temperature, Pressure, Program, Sta
     properties[0] = Temperature  # Temperature
     properties[1] = Pressure  # Pressure
     if Program == 'Tinker':
-        properties[3] = Tinker_U(Coordinate_file, keyword_parameters['Parameter_file']) / molecules_in_coord
+        properties[3] = Tinker_U(Coordinate_file, Parameter_file) / molecules_in_coord
         # Potential energy
         properties[7:13] = Tinker_Lattice_Parameters(Coordinate_file)  # Lattice parameters
     elif Program == 'CP2K':
@@ -67,15 +75,25 @@ def Properties_with_Temperature(Coordinate_file, wavenumbers, Temperature, Press
     **Optional Inputs
     Parameter_file = Optional input for program
     """
+    if 'Parameter_file' in keyword_parameters:
+        pass
+    else:
+        keyword_parameters['Parameter_file'] = ''
+
     properties = np.zeros((len(Temperature), 14))
-    for i in range(len(Temperature)):
-        if 'Parameter_file' in keyword_parameters:
-            properties[i, :] = Properties(Coordinate_file, wavenumbers, Temperature[i], Pressure, Program,
+    properties[0, :] = Properties(Coordinate_file, wavenumbers, Temperature[0], Pressure, Program,
                                           Statistical_mechanics, molecules_in_coord, cp2kroot,
                                           Parameter_file=keyword_parameters['Parameter_file'])
-        else:
-            properties[i, :] = Properties(Coordinate_file, wavenumbers, Temperature[i], Pressure, Program,
-                                          Statistical_mechanics, molecules_in_coord, cp2kroot)
+    properties[:, 0] = Temperature
+    properties[:, 1] = properties[0, 1]
+    properties[:, 3] = properties[0, 3]
+    properties[:, 7:13] = properties[0, 7:13]
+    properties[:, 6] = properties[0, 6]
+    properties[:, 5] = properties[0, 5]
+    for i in range(1, len(Temperature)):
+        properties[i, 4] = Vibrational_Helmholtz(Temperature[i], wavenumbers, Statistical_mechanics) / molecules_in_coord
+        properties[i, 13] = Vibrational_Entropy(Temperature[i], wavenumbers, Statistical_mechanics) / molecules_in_coord
+        properties[i, 2] = sum(properties[i, 3:6])
     return properties
 
 
@@ -132,7 +150,98 @@ def Save_Properties(properties, Properties_to_save, Output, Method, Statistical_
             np.save(Output + '_h' + Statistical_mechanics + '_' + Method, properties[:, 7:13])
         if i == 'S':  # Entropy
             print("   ... Saving entropy in: " + Output + "_S" + Statistical_mechanics + "_" + Method + ".npy")
-            np.save(Output + '_S' + Statistical_mechanics + '_' + Method, properties[:, 14])
+            np.save(Output + '_S' + Statistical_mechanics + '_' + Method, properties[:, 13])
+
+def polynomial_properties_optimize(volumes, V0, wavenumbers, eigenvectors, molecules_in_coord, Statistical_mechanics,
+                                   Temperature, Pressure, eq_of_state, poly_order, prop_0K, Output, Program):
+    # Organize vibrational modes
+    wavenumbers_organized = np.zeros((len(volumes), len(wavenumbers[0, 1:])))
+    basis_placement = np.where(np.around(V0, 3) == np.around(volumes, 3))[0][0]
+    number_of_modes = len(wavenumbers[0, 1:])
+    for i in range(len(volumes)):
+        if Program == 'Test':
+            wavenumbers_organized[i] = wavenumbers[i, 1:]
+        else:
+            z, _ = Wvn.matching_eigenvectors_of_modes(number_of_modes, eigenvectors[basis_placement], eigenvectors[i])
+            wavenumbers_organized[i] = Wvn.reorder_modes(z, wavenumbers[i, 1:])
+
+    # Create polynomials for vibrational modes as a function of volume
+    wavenumber_poly = np.zeros((number_of_modes, poly_order + 1))
+    for i in range(number_of_modes):
+        wavenumber_poly[i] = np.polyfit(volumes, wavenumbers_organized[:, i], poly_order)
+
+    # Create polynomials for lattice parameters as a function of volume
+    lattice_parameter_poly = np.zeros((6, poly_order + 1))
+    for i in range(6):
+        lattice_parameter_poly[i] = np.polyfit(volumes, prop_0K[:, 7 + i], poly_order)
+
+    # Equation of state fit
+    E0 = prop_0K[basis_placement, 3] * molecules_in_coord
+    [B, dB], _ = scipy.optimize.curve_fit(lambda volumes, B, dB: eos.EV_EOS(volumes, V0, B, dB, E0, eq_of_state),
+                                          volumes, molecules_in_coord * prop_0K[:, 3], p0=[2., 2.])
+    np.save(Output + '_EOS', [V0, B, dB, E0])
+    np.save(Output + '_EOS_V', volumes)
+    np.save(Output + '_EOS_U', molecules_in_coord * prop_0K[:, 3])
+
+    plt.plot(volumes, eos.EV_EOS(volumes, V0, B, dB, E0, eq_of_state) / molecules_in_coord - prop_0K[:, 3])
+    plt.xlabel('Volume [Ang.$^{3}$]', fontsize=18)
+    plt.ylabel('$\delta(U_{EOS})$ [kcal/mol]', fontsize=18)
+    plt.tight_layout()
+    plt.savefig(Output + '_EOS_dU.pdf')
+    plt.close()
+
+
+    # Minimize Gibbs free energy at a given temperature using all polynomial functions
+    minimum_gibbs_properties = np.zeros((len(Temperature), 14))
+    for i in range(len(Temperature)):
+        V = scipy.optimize.minimize(Poly_Gibbs_energy, V0, args=(Pressure, Temperature[i], wavenumber_poly, V0, B, dB, E0,
+                                                                 eq_of_state, Statistical_mechanics),
+                                    method='L-BFGS-B', tol=1.e-10).x
+        wvn = wavenumbers_from_poly(wavenumber_poly, V)
+        minimum_gibbs_properties[i, 0] = Temperature[i]  # Temperature
+        minimum_gibbs_properties[i, 1] = Pressure  # Pressure
+        minimum_gibbs_properties[i, 3] = eos.EV_EOS(V, V0, B, dB, E0, eq_of_state) / molecules_in_coord
+        for j in range(6):
+            lp_poly = np.poly1d(lattice_parameter_poly[j])
+            minimum_gibbs_properties[i, 7 + j] = lp_poly(V)  # Lattice parameters
+        minimum_gibbs_properties[i, 6] = V  # Volume
+        minimum_gibbs_properties[i, 4] = Vibrational_Helmholtz(Temperature[i], wvn, Statistical_mechanics) / molecules_in_coord
+        minimum_gibbs_properties[i, 13] = Vibrational_Entropy(Temperature[i], wvn, Statistical_mechanics) / molecules_in_coord
+        minimum_gibbs_properties[i, 5] = PV_energy(Pressure, V) / molecules_in_coord  # PV
+        minimum_gibbs_properties[i, 2] = sum(minimum_gibbs_properties[i, 3:6])  # Gibbs free energy
+    return minimum_gibbs_properties
+
+def Poly_Gibbs_energy(V, P, T, wavenumber_poly, V0, B, dB, E0, eq_of_state, Statistical_mechanics):
+    wavenumbers = wavenumbers_from_poly(wavenumber_poly, V)
+    PV = PV_energy(P, V)
+    U = eos.EV_EOS(V, V0, B, dB, E0, eq_of_state)
+    Av = Vibrational_Helmholtz(T, wavenumbers, Statistical_mechanics)
+    return PV + U + Av
+
+def wavenumbers_from_poly(ply, V):
+    wavenumbers_out = np.zeros(len(ply[:, 0]))
+    for i in range(len(wavenumbers_out)):
+        wvn_ply = np.poly1d(ply[i])
+        wavenumbers_out[i] = wvn_ply(V)
+    return wavenumbers_out
+
+
+def atoms_count(Program, Coordinate_file, molecules_in_coord=1):
+    """
+    This program will determine the number of atoms in the coordinate file if molecules_in_coord is not specified.
+    It will return the number of atoms per molecule if molecule_in_coord is specified.
+    :param Program: Tinker, CP2K, or test
+    :param Coordinate_file: input coordinate file for supported program
+    :param molecules_in_coord: the number of molecules within the coordinate file. This is an optional parameter
+    :return: 
+    """
+    if Program == 'Tinker':
+        atoms_in_coord = len(Ex.Return_Tinker_Coordinates(Coordinate_file)[:, 0])
+    elif Program == 'Test':
+        atoms_in_coord = len(Wvn.Test_Wavenumber(Coordinate_file, True)) / 3
+    elif Program == 'CP2K':
+        atoms_in_coord = len(Ex.Return_CP2K_Coordinates(Coordinate_file)[:, 0])
+    return int(atoms_in_coord / molecules_in_coord)
 
 
 ##########################################
@@ -198,24 +307,6 @@ def Test_U(Coordinate_file):
     return U
 
 def Test_U_poly(array):
-#    # 4th order polynomial to describe how the potential energy changes as a function of the lattice parameters
-#    # Given as [A, B, C, D, E]: A*x**4 + B*x**3 + C*x**2 + D*x + E
-#                                  # Lattice vectors [Ang.]
-#    polynomial_normal = np.array([[  1.32967100e+01,  -3.86230306e+02,   4.21859038e+03,  -2.05171077e+04,    3.71986258e+04],
-#                                  [  5.96012607e-00,  -3.29643734e+01,   6.87371706e+02,  -6.39222328e+03,    2.20706869e+04],
-#                                  [  6.54309591e-01,  -2.95928106e+01,   4.82192443e+02,  -3.37907613e+03,    8.38105955e+03],
-#                                  # Lattice Angles [Degrees]
-#                                  [  1.73101682e-04,  -6.23169023e-02,   8.53269922e+00,  -5.26349633e+02,    1.20653441e+04],
-#                                  [  1.87342875e-04,  -6.45384256e-02,   8.09885843e+00,  -4.58100859e+02,    1.27492294e+04],
-#                                  [ -7.85675953e-05,   2.82845448e-02,  -3.66590698e+00,   2.01651921e+02,   -4.18251942e+03]])
-#    U = 0.
-#    for i in range(6):
-#        p = np.poly1d(polynomial_normal[i])
-#        U = U + p(array[i])
-    # Energy returned in kcal/mol
-
-
-
     p = np.array([  4.23707763e+03,  -4.84369902e+02,  -4.14736558e+02,  -3.52679881e+02,
                    -3.56924620e+00,   1.84204932e+01,   2.91373650e+00,   3.39706395e+01,
                     1.43083158e+01,   1.29649063e+01,   2.44591565e-02,   1.48827075e-01,
@@ -327,7 +418,6 @@ def Volume(**keyword_parameters):
         elif program == 'CP2K':
             # Retrieving lattice parameters of a test coordinate file
             lattice_parameters = CP2K_Lattice_Parameters(coordinate_file)
-
     V = lattice_parameters[0] * lattice_parameters[1] * lattice_parameters[2] * np.sqrt(
         1 - np.cos(np.radians(lattice_parameters[3])) ** 2 - np.cos(np.radians(lattice_parameters[4])) ** 2 - np.cos(
             np.radians(lattice_parameters[5])) ** 2 + 2 * np.cos(np.radians(lattice_parameters[3])) * np.cos(
@@ -335,11 +425,11 @@ def Volume(**keyword_parameters):
     return V
 
 
-def Potential_energy(Program, **keyword_parameters):
+def Potential_energy(Coordinate_file, Program, Parameter_file=''):
     if Program == 'Tinker':
-        U = Tinker_U(keyword_parameters['Coordinate_file'], keyword_parameters['Parameter_file'])
+        U = Tinker_U(Coordinate_file, Parameter_file)
     elif Program == 'Test':
-        U = Test_U(keyword_parameters['Coordinate_file'])
+        U = Test_U(Coordinate_file)
     return U
 
 def Lattice_parameters(Program, Coordinate_file):
@@ -387,15 +477,15 @@ def Classical_Vibrational_A(Temperature, wavenumbers):
     wavenumbers = array of wavenumber (in order with the first three being 0 cm**-1 for the translational modes)
     """
     c = 2.998 * 10 ** 10  # Speed of light in cm/s
-    h = 2.520 * 10 ** (-35)  # Reduced Plank's constant in cal*s
-    k = 3.2998 * 10 ** (-24)  # Boltzmann constant in cal*K
+    h = 2.520 * 10 ** (-38)  # Reduced Plank's constant in kcal*s
+    k = 3.2998 * 10 ** (-27)  # Boltzmann constant in kcal/K
     Na = 6.022 * 10 ** 23  # Avogadro's number
     beta = 1 / (k * Temperature)
     wavenumbers = np.sort(wavenumbers)
     A = []
     for i in wavenumbers[3:]:  # Skipping the translational modes
         if i > 0:  # Skipping negative wavenumbers
-            a = (1 / beta) * np.log(beta * h * i * c * 2 * np.pi) * Na / 1000
+            a = (1 / beta) * np.log(beta * h * i * c) * Na
             A.append(a)
         else:
             pass
@@ -467,15 +557,15 @@ def Classical_Vibrational_S(Temperature, wavenumbers):
     wavenumbers = array of wavenumber (in order with the first three being 0 cm**-1 for the translational modes)
     """
     c = 2.998 * 10 ** 10  # Speed of light in cm/s
-    h = 2.520 * 10 ** (-35)  # Reduced Plank's constant in cal*s
-    k = 3.2998 * 10 ** (-24)  # Boltzmann constant in cal*K
+    h = 2.520 * 10 ** (-38)  # Reduced Plank's constant in cal*s
+    k = 3.2998 * 10 ** (-27)  # Boltzmann constant in cal*K
     Na = 6.022 * 10 ** 23  # Avogadro's number
     beta = 1 / (k * Temperature)
     wavenumbers = np.sort(wavenumbers)
     S = []
     for i in wavenumbers[3:]:  # Skipping translational modes
         if i > 0:  # Skipping negative wavenumbers
-            s = k * (1 - np.log(beta * h * i * c * 2 * np.pi)) * Na / 1000
+            s = k * (1 - np.log(beta * h * i * c)) * Na 
             S.append(s)
         else:
             pass

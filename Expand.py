@@ -8,6 +8,7 @@ import ThermodynamicProperties as Pr
 import Wavenumbers as Wvn
 import Numerical_Outputs as NO
 import subprocess
+import scipy.optimize
 import fileinput
 
 ##########################################
@@ -147,8 +148,6 @@ def Output_Tinker_New_Coordinate_File(Coordinate_file, Parameter_file, coordinat
     """   
     Ouput_Tinker_Coordinate_File(Coordinate_file, Parameter_file, coordinates, lattice_parameters, Output)
     
-#    subprocess.call(['minimize', Output + '.xyz', '-k', Parameter_file, str(min_RMS_gradient)], stdout=open(os.devnull, 'wb'))
-#    subprocess.call(['mv', Output + '.xyz_2', Output + '.xyz'])
     Tinker_minimization(Parameter_file, Output + '.xyz', Output, min_RMS_gradient)
 
 
@@ -316,10 +315,9 @@ def Ouput_CP2K_Coordinate_File(Coordinate_file, Parameter_file, coordinates, lat
 
 
 def CP2K_minimization(Parameter_file, Coordinate_file, Output, min_RMS_gradient):
-    
-    subprocess.call(['setup_wavenumber','-t','geoopt','-h',Output])
-    subprocess.call(['mpirun', '-np','112','cp2k.popt','-i',Output+'.inp'])
-    subprocess.call(['python','pulllastframe.py','-f','GEOOPT-GEOOPT.pdb-pos-1.pdb','-n',Output+'.pdb'])
+    subprocess.call(['setup_wavenumber', '-t', 'geoopt', '-h', Output])
+    subprocess.call(['mpirun', '-np', '112', 'cp2k.popt', '-i', Output + '.inp'])
+    subprocess.call(['python', 'pulllastframe.py', '-f', 'GEOOPT-GEOOPT.pdb-pos-1.pdb', '-n', Output + '.pdb'])
 
 
 ##########################################
@@ -362,7 +360,6 @@ def Lattice_parameters_to_Crystal_matrix(lattice_parameters):
         Vyz = 0.
     crystal_matrix = np.matrix([[Vxx, Vxy, Vxz], [0., Vyy, Vyz], [0., 0., Vzz]])
     return crystal_matrix
-
 
 def crystal_matrix_to_lattice_parameters(crystal_matrix):
     """
@@ -647,7 +644,7 @@ def Isotropic_Local_Gradient(Coordinate_file, Program, Temperature, Pressure, Lo
     NO.iso_gradient(dG, ddG, dS, dS/ddG)
 
     # Removing excess files
-    os.system('rm '+coordinate_plus+' '+coordinate_minus)
+    subprocess.call(['rm', coordinate_plus, coordinate_minus])
     return dS/ddG, wavenumbers, volume
 
 
@@ -815,9 +812,9 @@ def Anisotropic_Local_Gradient(Coordinate_file, Program, Temperature, Pressure, 
 
                 # Removing excess files
                 for d in delta2:
-                    os.system('rm ' + d + file_ending)
+                    subprocess.call(['rm', d + file_ending])
         for d in delta1:
-            os.system('rm ' + d + file_ending)
+            subprocess.call(['rm', d + file_ending])
 
     # Calculating deta/dT for all strains
     dC_dT = np.linalg.lstsq(ddG_ddC, dS_dC)[0]
@@ -853,8 +850,8 @@ def Anisotropic_Local_Gradient_1D(Coordinate_file, Program, Temperature, Pressur
     S = np.zeros(3)
 
     G[1], U[1], Av[1] = Pr.Gibbs_Free_Energy(Temperature, Pressure, Program, wavenumbers, Coordinate_file,
-                                                   Statistical_mechanics, molecules_in_coord,
-                                                   Parameter_file=keyword_parameters['Parameter_file'])
+                                             Statistical_mechanics, molecules_in_coord,
+                                             Parameter_file=keyword_parameters['Parameter_file'])
 
     crystal_matrix_array = LocGrd_dLambda * dC_dLambda
     # Straining the input structure by the current diagonal

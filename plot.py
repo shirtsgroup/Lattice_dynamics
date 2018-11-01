@@ -7,14 +7,21 @@ from optparse import OptionParser
 
 parser = OptionParser()
 parser.add_option('-L', dest = 'lattice_parameters', help = '<output>_h<StatMech>_<Method>.npy files containing lattice parameters', default = '')
+parser.add_option('-l', dest = 'lattice_parameters_error', help = '<output>_h<StatMech>_<Method>.npy files containing lattice parameters', default = False)
 parser.add_option('-V', dest = 'volume', help = '<output>_V<StatMech>_<Method>.npy files containing volume', default = '')
 parser.add_option('-G', dest = 'Gibbs', help = '<output>_G<StatMech>_<Method>.npy files containing gibbs free energy', default = '')
 parser.add_option('-T', dest = 'temperature', help = '<output>_T_<Method>.npy file containing temperature array', default = '')
-parser.add_option('-l', dest = 'Labels', help = 'list of label names for input files', default = '')
+parser.add_option('-t', dest = 'Labels', help = 'list of label names for input files', default = '')
 parser.add_option('-U', dest = 'potential_energy', help = '<output>_U<StatMech>_<Method>.npy file containing potential energy array', default = '')
 
 (options, args) = parser.parse_args()
 lattice_parameters = (options.lattice_parameters).split(',')
+
+if options.lattice_parameters_error == False:
+    lattice_parameters_error = options.lattice_parameters_error
+else:
+    lattice_parameters_error = (options.lattice_parameters_error).split(',')
+
 volume = (options.volume).split(',')
 Gibbs = (options.Gibbs).split(',')
 temperature = (options.temperature).split(',')
@@ -38,16 +45,26 @@ if (lattice_parameters[0] != '') and (len(lattice_parameters) == len(temperature
     ax2 = plt.subplot(122)
     for i in np.arange(0,3):
         for j in range(len(lattice_parameters)):
-            hold_lattice_parameters = np.load(lattice_parameters[j])[:,i]
-            ax1.plot(np.load(temperature[j]), (hold_lattice_parameters - hold_lattice_parameters[0])/hold_lattice_parameters[0]*100,label=label[i] + ' ' + Labels[j], c=color[i], linestyle=line_style[j])
+            if lattice_parameters_error == False:
+                hold_lattice_parameters = np.load(lattice_parameters[j])[:,i]
+                ax1.plot(np.load(temperature[j]), (hold_lattice_parameters - hold_lattice_parameters[0])/hold_lattice_parameters[0]*100,label=label[i] + ' ' + Labels[j], c=color[i], linestyle=line_style[j])
+            else:
+                hold_lattice_parameters = np.load(lattice_parameters[j])[:,i]
+                error = np.load(lattice_parameters_error[j])[:,i]
+                ax1.errorbar(np.load(temperature[j]), (hold_lattice_parameters - hold_lattice_parameters[0])/hold_lattice_parameters[0]*100,label=label[i] + ' ' + Labels[j], c=color[i], linestyle=line_style[j], yerr=error) 
     ax1.set_xlabel('Temperature [K]', fontsize=18)
     ax1.set_ylabel('% Change from ' + str(int(np.load(temperature[0])[0])) + 'K', fontsize=18)
     ax1.legend(loc='upper left', fontsize=18)
 
     for i in np.arange(3,6):
         for j in range(len(lattice_parameters)):
-            hold_lattice_parameters = np.load(lattice_parameters[j])[:,i]
-            ax2.plot(np.load(temperature[j]), (hold_lattice_parameters - hold_lattice_parameters[0])/hold_lattice_parameters[0]*100, label=label[i] + ' ' + Labels[j], c=color[i-3], linestyle=line_style[j])
+            if lattice_parameters_error == False:
+                hold_lattice_parameters = np.load(lattice_parameters[j])[:,i]
+                ax2.plot(np.load(temperature[j]), (hold_lattice_parameters - hold_lattice_parameters[0])/hold_lattice_parameters[0]*100, label=label[i] + ' ' + Labels[j], c=color[i-3], linestyle=line_style[j])
+            else:
+                hold_lattice_parameters = np.load(lattice_parameters[j])[:,i]
+                error = np.load(lattice_parameters_error[j])[:,i]
+                ax2.errorbar(np.load(temperature[j]), (hold_lattice_parameters - hold_lattice_parameters[0])/hold_lattice_parameters[0]*100, label=label[i] + ' ' + Labels[j], c=color[i-3], linestyle=line_style[j], yerr=error)
     ax2.set_xlabel('Temperature [K]', fontsize=18)
     ax2.legend(loc='upper left', fontsize=18)
     plt.tight_layout()
