@@ -376,6 +376,12 @@ def Setup_Isotropic_Gruneisen(Coordinate_file, Program, Gruneisen_Vol_FracStep, 
     Volume_expand = Volume_Reference + Gruneisen_Vol_FracStep*Volume_Reference
 
     # Calculating the Gruneisen parameter and zeroing out the parameters for the translational modes
+    if (np.any(Wavenumber_Reference[3:]) < 0.) or (np.any(Wavenumber_expand[3:]) < 0 ):
+        print('Negative wavenumbers found in computing the Gruneisen parameters')
+        print('Lattice Minimum Wavenumbers: ', Wavenumber_Reference)
+        print('Expanded Wavenumber: ', Wavenumber_expand)
+        print('Exiting code')
+        sys.exit()
     Gruneisen = np.zeros(len(Wavenumber_Reference))
     Gruneisen[3:] = -(np.log(Wavenumber_Reference[3:]) - np.log(Wavenumber_expand[3:]))/(np.log(Volume_Reference) -
                                                                                          np.log(Volume_expand))
