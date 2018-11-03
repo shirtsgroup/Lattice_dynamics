@@ -492,6 +492,8 @@ def Tinker_Gru_organized_wavenumbers(Expansion_type, Coordinate_file, Expanded_C
         for i in range(1,7):
             wavenumbers[i], eigenvectors[i] = Tinker_Wavenumber_and_Vectors(Expanded_Coordinate_file[i-1], Parameter_file)
 
+    np.save('GRU_eigen', eigenvectors)
+
     # Weighting the modes matched together
     wavenumbers_out = np.zeros((len(wavenumbers[:, 0]), number_of_modes))
     wavenumbers_out[0] = wavenumbers[0]
