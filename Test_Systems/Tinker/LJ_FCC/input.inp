@@ -8,7 +8,8 @@ Temperature = 0.,70.
 
 ## Pressure
 # Only set up for single pressure values
-Pressure = 1.
+Pressure = 1000.
+#,1000.,197385.640266469
 
 ## Method
 # Only one method is accepted currently
@@ -20,7 +21,7 @@ Pressure = 1.
 # GiQg - Gradient isotropic quasi-harmonic approximation with Gruneisen parameter
 # GaQ  - Gradient anisotropic quasi-harmonic approximation
 # GaQg - Gradient anisotropic quasi-harmonic approximation with Gruneisen parameter
-Method = GaQ
+Method = SaQply
 
 ## Output
 # Output name for files
@@ -95,11 +96,11 @@ LocGrd_CMatrix_FracStep
 # Stepwise thermal expansion is only set up for isotropic expansion
 # It is far too expansive to run anistropic expansion stepwise
 # Volume fraction stepsize
-StepWise_Vol_StepFrac = 5.e-3
+StepWise_Vol_StepFrac = 5.e-2
 # Volume fraction lowerbound
-StepWise_Vol_LowerFrac = 0.99
+StepWise_Vol_LowerFrac = 0.7
 # Volume fraction upperbound
-StepWise_Vol_UpperFrac = 1.01
+StepWise_Vol_UpperFrac = 1.1
 
 ### Gruneisen options ###
 # Volume fraction gruneisen change
@@ -124,4 +125,7 @@ Aniso_LocGrad_Type = 1D
 
 # Gradient for minimization
 min_RMS_gradient = 0.0001
+
+eq_of_state = Rose-Vinet
+
 

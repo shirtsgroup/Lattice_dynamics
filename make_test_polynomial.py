@@ -32,13 +32,13 @@ dlattice_parameters = (fractional_change * lattice_parameters)
 
 
 U = np.zeros(n_samples + 1)
-U[-1] = Pr.Potential_energy(Program, Coordinate_file=Coordinate_file, Parameter_file=Parameter_file)
+U[-1] = Pr.Potential_energy(Coordinate_file, Program, Parameter_file=Parameter_file)
 
 for i in range(n_samples):
     Ex.Expand_Structure(Coordinate_file, Program, 'lattice_parameters', molecules_in_coord,
                         Output, min_RMS_gradient, Parameter_file=Parameter_file,
                         dlattice_parameters=dlattice_parameters[i])
-    U[i] = Pr.Potential_energy(Program, Coordinate_file=Output + file_ending, Parameter_file=Parameter_file)
+    U[i] = Pr.Potential_energy(Output + file_ending, Program, Parameter_file=Parameter_file)
 
 np.save('U', U)
 
