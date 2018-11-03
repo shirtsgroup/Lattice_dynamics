@@ -245,7 +245,8 @@ def Spline_Intermediate_Points(Output, Method, Program, properties, Temperature,
             y[i] = Ex.triangle_crystal_matrix_to_array(Ex.Lattice_parameters_to_Crystal_matrix(properties[i, 7:13]))
 
     # Setting up an array to store the output properties
-    properties_out = np.zeros((len(np.unique(np.append(Temperature, properties[:, 0]))), len(properties[0, :])))
+#    properties_out = np.zeros((len(np.unique(np.append(Temperature, properties[:, 0]))), len(properties[0, :])))
+    properties_out = np.zeros((len(Temperature), len(properties[0, :])))
 
     # Setting a count on where to place the properties in the output matrix
     count = 0
