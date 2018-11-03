@@ -468,11 +468,11 @@ def Potential_energy(Coordinate_file, Program, Parameter_file=''):
     if Program == 'Tinker':
         U = Tinker_U(Coordinate_file, Parameter_file)
     elif Program == 'Test':
-        U = Test_U(keyword_parameters['Coordinate_file'])
+        U = Test_U(Coordinate_file)
     elif Program == 'CP2K':
-        U = CP2K_U(keyword_parameters['Coordinate_file'])
+        U = CP2K_U(Coordinate_file)
     elif Program == 'QE':
-        U = QE_U(keyword_parameters['Coordinate_file'])
+        U = QE_U(Coordinate_file)
     return U
 
 def Lattice_parameters(Program, Coordinate_file):

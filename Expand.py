@@ -654,10 +654,11 @@ def Isotropic_Local_Gradient(Coordinate_file, Program, Temperature, Pressure, Lo
 
     # Determining the volume of Coordinate_file
     volume = Pr.Volume(Program=Program, Coordinate_file=Coordinate_file)
+
     # Determining the change in lattice parameter for isotropic expansion
     dlattice_parameters_p = Isotropic_Change_Lattice_Parameters((volume + LocGrd_dV) / volume, Program, Coordinate_file)
     dlattice_parameters_m = Isotropic_Change_Lattice_Parameters((volume - LocGrd_dV) / volume, Program, Coordinate_file)
-    print(dlattice_parameters_p, dlattice_parameters_m)
+
     # Building the isotropically expanded and compressed strucutres
     Expand_Structure(Coordinate_file, Program, 'lattice_parameters', molecules_in_coord, 'plus', min_RMS_gradient,
                      dlattice_parameters=dlattice_parameters_p, Parameter_file=keyword_parameters['Parameter_file'])
@@ -696,7 +697,7 @@ def Isotropic_Local_Gradient(Coordinate_file, Program, Temperature, Pressure, Lo
     dS = (Pr.Vibrational_Entropy(Temperature, wavenumbers_plus, Statistical_mechanics)/molecules_in_coord -
           Pr.Vibrational_Entropy(Temperature, wavenumbers_minus, Statistical_mechanics)/molecules_in_coord) / \
          (2 * LocGrd_dV)
-    print(coordinate_plus, Coordinate_file, coordinate_minus)
+
     # Calculating the denominator of the local gradient d**2G/dV**2
     ddG = (Pr.Gibbs_Free_Energy(Temperature, Pressure, Program, wavenumbers_plus, coordinate_plus,
                                 Statistical_mechanics, molecules_in_coord,

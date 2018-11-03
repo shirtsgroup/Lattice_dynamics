@@ -8,7 +8,7 @@ import Expand as Ex
 import ThermodynamicProperties as Pr
 import Wavenumbers as Wvn
 import Numerical_Outputs as NO
-import System_sensativity as Ss
+import System_sensitivity as Ss
 import shutil
 import volume_constrained_minimization as vcm
 

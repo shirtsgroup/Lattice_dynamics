@@ -17,7 +17,7 @@ def program_cutoff(Program):
     elif Program == 'CP2K':
         cutoff = 5e-04
     elif Program == 'QE':
-	cutoff = 5e-04
+        cutoff = 5e-04
     return cutoff
 
 def isotropic_gradient_settings(Coordinate_file, Program, Parameter_file, molecules_in_coord, min_RMS_gradient, Output, 
