@@ -58,6 +58,7 @@ def Call_Expansion(Method, Purpose, Program, Coordinate_file, molecules_in_coord
         if (Method == 'GiQ') or (Method == 'GiQg') or (Method == 'SiQ') or (Method == 'SiQg'):
             dlattice_parameters = Isotropic_Change_Lattice_Parameters(keyword_parameters['volume_fraction_change'],
                                                                       Program, Coordinate_file)
+            
             Expand_Structure(Coordinate_file, Program, 'lattice_parameters', molecules_in_coord,
                              keyword_parameters['Output'], min_RMS_gradient, 
                              Parameter_file=keyword_parameters['Parameter_file'],
@@ -250,6 +251,7 @@ def Output_Test_New_Coordinate_File(lattice_parameters, Output):
 ##########################################
 #       CP2K MOLECULAR MODELING        #
 ##########################################
+
 def Return_CP2K_Coordinates(Coordinate_file):
     """
     This function opens a Tinker .xyz for a crystal and returns the 3x(number of atoms) matrix
@@ -294,6 +296,7 @@ def Ouput_CP2K_Coordinate_File(Coordinate_file, Parameter_file, coordinates, lat
     lattice_parameters = lattice parameters as an array ([a,b,c,alpha,beta,gamma])
     Output = file name of new .xyz file
     """
+    coordlines = open(Coordinate_file, 'r').readlines()
     xstr = []
     numatoms = np.shape(coordinates)[0]
     for d in range(3):                  
@@ -304,20 +307,79 @@ def Ouput_CP2K_Coordinate_File(Coordinate_file, Parameter_file, coordinates, lat
         file_out.write('REMARK'+ '\n')
         file_out.write('CRYST1'+str(xstr[0])+xstr[1]+xstr[2]+xstr[3]+xstr[4]+xstr[5]+'\n')
         for x in range(numatoms):
-
-            if (x+1) % 2 == 1:
-                ty = 'C'
-            else:
-                ty = 'H'
-            line =  '{:6s}{:5d} {:^4s}{:1s}{:3s} {:1s}{:4s}{:1s}   {:8.3f}{:8.3f}{:8.3f}{:6.2f}{:6.2f}          {:>2s}{:2s}'.format('ATOM',x+1, ty,'','','','','',coordinates[x,0],coordinates[x,1],coordinates[x,2], 0.0,0.0,ty,'')
+            linenum = coordlines[x+2].split()
+            mol = str(linenum[2])
+            ty = str(linenum[8])
+            line =  '{:6s}{:5d} {:^4s}{:1s}{:3s} {:1s}{:4s}{:1s}   {:8.3f}{:8.3f}{:8.3f}{:6.2f}{:6.2f}          {:>2s}{:2s}'.format('ATOM',x+1, mol,'','','','','',coordinates[x,0],coordinates[x,1],coordinates[x,2], 0.0,0.0,ty,'')
             file_out.write(line+'\n')
         file_out.write('END')
 
 
 def CP2K_minimization(Parameter_file, Coordinate_file, Output, min_RMS_gradient):
-    subprocess.call(['setup_wavenumber', '-t', 'geoopt', '-h', Output])
-    subprocess.call(['mpirun', '-np', '112', 'cp2k.popt', '-i', Output + '.inp'])
-    subprocess.call(['python', 'pulllastframe.py', '-f', 'GEOOPT-GEOOPT.pdb-pos-1.pdb', '-n', Output + '.pdb'])
+    print(Output)
+    subprocess.call(['setup_wavenumber','-t','geoopt','-h',Output])
+    subprocess.call(['mpirun', '-np','112','cp2k.popt','-i',Output+'.inp' ])
+    subprocess.call(['pulllastframe', '-f', 'GEOOPT-GEOOPT.pdb-pos-1.pdb' ,'-n', Output+'.pdb'])
+
+def Return_QE_Coordinates(Coordinate_file, lattice_parameters):
+
+    with open(Coordinate_file) as f:
+        coordlines = f.readlines()
+    coords = np.zeros((len(coordlines)-4,3))
+    for x in range(0,len(coordlines)-4):
+        coords[x,:] = coordlines[x+4].split()[1:4]
+        # Opening xyz coordinate file to expand
+    for x in range(0,len(coordlines)):
+        if '(crystal)' in coordlines[x].split():
+            crystal=True
+        else:
+            crystal=False
+    if crystal == True:
+        for x in range(0,len(coordlines)-3):
+            coords[x,:] = crystal_coord_to_cartesian(coords[x,:],lattice_parameters)
+
+    return coords
+    
+
+def Output_QE_New_Coordinate_File(Coordinate_file, Parameter_file, coordinates, lattice_parameters, Output, min_RMS_gradient):
+    
+    Output_QE_Coordinate_File(Coordinate_file, Parameter_file, coordinates, lattice_parameters, Output)
+
+    QE_minimization(Parameter_file, Output + '.qe', Output, min_RMS_gradient)
+
+
+def Output_QE_Coordinate_File(Coordinate_file, Parameter_file, coordinates, lattice_parameters, Output):
+    coordlines = open(Coordinate_file, 'r').readlines()
+    struct = open(Output+'.pw', 'w')
+    latt = open(Output+'.pwbv','w') 
+    print(coordlines)   
+    numatoms = np.shape(coordinates)[0]
+    print(numatoms)
+    
+    
+    for x in range(0,3):
+        struct.write(coordlines[x])
+    struct.write('ATOMIC_POSITIONS angstrom'+'\n')
+    for x in range(4,4+numatoms):
+        atomtype = coordlines[x].split()[0]
+        struct.write(atomtype+'    '+str(coordinates[x-4,0])+'   '+str(coordinates[x-4,1])+'    '+str(coordinates[x-4,2])+'\n')
+    latt.write('CELL_PARAMETERS angstrom'+'\n')
+    lattice_parameters = np.transpose(Lattice_parameters_to_Crystal_matrix(lattice_parameters))
+    for x in range(0,3):
+        latt.write(str(lattice_parameters[x,0])+'   '+str(lattice_parameters[x,1])+'   '+str(lattice_parameters[x,2])+'\n')
+
+
+def QE_minimization(Parameter_file, Coordinate_file, Output, min_RMS_gradient):
+    print(Coordinate_file)
+    subprocess.call(['setup_wavenumberQE','-t','geoopt','-h',Output])
+    #subprocess.call(['mpirun', '-np','112','pw.x','-i',Output+'.qe' ,'>',Output+'.out'])
+    #os.system('mpirun -np 112 pw.x -i '+Output+'.qe > '+Output+'.out')
+    #if os.path.exists(Coordinate_file[0:-3]+'.out') == False:
+    if 'D3' in os.getcwd(): 
+        os.system('mpirun -np 112 /home/schieber/q-e/bin/pw.x -i '+Output+'.qe > '+Output+'.out')
+    else: 
+        os.system('mpirun -np 112 pw.x -i '+Output+'.qe > '+Output+'.out')
+    subprocess.call(['pulllastframeQE', '-f', Output+'.out' ,'-n', Output+'.pw'])
 
 
 ##########################################
@@ -328,11 +390,34 @@ def assign_file_ending(program):
         return '.xyz'
     elif program == 'Test':
         return '.npy'
-    elif program == 'cp2k':
+    elif program == 'CP2K':
         return '.pdb'
+    elif program == 'QE':
+        return '.pw'
     else:
         print('ERROR: Program is not supported!')
         sys.exit()
+
+
+def crystal_coord_to_cartesian(coord, lattice_parameters):
+    a = lattice_parameters[0]
+    b = lattice_parameters[1]
+    c = lattice_parameters[2]
+    al = lattice_parameters[3]
+    be = lattice_parameters[4]
+    ga = lattice_parameters[5]
+    omega = a*c*c*(1+2*np.cos(al)*np.cos(be)*np.cos(ga)-(np.cos(al))**2-(np.cos(ga))**2-(np.cos(be))**2)**0.5
+    convert = np.zeros((3,3))
+    convert[0,0] = a
+    convert[0,1] = b*np.cos(ga)
+    convert[1,1] = b*np.sin(ga)
+    convert[0,2] = c*np.cos(be)
+    convert[1,2] = c*(np.cos(al)-np.cos(be)*np.cos(ga))/(np.sin(ga))
+    convert[2,2] = omega/(a*b*np.sin(ga))
+    coordm = np.transpose(coord)
+    cartcoord = np.transpose(np.matmul(convert,coordm))
+    return cartcoord
+    
 
 
 def Lattice_parameters_to_Crystal_matrix(lattice_parameters):
@@ -404,7 +489,8 @@ def Isotropic_Change_Lattice_Parameters(volume_fraction_change, Program, Coordin
         lattice_parameters = Pr.Test_Lattice_Parameters(Coordinate_file)
     elif Program == 'CP2K':
         lattice_parameters = Pr.CP2K_Lattice_Parameters(Coordinate_file)
-
+    elif Program == 'QE':
+        lattice_parameters, matrix = Pr.QE_Lattice_Parameters(Coordinate_file)
     # Calculating the new isotropic lattice parameters
     dlattice_parameters = lattice_parameters*volume_fraction_change**(1/3.) - lattice_parameters
 
@@ -480,6 +566,10 @@ def Expand_Structure(Coordinate_file, Program, Expansion_type, molecules_in_coor
         elif Program == 'CP2K':
             coordinates = Return_CP2K_Coordinates(Coordinate_file)
             lattice_parameters = Pr.CP2K_Lattice_Parameters(Coordinate_file)
+        elif Program == 'QE':
+            lattice_parameters, matrix = Pr.QE_Lattice_Parameters(Coordinate_file)
+            coordinates = Return_QE_Coordinates(Coordinate_file, lattice_parameters)
+           
 
         crystal_matrix = Lattice_parameters_to_Crystal_matrix(lattice_parameters)
 
@@ -491,7 +581,7 @@ def Expand_Structure(Coordinate_file, Program, Expansion_type, molecules_in_coor
                                                       axis=0)
             coordinates[i*atoms_per_molecule:(i+1)*atoms_per_molecule] = \
                 np.subtract(coordinates[i*atoms_per_molecule:(i+1)*atoms_per_molecule], coordinate_center_of_mass[i, :])
-
+        
         # Center of mass coordinates converted to fractional coordinates
         coordinate_center_of_mass = np.dot(np.linalg.inv(crystal_matrix), coordinate_center_of_mass.T).T
         if Expansion_type == 'lattice_parameters':
@@ -515,6 +605,9 @@ def Expand_Structure(Coordinate_file, Program, Expansion_type, molecules_in_coor
                                               lattice_parameters, Output, min_RMS_gradient)
         elif Program == 'CP2K':
             Output_CP2K_New_Coordinate_File(Coordinate_file, keyword_parameters['Parameter_file'], coordinates,
+                                              lattice_parameters, Output, min_RMS_gradient)
+        elif Program == 'QE':
+            Output_QE_New_Coordinate_File(Coordinate_file, keyword_parameters['Parameter_file'], coordinates,
                                               lattice_parameters, Output, min_RMS_gradient)
 
 ###################################################
@@ -555,13 +648,16 @@ def Isotropic_Local_Gradient(Coordinate_file, Program, Temperature, Pressure, Lo
     elif Program == 'CP2K':
         coordinate_plus = 'plus.pdb'
         coordinate_minus = 'minus.pdb'
+    elif Program == 'QE':
+        coordinate_plus = 'plus.pw'
+        coordinate_minus = 'minus.pw'
 
     # Determining the volume of Coordinate_file
     volume = Pr.Volume(Program=Program, Coordinate_file=Coordinate_file)
     # Determining the change in lattice parameter for isotropic expansion
     dlattice_parameters_p = Isotropic_Change_Lattice_Parameters((volume + LocGrd_dV) / volume, Program, Coordinate_file)
     dlattice_parameters_m = Isotropic_Change_Lattice_Parameters((volume - LocGrd_dV) / volume, Program, Coordinate_file)
-
+    print(dlattice_parameters_p, dlattice_parameters_m)
     # Building the isotropically expanded and compressed strucutres
     Expand_Structure(Coordinate_file, Program, 'lattice_parameters', molecules_in_coord, 'plus', min_RMS_gradient,
                      dlattice_parameters=dlattice_parameters_p, Parameter_file=keyword_parameters['Parameter_file'])
@@ -600,7 +696,7 @@ def Isotropic_Local_Gradient(Coordinate_file, Program, Temperature, Pressure, Lo
     dS = (Pr.Vibrational_Entropy(Temperature, wavenumbers_plus, Statistical_mechanics)/molecules_in_coord -
           Pr.Vibrational_Entropy(Temperature, wavenumbers_minus, Statistical_mechanics)/molecules_in_coord) / \
          (2 * LocGrd_dV)
-
+    print(coordinate_plus, Coordinate_file, coordinate_minus)
     # Calculating the denominator of the local gradient d**2G/dV**2
     ddG = (Pr.Gibbs_Free_Energy(Temperature, Pressure, Program, wavenumbers_plus, coordinate_plus,
                                 Statistical_mechanics, molecules_in_coord,

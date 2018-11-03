@@ -1,0 +1,52 @@
+#!/usr/bin/env python
+
+import numpy as np
+
+def writenewpdb(filename, towrite):
+
+    file1 = open(filename,'r')
+    filelines = file1.readlines()
+    aline = 0
+    lastline = 0
+    eline = 0
+    test = open('test','w+')
+    print(len(filelines)) 
+    cellrelax = False
+    for y in range(0,len(filelines)):
+        test.write(filelines[y])
+        if  'ATOMIC_POSITIONS' in filelines[y]:
+            aline = y
+        if 'CELL_PARAMETERS' in filelines[y]:
+            cellrelax = True    
+        if 'Harris-' in filelines[y]:
+            energy = filelines[y-1].split()[4]
+        if 'number of atoms/cell' in filelines[y]:
+            atomnum = filelines[y].split()[4]
+            ntype = filelines[y+1].split()[5]
+    lastline = aline+int(atomnum)
+    print(aline, lastline, energy)
+    f = open(towrite,'w+')
+    f.write('! numatoms = '+ str(int(atomnum))+ '\n')
+    f.write('! ntype = '+str(int(ntype))+'\n')
+    f.write('!Energy of the structure is '+energy+'\n')
+    for x in range(aline, lastline+1):
+        f.write(filelines[x])
+    
+    f.close()
+    if cellrelax == True:
+        fbv = open(towrite+'bv','w+')
+        for x in range(aline-5, aline-1):
+            fbv.write(filelines[x])
+
+
+if __name__ == '__main__':
+    from optparse import OptionParser
+
+    parser = OptionParser()
+    parser.add_option("-f", "--file", dest="filename")
+    parser.add_option("-n", dest="towrite")
+    (options, args) = parser.parse_args()
+    filename = options.filename
+    towrite = options.towrite
+    writenewpdb(filename, towrite)
+

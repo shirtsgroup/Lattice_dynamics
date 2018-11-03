@@ -32,7 +32,7 @@ def Temperature_Lattice_Dynamics(Temperature=[0.,300.], Pressure=1., Method='HA'
         else:
             print("   Computing wavenumbers of coordinate file")
             wavenumbers = Wvn.Call_Wavenumbers(Method, min_RMS_gradient, Program=Program, Coordinate_file=Coordinate_file,
-                                               Parameter_file=Parameter_file, cp2kroot=cp2kroot)
+                                               Parameter_file=Parameter_file, Output=Output)
             np.save(Output + '_' + Method + '_WVN', wavenumbers)
 
         if all(wavenumbers > Wavenum_Tol):
@@ -187,7 +187,7 @@ if __name__ == '__main__':
     try:
         Program = subprocess.check_output("less " + str(args.Input_file) + " | grep Program | grep = ", shell=True).decode("utf-8")
         Program = Program.split('=')[1].strip()
-        if Program not in ['Tinker', 'Test', 'CP2K']:
+        if Program not in ['Tinker', 'Test', 'CP2K', 'QE']:
             print("Input program is not supported. Please select from the following:")
             print("   Tinker, Test")
             print("Exiting code")

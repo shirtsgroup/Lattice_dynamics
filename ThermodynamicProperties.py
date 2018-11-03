@@ -43,8 +43,11 @@ def Properties(Coordinate_file, wavenumbers, Temperature, Pressure, Program, Sta
         # Potential energy
         properties[7:13] = Tinker_Lattice_Parameters(Coordinate_file)  # Lattice parameters
     elif Program == 'CP2K':
-        properties[3] = CP2K_U(cp2kroot) / molecules_in_coord  # Potential energy
+        properties[3] = CP2K_U(Coordinate_file) / molecules_in_coord  # Potential energy
         properties[7:13] = CP2K_Lattice_Parameters(Coordinate_file)  # Lattice parameters
+    elif Program == 'QE':
+        properties[3] = QE_U(Coordinate_file) / molecules_in_coord
+        properties[7:13], matrix = QE_Lattice_Parameters(Coordinate_file)
     elif Program == 'Test':
         properties[3] = Test_U(Coordinate_file) / molecules_in_coord  # Potential energy
         properties[7:13] = Test_Lattice_Parameters(Coordinate_file)  # Lattice parameters
@@ -241,6 +244,8 @@ def atoms_count(Program, Coordinate_file, molecules_in_coord=1):
         atoms_in_coord = len(Wvn.Test_Wavenumber(Coordinate_file, True)) / 3
     elif Program == 'CP2K':
         atoms_in_coord = len(Ex.Return_CP2K_Coordinates(Coordinate_file)[:, 0])
+    elif Program == 'QE':
+        atoms_in_coord = len(QE_atoms_per_molecule(Coordinate_file, 1))
     return int(atoms_in_coord / molecules_in_coord)
 
 
@@ -339,7 +344,7 @@ def Test_Lattice_Parameters(Coordinate_file):
 #                 CP2K                   #
 ##########################################
 
-def CP2K_U(cp2kroot):
+def CP2K_U(coordinate_file):
     """
     This function takes a set of lattice parameters in a .npy file and returns the potential energy
     Random funcitons can be input here to run different tests and implimented new methods efficiently
@@ -347,11 +352,9 @@ def CP2K_U(cp2kroot):
     **Required Inputs
     Coordinate_file = File containing lattice parameters
     """
-    l = open(cp2kroot+'-r-0.out')
+    l = open(coordinate_file)
     lines = l.readlines()
-    for x in range(0,len(lines)):
-        if 'ENERGY| Total FORCE_EVAL ( QS ) energy (a.u.): ' in lines[x]:
-            U = float(lines[x].split()[-1])*627.5	   
+    U = float(lines[0].split()[-1])*627.5	   
     return U
 
 
@@ -387,6 +390,39 @@ def CP2K_atoms_per_molecule(Coordinate_file, molecules_in_coord):
     atoms_per_molecule = numatoms / molecules_in_coord
     return atoms_per_molecule
 
+def QE_U(Coordinate_file):
+    print('getting energy from'+Coordinate_file)
+    with open(Coordinate_file,'r') as lines:
+        rlines = lines.readlines()
+        energy = float(rlines[2].split()[5]) *313.754
+    return energy
+
+def QE_Lattice_Parameters(Coordinate_file):
+    lfile = open(Coordinate_file+'bv')
+    lines = lfile.readlines()
+    matrix = np.zeros((3,3))
+    for x in range(0,3):
+        vect = lines[x+1]
+        matrix[x,0] = float(vect.split()[0])
+        matrix[x,1] = float(vect.split()[1])
+        matrix[x,2] = float(vect.split()[2])
+    lattice_parameters = Ex.crystal_matrix_to_lattice_parameters(np.transpose(matrix))
+    return lattice_parameters, matrix
+
+
+
+
+def QE_atoms_per_molecule(Coordinate_file, molecules_in_coord):
+    lfile = open(Coordinate_file)
+    filelines = lfile.readlines()
+    numatom = 0
+    for x in range(0,len(filelines)):
+        if filelines[x].split()[0] in ['C','H','O','S','I','Cl','N']:
+            numatom+=1
+    atoms_per_molecule = numatom / molecules_in_coord
+    return atoms_per_molecule
+
+
 
 ##########################################
 #           THERMO-PROPERTIES            #
@@ -418,6 +454,9 @@ def Volume(**keyword_parameters):
         elif program == 'CP2K':
             # Retrieving lattice parameters of a test coordinate file
             lattice_parameters = CP2K_Lattice_Parameters(coordinate_file)
+        elif program == 'QE':
+            print('gettinc lattice from'+coordinate_file)
+            lattice_parameters, matrix = QE_Lattice_Parameters(coordinate_file)
     V = lattice_parameters[0] * lattice_parameters[1] * lattice_parameters[2] * np.sqrt(
         1 - np.cos(np.radians(lattice_parameters[3])) ** 2 - np.cos(np.radians(lattice_parameters[4])) ** 2 - np.cos(
             np.radians(lattice_parameters[5])) ** 2 + 2 * np.cos(np.radians(lattice_parameters[3])) * np.cos(
@@ -429,7 +468,11 @@ def Potential_energy(Coordinate_file, Program, Parameter_file=''):
     if Program == 'Tinker':
         U = Tinker_U(Coordinate_file, Parameter_file)
     elif Program == 'Test':
-        U = Test_U(Coordinate_file)
+        U = Test_U(keyword_parameters['Coordinate_file'])
+    elif Program == 'CP2K':
+        U = CP2K_U(keyword_parameters['Coordinate_file'])
+    elif Program == 'QE':
+        U = QE_U(keyword_parameters['Coordinate_file'])
     return U
 
 def Lattice_parameters(Program, Coordinate_file):
@@ -437,6 +480,10 @@ def Lattice_parameters(Program, Coordinate_file):
         lattice_parameters = Tinker_Lattice_Parameters(Coordinate_file)
     elif Program == 'Test':
         lattice_parameters = Test_Lattice_Parameters(Coordinate_file)
+    elif Program == 'CP2K':
+        lattice_parameters = CP2K_Lattice_Parameters(Coordinate_file)
+    elif Program == 'QE':
+        lattice_parameters, matrix = QE_Lattice_Parameters(Coordinate_file)
     return lattice_parameters
 
 def RotationFree_StrainArray_from_CrystalMatrix(ref_crystal_matrix, new_crystal_matrix):
@@ -502,8 +549,8 @@ def Quantum_Vibrational_A(Temperature, wavenumbers):
     wavenumbers = array of wavenumber (in order with the first three being 0 cm**-1 for the translational modes)
     """
     c = 2.998 * 10 ** 10  # Speed of light in cm/s
-    h = 2.520 * 10 ** (-35)  # Reduced Plank's constant in cal*s
-    k = 3.2998 * 10 ** (-24)  # Boltzmann constant in cal*K
+    h = 2.520 * 10 ** (-38)  # Reduced Plank's constant in kcal/s
+    k = 3.2998 * 10 ** (-27)  # Boltzmann constant in kcal/K
     Na = 6.022 * 10 ** 23  # Avogadro's number
     beta = 1 / (k * Temperature)
     wavenumbers = np.sort(wavenumbers)
@@ -511,13 +558,13 @@ def Quantum_Vibrational_A(Temperature, wavenumbers):
     for i in wavenumbers[3:]:  # Skipping translational modes
         if i > 0:  # Skipping negative wavenumbers
             if Temperature == 0:
-                a = ((h * i * c * np.pi) * Na / 1000 )
+                a = ((h * i * c / (4 * np.pi)) )
             else:
-                a = ((h * i * c * np.pi) + (k * Temperature) * np.log(1 - np.exp(-beta * h * i * c * 2 * np.pi))) * Na / 1000
+                a = ((h * i * c / (4 *np.pi)) + (k * Temperature) * np.log(1 - np.exp(-beta * h * i * c / (2 * np.pi))))
             A.append(a)
         else:
             pass
-    A = sum(A)
+    A = sum(A)*Na
     return A
 
 def Vibrational_Entropy(Temperature, wavenumbers, Statistical_mechanics):
@@ -582,20 +629,19 @@ def Quantum_Vibrational_S(Temperature, wavenumbers):
     wavenumbers = array of wavenumber (in order with the first three being 0 cm**-1 for the translational modes)
     """
     c = 2.998 * 10 ** 10  # Speed of light in cm/s
-    h = 2.520 * 10 ** (-35)  # Reduced Plank's constant in cal*s
-    k = 3.2998 * 10 ** (-24)  # Boltzmann constant in cal*K
+    h = 2.520 * 10 ** (-38)  # Reduced Plank's constant in cal*s
+    k = 3.2998 * 10 ** (-27)  # Boltzmann constant in cal*K
     Na = 6.022 * 10 ** 23  # Avogadro's number
     beta = 1 / (k * Temperature)
     wavenumbers = np.sort(wavenumbers)
     S = []
     for i in wavenumbers[3:]:
         if i > 0:
-            s = (h * i * c * 2 * np.pi / (Temperature * (np.exp(beta * h * i * c * 2 * np.pi) - 1)) - k * np.log(
-                1 - np.exp(-beta * h * i * c * 2 * np.pi))) * Na / 1000
+            s = ((h * i * c / (2 * np.pi))/(Temperature*(np.exp(h * i * c * beta / (2* np.pi))-1))) - (k*Temperature*np.log(1-np.exp(-h * i * c * beta / (2 *np.pi))))
             S.append(s)
         else:
             pass
-    S = sum(S)
+    S = sum(S)*Na
     return S
 
 
@@ -623,7 +669,10 @@ def Gibbs_Free_Energy(Temperature, Pressure, Program, wavenumbers, Coordinate_fi
         U = Tinker_U(Coordinate_file, keyword_parameters['Parameter_file']) / molecules_in_coord  # Potential Energy
     elif Program == 'Test':
         U = Test_U(Coordinate_file) / molecules_in_coord
-
+    elif Program == 'CP2K':
+        U = CP2K_U(Coordinate_file)
+    elif Program == 'QE':
+        U = QE_U(Coordinate_file)
     # Volume
     volume = Volume(Program=Program, Coordinate_file=Coordinate_file)
 

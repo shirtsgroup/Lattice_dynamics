@@ -1,0 +1,105 @@
+#!/bin/bash
+
+SETRUN_ARGS="$@"
+#Default Values
+molecule="benzene"
+polymorph_list="p1"
+ty="cellopt"
+nummol="4"
+hinge=""
+runfiles="/home/schieber/runfiles_HA"
+
+
+
+#options passed in from the users
+while getopts "p:m:t:n:h:" opt; do
+        case $opt in
+        p )
+                polymorph_list=$OPTARG
+                ;;
+        m )
+                molecule=$OPTARG
+                ;;
+        t )
+                ty=$OPTARG
+                ;;
+        n )
+                nummol=$OPTARG
+                ;;
+        h )
+                hinge=$OPTARG
+                ;;
+        esac
+done
+
+for polymorph_num in $polymorph_list; do
+runname=""
+
+#copy all requisite files
+
+
+qefile="${hinge}.pw"
+natom=$( less ${hinge}.pw | grep "natoms\|numatoms" | awk '{print $4}' )
+ntype=$( less ${hinge}.pw | grep "ntype" | awk '{print $4}' )
+cp ${runfiles}/*.UPF ./
+
+if [ $ty == "geoopt" ]; then
+        cp ${runfiles}/submit_cluster.slurmQE ./
+        cp ${runfiles}/geoopt.qe ./
+        caltype="relax"
+        sed -i "s/INPUT/${hinge}.qe/g" submit_cluster.slurmQE
+        sed -i "s/OUTPUT/${hinge}.out/g" submit_cluster.slurmQE
+        cat geoopt.qe ${hinge}.pw ${runfiles}/QEkpoints1  ${hinge}.pwbv > ${hinge}.qe
+        sed -i "s/HINGE/${hinge}/g" ${hinge}.qe
+        sed -i "s/NATOMS/${natom}/g" ${hinge}.qe
+        sed -i "s/NTYPE/${ntype}/g" ${hinge}.qe
+        sed -i "s/CAL/${caltype}/g" ${hinge}.qe
+	if [[ "$PWD" =~ "D3" ]]; then
+                sed -i "s/DFT-D2/DFT-D3/g" ${hinge}.qe
+        fi
+
+elif [ $ty == "nma" ]; then
+        cp ${runfiles}/submit_cluster.slurmPHONON ./
+        cp ${runfiles}/scf.qe ./
+        cp ${runfiles}/phonon.qe ./${hinge}phonon.qe
+        cp ${runfiles}/matdyn.qe ./${hinge}matdyn.qe
+        caltype="scf"
+        sed -i "s/INPUT/${hinge}/g" submit_cluster.slurmPHONON
+        sed -i "s/OUTPUT/${hinge}/g" submit_cluster.slurmPHONON
+        cat scf.qe ${hinge}.pw ${runfiles}/QEkpoints1  ${hinge}.pwbv > ${hinge}scf.qe
+        sed -i "s/HINGE/${hinge}/g" ${hinge}scf.qe
+        sed -i "s/NATOMS/${natom}/g" ${hinge}scf.qe
+        sed -i "s/NTYPE/${ntype}/g" ${hinge}scf.qe
+        echo $caltype
+        sed -i "s/TYPE/${caltype}/g" ${hinge}scf.qe
+        sed -i "s/HINGE/${hinge}/g" ${hinge}phonon.qe
+        sed -i "s/HINGE/${hinge}/g" ${hinge}matdyn.qe
+	if [-f "${hinge}.mat1" ]; then
+		sed -i "s/RESFALSE/true/g" ${hinge}phonon.qe
+	else 
+		sed -i "s/RESFALSE/false/g" ${hinge}phonon.qe
+	fi
+	if [[ "$PWD" =~ "D3" ]]; then
+                sed -i "s/DFT-D2/DFT-D3/g" ${hinge}scf.qe
+        fi
+
+
+
+fi
+
+if [ "$natom" == "48" ]; then
+        sed -i '/N.pbe/d' *.qe
+        sed -i '/S.pbe/d' *.qe
+        sed -i '/O.pbe/d' *.qe
+
+elif  [ "$natom" == "56" ] && [ "$ntype" == "3" ]; then
+        sed -i '/N.pbe/d' *.qe
+
+fi
+
+if [[ "$PWD" =~ "BLYP" ]]; then
+	sed -i "s/pbe-kjpaw_psl.0.1/blyp-van_ak/g" *.qe
+fi
+
+done
+##replace structure file

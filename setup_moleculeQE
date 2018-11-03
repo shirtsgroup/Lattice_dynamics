@@ -1,0 +1,128 @@
+#!/bin/bash
+
+SETRUN_ARGS="$@"
+#Default Values
+molecule="benzene"
+polymorph_list="p1 p2"
+ty="geoopt"
+nummol="4"
+hinge=""
+runfiles="/home/schieber/runfiles_HA"
+runfiles2="/pylon5/ct4s8bp/schieber/QHA_Paper_Data/QE_finalruns/optimized_structures"
+
+
+#options passed in from the users
+while getopts "p:m:t:n:h:" opt; do
+        case $opt in
+        p )
+                polymorph_list=$OPTARG
+                ;;
+        m )
+                molecule=$OPTARG
+                ;;
+        t )
+                ty=$OPTARG
+                ;;
+        n )
+                nummol=$OPTARG
+                ;;
+        h )
+                hinge=$OPTARG
+                ;;
+        esac
+done
+
+for polymorph_num in $polymorph_list; do
+runname=${molecule}${polymorph_num}${ty}
+
+mkdir $runname
+
+#copy all requisite files
+cp ${runfiles}/submit_cluster.slurmQE ${runname}/
+cp ${runfiles}/*.UPF ${runname}/
+
+
+if [ $ty == "cellopt" ]; then
+        qefile="${molecule}_${polymorph_num}_${nummol}.pw"
+#        cp ${runfiles}/${molecule}_${polymorph_num}_${nummol}.pw ${runname}/
+#        cp ${runfiles}/${molecule}_${polymorph_num}_${nummol}.pwbv ${runname}/
+#        cat ${runfiles}/${ty}.qe ${runfiles}/${molecule}_${polymorph_num}_${nummol}.pw ${runfiles}/QEkpoints ${runfiles}/${molecule}_${polymorph_num}_${nummol}.pwbv > ${runname}/${ty}.qe
+        cp ${runfiles2}/${molecule}${polymorph_num}geoopt.pw ${runname}/
+        cp ${runfiles2}/${molecule}${polymorph_num}geoopt.pwbv ${runname}/
+        cat ${runfiles}/${ty}.qe ${runfiles2}/${molecule}${polymorph_num}geoopt.pw ${runfiles}/QEkpoints ${runfiles2}/${molecule}${polymorph_num}geoopt.pwbv > ${runname}/${ty}.qe
+	natom=$( less ${runname}/${molecule}${polymorph_num}geoopt.pw | grep "numatoms" | awk '{print $4}' )
+	ntype=$( less ${runname}/${molecule}${polymorph_num}geoopt.pw | grep "ntype" | awk '{print $4}' )
+#	natom=$( less ${runfiles}/${molecule}_${polymorph_num}_${nummol}.pw | grep "numatoms" | awk '{print $3}' )
+#        ntype=$( less ${runfiles}/${molecule}_${polymorph_num}_${nummol}.pw | grep "ntype" | awk '{print $4}' )
+        caltype="vc-relax"
+	echo ${runname}/${molecule}${polymorph_num}geoopt.pw
+	echo $natom
+	echo $ntype
+	
+elif [ $ty == "geoopt" ]; then
+        qefile="${molecule}${polymorph_num}cellopt.pw"
+        cp ${runfiles2}/${molecule}${polymorph_num}geoopt.pw ${runname}/
+        cp ${runfiles2}/${molecule}${polymorph_num}geoopt.pwbv ${runname}/
+        cat ${runfiles}/${ty}.qe ${runfiles2}/${molecule}${polymorph_num}geoopt.pw ${runfiles}/QEkpoints ${runfiles2}/${molecule}${polymorph_num}geoopt.pwbv > ${runname}/${ty}.qe
+        natom=$( less ${runfiles}/${molecule}_${polymorph_num}_${nummol}.pw | grep "numatoms" | awk '{print $4}' )
+        ntype=$( less ${runfiles}/${molecule}_${polymorph_num}_${nummol}.pw | grep "ntype" | awk '{print $4}' )
+        caltype="relax"
+        
+
+else
+        qefile="${molecule}${polymorph_num}geoopt.pw"
+        cp ${runfiles2}/${molecule}${polymorph_num}geoopt.pw ${runname}/
+        cp ${runfiles2}/${molecule}${polymorph_num}geoopt.pwbv ${runname}/
+        cat ${runfiles}/${ty}.qe ${runfiles2}/${molecule}${polymorph_num}geoopt.pw ${runfiles}/QEkpoints ${runfiles2}/${molecule}${polymorph_num}geoopt.pwbv > ${runname}/${ty}.qe
+        natom=$( less ${runfiles}/${molecule}_${polymorph_num}_${nummol}.pw | grep "numatoms" | awk '{print $4}' )
+        ntype=$( less ${runfiles}/${molecule}_${polymorph_num}_${nummol}.pw | grep "ntype" | awk '{print $4}' )
+        caltype="scf"
+        cp ${runfiles}/submit_cluster.slurmPHONON ${runname}/
+fi
+#replace run name
+cd $runname
+#
+sed -i "s/HINGE/${hinge}/g" ${ty}.qe
+sed -i "s/NATOMS/${natom}/g" ${ty}.qe
+sed -i "s/NTYPE/${ntype}/g" ${ty}.qe
+sed -i "s/CAL/${caltype}/g" ${ty}.qe
+sed -i "s/INPUT/${ty}.qe/g" submit_cluster.slurmQE
+sed -i "s/OUTPUT/${ty}.out/g" submit_cluster.slurmQE
+
+if [ $ty == "nma" ]; then
+cp ${runfiles}/phonon.qe ./
+cp ${runfiles}/matdyn.qe ./
+
+sed -i "s/HINGE/${hinge}/g"
+sed -i "s/HINGE/${hinge}/g"
+
+fi
+
+if [ "$natom" == "48" ]; then
+        sed -i '/N.pbe/d' *.qe
+        sed -i '/S.pbe/d' *.qe
+        sed -i '/O.pbe/d' *.qe
+
+elif  [ "$natom" == "56" ] && [ "$ntype" == "3" ]; then
+        sed -i '/N.pbe/d' *.qe
+
+fi
+
+if [[ "$PWD" =~ "D3" ]]; then
+        sed -i "s/DFT-D2/DFT-D3/g" cellopt.qe
+        sed -i "s/DFT-D2/DFT-D3/g" geoopt.qe
+	sed -i "s&pw.x&/home/schieber/q-e/bin/pw.x&g" submit_cluster*
+
+fi
+
+if [[ "$PWD" =~ "BLYP" ]]; then
+        sed -i "s/pbe-kjpaw_psl.0.1/blyp-van_ak/g" cellopt.qe
+        sed -i "s/pbe-n-kjpaw_psl.0.1/blyp-van_ak/g" cellopt.qe
+        sed -i "s/6.2.1/6.0.0/g" submit_cluster*
+        sed -i "s/pbe-n-kjpaw_psl.0.2/blyp-van_ak/g" cellopt.qe
+fi
+
+
+cd ..
+done
+##replace structure file

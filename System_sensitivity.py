@@ -5,16 +5,19 @@ import sys
 import Expand as Ex
 import ThermodynamicProperties as Pr
 import numpy as np
-import matplotlib 
+import matplotlib
 matplotlib.use('Agg')
-import matplotlib.pyplot as plt
-
+import pylab as plt
 
 def program_cutoff(Program):
     if Program == 'Tinker':
         cutoff = 5e-04
     elif Program == 'Test':
         cutoff = 5e-05
+    elif Program == 'CP2K':
+        cutoff = 5e-04
+    elif Program == 'QE':
+	cutoff = 5e-04
     return cutoff
 
 def isotropic_gradient_settings(Coordinate_file, Program, Parameter_file, molecules_in_coord, min_RMS_gradient, Output, 

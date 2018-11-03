@@ -1,0 +1,92 @@
+#!/bin/bash
+
+#SETUP DEFAULT VALUES AND READ IN PARAMETERS FROM USER
+#=============================================================================================
+
+SETRUN_ARGS="$@"
+#Default Values
+molecule="benzene"
+polymorph_list="p1 p2"
+ty="geoopt"
+nummol="4"
+hinge=""
+runfiles="/home/nasc5274/crystals/QM_NMA/runfiles_HA"
+
+
+
+#options passed in from the users
+while getopts "p:m:t:n:h:" opt; do
+        case $opt in
+        p )
+                polymorph_list=$OPTARG
+                ;;
+        m )
+                molecule=$OPTARG
+                ;;
+	t )
+		ty=$OPTARG
+		;;
+        n )
+		nummol=$OPTARG
+		;;
+	h )
+		hinge=$OPTARG
+		;;
+        esac
+done
+
+for polymorph_num in $polymorph_list; do
+runname=${molecule}${polymorph_num}${ty}
+
+mkdir $runname
+
+#copy all requisite files
+cp ${runfiles}/submit_cluster.slurm ${runname}/
+cp ${runfiles}/dftd3.dat ${runname}/
+cp ${runfiles}/GTH_BASIS_SETS ${runname}/
+cp ${runfiles}/GTH_POTENTIALS ${runname}/
+cp ${runfiles}/KIND_BASIS_POTENTIAL.inc ${runname}/
+cp ${runfiles}/${ty}.inp ${runname}/
+cp ${runfiles}/POTENTIAL_DCACP_BLYP ${runname}/
+
+if [ $ty == "cellopt"]; then 
+        pdbfile="${molecule}_${polymorph_num}_${nummol}.pdb" 
+        cp ${runfiles}/${molecule}_${polymorph_num}_${nummol}.pdb ${runname}/
+
+elif [ $ty == "geoopt"]; then
+        pdbfile="${molecule}${polymorph_num}cellopt${hinge}.pdb "
+        cp ${runfiles}/${molecule}${polymorph_num}cellopt${hinge}.pdb ${runname}/
+
+else
+    pdbfile="molecule}${polymorph_num}geoopt${hinge}.pdb"
+    cp ${runfiles}/${molecule}${polymorph_num}geoopt${hinge}.pdb ${runname}/
+fi
+#replace run name
+cd $runname
+
+sed -i "s/POLY/${runname}/g" ${ty}.inp
+#replace structure file
+sed -i "s/COORDFILE/${molecule}_${polymorph_num}_${nummol}.pdb/g" ${ty}.inp
+
+#replace box vectors and angles
+bv1=$( less ${pdbfile} | grep "CRYST1" | awk '{print $2}' )
+bv2=$( less ${pdbfile} | grep "CRYST1" | awk '{print $3}' )
+bv3=$( less ${pdbfile} | grep "CRYST1" | awk '{print $4}' )
+ba1=$( less ${pdbfile} | grep "CRYST1" | awk '{print $5}' )
+ba2=$( less ${pdbfile} | grep "CRYST1" | awk '{print $6}' )
+ba3=$( less ${pdbfile} | grep "CRYST1" | awk '{print $7}' )
+
+sed -i "s/AAA/${bv1}/g" ${ty}.inp
+sed -i "s/BBB/${bv2}/g" ${ty}.inp
+sed -i "s/CCC/${bv3}/g" ${ty}.inp
+sed -i "s/ANGLE1/${ba1}/g" ${ty}.inp
+sed -i "s/BETA/${ba2}/g" ${ty}.inp
+sed -i "s/GAMMA/${ba3}/g" ${ty}.inp
+
+
+#fix slurm file
+sed -i "s/INPUT/${ty}.inp/g" submit_cluster.slurm
+sed -i "s/OUTPUT/${runname}.out/g" submit_cluster.slurm
+cd ..
+
+done
