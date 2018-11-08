@@ -85,6 +85,9 @@ def Temperature_Lattice_Dynamics(Temperature=[0.,300.], Pressure=1., Method='HA'
         if any(LocGrd_CMatrix_FracStep != 0.):
             crystal_matrix_array = Ex.triangle_crystal_matrix_to_array(Ex.Lattice_parameters_to_Crystal_matrix(Pr.Lattice_parameters(Program, Coordinate_file)))
             LocGrd_dC = np.absolute(LocGrd_CMatrix_FracStep * crystal_matrix_array)
+            for i in range(len(LocGrd_dC)):
+                if LocGrd_dC[i] == 0.:
+                    LocGrd_dC[i] = LocGrd_CMatrix_FracStep[i]
         else:
             LocGrd_dC = Ss.anisotropic_gradient_settings(Coordinate_file, Program, Parameter_file, molecules_in_coord,
                                                          min_RMS_gradient, Output)
