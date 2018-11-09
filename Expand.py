@@ -398,7 +398,7 @@ def assign_file_ending(program):
         print('ERROR: Program is not supported!')
         sys.exit()
 
-
+#NSA: Why is this here? This is just a duplicate of something already written
 def crystal_coord_to_cartesian(coord, lattice_parameters):
     a = lattice_parameters[0]
     b = lattice_parameters[1]

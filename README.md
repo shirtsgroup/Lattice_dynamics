@@ -10,6 +10,10 @@ Supported Programs:
 - Test systems: We have provided two funcitons to compute the  lattice energy and wavenumbers. More information can
 be found in Test_Systems/Test/0README.md.
 
+Additional packages to install
+- Munkres http://software.clapper.org/munkres/
+
+
 Running the scripts:
 1) Contained in this directory, is an input.py file containing all of the user specified options. Move a copy of this
 input file to another directory containing the coordinate file (and parameter file).
