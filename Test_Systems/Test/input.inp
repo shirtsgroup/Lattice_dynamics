@@ -21,7 +21,7 @@ Pressure = 1
 # GiQg - Gradient isotropic quasi-harmonic approximation with Gruneisen parameter
 # GaQ  - Gradient anisotropic quasi-harmonic approximation
 # GaQg - Gradient anisotropic quasi-harmonic approximation with Gruneisen parameter
-Method = SaQply
+Method = GaQg
 
 ## Output
 # Output name for files
@@ -81,7 +81,7 @@ NumAnalysis_method = RK4
 
 ## Stepsize numerical analysis
 # Right now only temperature is the only input option
-NumAnalysis_step = 70.
+NumAnalysis_step = 35.
 
 ## Local gradient presets
 # These options are tuned best for a wide array of options
