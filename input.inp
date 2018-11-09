@@ -1,16 +1,14 @@
 ##Input file
 
 ### General Inputs ###
-## Temperature
-# Import numpy array of temperatures
+## Temperature = desired temperature to be output in Kelvin
 Temperature = 0.,10.,20.,30.,40.,50.,60.,70.,80.,90.,100.,110.,120.,130.,140.,150.,160.,170.,180.,190.,200.,210.,220.,230.,240.,250.,260.,270.,280.,290.,300.
 
-## Pressure
+## Pressure = desired pressure for run in atm
 # Only set up for single pressure values
 Pressure = 1.
 
 ## Method
-# Only one method is accepted currently
 # Option - Description:
 # HA   - Harmonic approximation
 # SiQ  - Stepwise isotropic quasi-harmonic approximation
@@ -23,7 +21,7 @@ Method = HA
 
 ## Output
 # Output name for files
-# Example: out would output Gibbs energy as out_G.npy
+# Example: if 'Output = out' and you wanted the Classical Gibbs free energy for HA the output file would be out_GClassical_HA.npy
 Output = out
 
 ## Program
@@ -34,10 +32,7 @@ Output = out
 # CP2K - CP2K Quantum mechanical package
 Program = Tinker
 
-## Statistical mechanics
-# Option - Description
-# Classical - Classical
-# Quantum - Quantum
+## Statistical mechanics = either Classical or Quantum
 Statistical_mechanics = Classical
 
 ## Structure
@@ -51,14 +46,12 @@ Parameter_file = keyfile.key
 ## Root for cp2k files
 cp2kroot = BNZ_NMA_p1
 
-## Nuber of molecules
-#****I want to eventually replace this with a program specific code to look at connectivity
+## Nuber of molecules in coordinate file
 molecules_in_coord = 4
 
 ## Properties
-# Properties to output in individual files
+# Properties to output in individual files vs. temperature
 # An <out>_raw.npy file will be output for all properties
-#****Eventually make a program to take the <out>_raw.npy file and re-output other properties not taken from initial run
 # Options - Description
 # G - Gibbs free energy [kcal/mol]
 # S - Entropy [kcal/(mol*T)]
@@ -71,24 +64,25 @@ molecules_in_coord = 4
 properties_to_save = G,h,V,T
 
 ### Gradient options ###
-## Numerical analysis for thermal expansion
+## Numerical analysis for thermal expansion of the gradient
 # Option - Description
 # Euler - Ueses Euler method
 # RK4   - Runge-kutta 4th order
 NumAnalysis_method = RK4
 
-## Stepsize numerical analysis
-# Right now only temperature is the only input option
+## Step size for numerical method uesed
 NumAnalysis_step = 150.0
 
-## Local gradient presets
-# These options are tuned best for a wide array of options
+### Maximum temperature for gradient method
+Gradient_MaxTemp = 300.0
+
+## Numerical step for gradient calculations
 # Remove these variables if you want the code to pre-set these for you
 # Isotropic volume fraction change
-LocGrd_Vol_FracStep = 1.5e-03
+LocGrd_Vol_FracStep =
 # Anisotropic fractional changes in the diagonal (C_i; i=1,2,3) and off-diagonal(C_i; i=4,5,6) elements of the cyrstal tensor
 #                       = dC1,dC2,dC3,dC4,dC5,dC6
-LocGrd_CMatrix_FracStep = 0.1,0.1,0.1,0.,0.,0.
+LocGrd_CMatrix_FracStep = 
 
 ### Stepwise options ###
 # Stepwise thermal expansion is only set up for isotropic expansion
@@ -110,16 +104,13 @@ Gruneisen_Lat_FracStep = 1.5e-03
 ### Wavenumber tolerance
 Wavenum_Tol = -1.0
 
-### Maximum temperature for gradient method
-Gradient_MaxTemp = 300.0
-
 ### Type of anisotropic expansion
 # Option - Description
 # 1D - Computes the 0K gradients of all six lattice parameters, those gradients remain in ratio with each other as the crystal is expanded
 # 3D - Only considers the diagonals of the crystal matrix tensor
 # 6D - Performs full anisotropic expansion
 # matrix
-Aniso_LocGrad_Type = 6D
+Aniso_LocGrad_Type = 1D
 
 # Gradient for minimization
 min_RMS_gradient = 0.0001
