@@ -5,7 +5,7 @@ import pylab as plt
 from optparse import OptionParser
 
 # Plotting lattice parameters
-def plot_lattice_parameters_multiple_methods(lattice_parameters, temperature,color, line_style, lattice_parameters_error, Tmax=False, basis=False, save_loc=False):
+def plot_lattice_parameters_multiple_methods(lattice_parameters, temperature, color, line_style, lattice_parameters_error, Tmax=False, basis=False, save_loc=False):
     fig, ax = plt.subplots(figsize=(12,6))
     v1 = plt.subplot(231)
     v2 = plt.subplot(232)

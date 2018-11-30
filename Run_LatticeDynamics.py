@@ -22,6 +22,7 @@ def Temperature_Lattice_Dynamics(Temperature=[0.,300.], Pressure=1., Method='HA'
                                  Gruneisen_Lat_FracStep=1.e-3, Wavenum_Tol=-1., Gradient_MaxTemp=300.0, 
                                  Aniso_LocGrad_Type='6D', min_RMS_gradient=0.0001, cp2kroot='BNZ_NMA_p3',
                                  eq_of_state='None'):
+
     Temperature = np.array(Temperature).astype(float)
     if Method == 'HA':
         print("Performing Harmonic Approximation")

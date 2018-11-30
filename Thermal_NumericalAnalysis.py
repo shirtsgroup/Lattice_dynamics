@@ -218,6 +218,7 @@ def Spline_Intermediate_Points(Output, Method, Program, properties, Temperature,
         keyword_parameters['Parameter_file'] = ''
 
     # Making temperature array for wanted output values (user specified)
+#NSA: This should probably be done when read in
     Temperature = np.sort(np.unique(Temperature))
 
     # Setting step points and tangents/gradients at those points
@@ -245,13 +246,10 @@ def Spline_Intermediate_Points(Output, Method, Program, properties, Temperature,
             y[i] = Ex.triangle_crystal_matrix_to_array(Ex.Lattice_parameters_to_Crystal_matrix(properties[i, 7:13]))
 
     # Setting up an array to store the output properties
-#    properties_out = np.zeros((len(np.unique(np.append(Temperature, properties[:, 0]))), len(properties[0, :])))
     properties_out = np.zeros((len(Temperature), len(properties[0, :])))
 
     # Setting a count on where to place the properties in the output matrix
     count = 0
-
-    # Pulling up starting structure
 
     # Setting variables for loop
     new_volume = 1.
@@ -266,12 +264,11 @@ def Spline_Intermediate_Points(Output, Method, Program, properties, Temperature,
         h = properties[i + 1, 0] - properties[i, 0]
 
         # Adding properties found for lower bound temperature in Numerical analysis to output matrix
-        properties_out[count] = properties[i]
-        count = count + 1
 
         for j in range(len(Temperature)):
-            if Temperature[j] == properties[i + 1, 0]:
-                pass
+            if Temperature[j] == properties[i, 0]:
+                properties_out[count] = properties[i]
+                count += 1
 
             elif properties[i, 0] < Temperature[j] < properties[i + 1, 0]:
                 print("   Using a Spline, adding intermediate temperature at:" + str(Temperature[j]) + " K")
@@ -316,10 +313,11 @@ def Spline_Intermediate_Points(Output, Method, Program, properties, Temperature,
                 subprocess.call(['mv', 'hold' + file_ending, 'Cords/' + Output + '_' + Method + 'T' +
                                  str(Temperature[j]) + file_ending])
 
-                count = count + 1
+                count += 1
 
     # Setting the last numerical step to the output matrix
-    properties_out[-1] = properties[-1]
+    if properties[-1, 0] == Temperature[-1]:
+        properties_out[-1] = properties[-1]
 
     # Removing the temporary strucutre
     subprocess.call(['rm', 'temp' + file_ending])
