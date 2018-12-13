@@ -7,6 +7,7 @@ import subprocess
 import numpy as np
 import Expand as Ex
 import ThermodynamicProperties as Pr
+import Numerical_Outputs as NO
 from munkres import Munkres, print_matrix
 
 
@@ -50,9 +51,11 @@ def Call_Wavenumbers(Method, min_RMS_gradient, **keyword_parameters):
         if keyword_parameters['Program'] == 'Tinker':
             wavenumbers = Tinker_Wavenumber(keyword_parameters['Coordinate_file'], keyword_parameters['Parameter_file'])
         elif keyword_parameters['Program'] == 'CP2K':
-            wavenumbers = CP2K_Wavenumber(keyword_parameters['Coordinate_file'], keyword_parameters['Parameter_file'], Output=keyword_parameters['Output'])
+            wavenumbers = CP2K_Wavenumber(keyword_parameters['Coordinate_file'], keyword_parameters['Parameter_file'],
+                                          Output=keyword_parameters['Output'])
         elif keyword_parameters['Program'] == 'QE':
-            wavenumbers = QE_Wavenumber(keyword_parameters['Coordinate_file'], keyword_parameters['Parameter_file'], Output=keyword_parameters['Output'])
+            wavenumbers = QE_Wavenumber(keyword_parameters['Coordinate_file'], keyword_parameters['Parameter_file'],
+                                        Output=keyword_parameters['Output'])
 
         elif keyword_parameters['Program'] == 'Test':
 # What the hell is going on here?
@@ -274,7 +277,8 @@ def Test_Wavenumber(Coordinate_file, ref_crystal_matrix, function='Test3', Gru=F
             elif np.all(ref_crystal_matrix == False):
                 strain = np.zeros(6)
             else:
-                new_crystal_matrix = Ex.Lattice_parameters_to_Crystal_matrix(Pr.Lattice_parameters('Test', Coordinate_file))
+                new_crystal_matrix = Ex.Lattice_parameters_to_Crystal_matrix(Pr.Lattice_parameters('Test',
+                                                                                                   Coordinate_file))
                 strain = Pr.RotationFree_StrainArray_from_CrystalMatrix(ref_crystal_matrix, new_crystal_matrix)
                 if Gru == True:
                     for i in range(6):
@@ -480,30 +484,40 @@ def Get_Aniso_Gruneisen_Wavenumbers(Gruneisen, Wavenumber_Reference, ref_crystal
 def Tinker_Gru_organized_wavenumbers(Expansion_type, Coordinate_file, Expanded_Coordinate_file, Parameter_file):
     number_of_modes = int(3*Pr.Tinker_atoms_per_molecule(Coordinate_file, 1))
 
-    if Expansion_type == 'Isotropic':
-        wavenumbers = np.zeros((2, number_of_modes))
-        eigenvectors = np.zeros((2, number_of_modes, number_of_modes))
-        wavenumbers[0], eigenvectors[0] = Tinker_Wavenumber_and_Vectors(Coordinate_file, Parameter_file)
-        wavenumbers[1], eigenvectors[1] = Tinker_Wavenumber_and_Vectors(Expanded_Coordinate_file, Parameter_file)
-    elif Expansion_type == 'Anisotropic':
-        wavenumbers = np.zeros((7, number_of_modes))
-        eigenvectors = np.zeros((7, number_of_modes, number_of_modes))
-        wavenumbers[0], eigenvectors[0] = Tinker_Wavenumber_and_Vectors(Coordinate_file, Parameter_file)
-        for i in range(1,7):
-            wavenumbers[i], eigenvectors[i] = Tinker_Wavenumber_and_Vectors(Expanded_Coordinate_file[i-1], Parameter_file)
+    if os.path.isfile('GRU_eigen.npy') and os.path.isfile('GRU_wvn.npy'):
+        wavenumbers = np.load('GRU_wvn.npy')
+        eigenvectors = np.load('GRU_eigen.npy')
+        #weight = np.load('GRU_ModesWeights')
+    else:
+        if Expansion_type == 'Isotropic':
+            wavenumbers = np.zeros((2, number_of_modes))
+            eigenvectors = np.zeros((2, number_of_modes, number_of_modes))
+            Expanded_Coordinate_file = [Expanded_Coordinate_file]
+            NO.start_isoGru()
 
-    np.save('GRU_eigen', eigenvectors)
+        elif Expansion_type == 'Anisotropic':
+            wavenumbers = np.zeros((7, number_of_modes))
+            eigenvectors = np.zeros((7, number_of_modes, number_of_modes))
+            NO.start_anisoGru()
 
-    # Weighting the modes matched together
-    wavenumbers_out = np.zeros((len(wavenumbers[:, 0]), number_of_modes))
-    wavenumbers_out[0] = wavenumbers[0]
-    for k in range(1, len(wavenumbers[:, 0])):
-        # Using the eigenvectors to re-order the modes
-        z, _ = matching_eigenvectors_of_modes(number_of_modes, eigenvectors[0], eigenvectors[k])
+    wavenumbers[0], eigenvectors[0] = Tinker_Wavenumber_and_Vectors(Coordinate_file, Parameter_file)
+    for i in range(1, len(Expanded_Coordinate_file) + 1):
+        if not np.all(wavenumbers[i] == 0.):
+            print("BLAHHHHH")
+            pass
+        else:
+            wavenumbers_unorganized, eigenvectors_unorganized = \
+                Tinker_Wavenumber_and_Vectors(Expanded_Coordinate_file[i - 1], Parameter_file)
 
-        # Re-organizing the expanded wavenumbers
-        wavenumbers_out[k] = reorder_modes(z, wavenumbers[k])
-    return wavenumbers_out
+            z, weight = matching_eigenvectors_of_modes(number_of_modes, eigenvectors[0], eigenvectors_unorganized)
+            NO.GRU_weight(weight)
+
+            # Re-organizing the expanded wavenumbers
+            wavenumbers[i], eigenvectors[i] = reorder_modes(z, wavenumbers_unorganized, eigenvectors_unorganized)
+
+        np.save('GRU_eigen', eigenvectors)
+        np.save('GRU_wvn', wavenumbers)
+    return wavenumbers
 
 def matching_eigenvectors_of_modes(number_of_modes, eigenvectors_1, eigenvectors_2):
     m = Munkres()
@@ -531,13 +545,15 @@ def matching_eigenvectors_of_modes(number_of_modes, eigenvectors_1, eigenvectors
     x, y = zip(*Wgt)
     z = np.column_stack((x, y))
     z = z + 3
-    return z, weight
+    return z, weight[z[:, 0] - 3, z[:, 1] - 3]
 
-def reorder_modes(z, wavenumbers):
+def reorder_modes(z, wavenumbers, eigenvectors):
     wavenumbers_out = np.zeros(len(wavenumbers))
+    eigenvectors_out = np.zeros((len(wavenumbers), len(wavenumbers)))
     for i in z:
         wavenumbers_out[i[0]] = wavenumbers[i[1]]
-    return wavenumbers_out
+        eigenvectors_out[i[0]] = eigenvectors[i[1]]
+    return wavenumbers_out, eigenvectors_out
 
 def CP2K_Gru_organized_wavenumbers(Expansion_type, Coordinate_file, Expanded_Coordinate_file, Parameter_file, Output):
     from munkres import Munkres, print_matrix
@@ -681,7 +697,7 @@ def CP2K_Wavenumber_and_Vectors(Coordinate_file, Parameter_file, Output):
                 modecoord = lines[y+z].split()
                 start = int((z-1)*3)
                 eigenvectors[vect,start:start+3] = modecoord[:]
-            vect+=1
+            vect += 1
     return wavenumbers, eigenvectors
 
 def QE_Wavenumber_and_Vectors(Coordinate_file, Parameter_file, Output):

@@ -49,6 +49,29 @@ def raw_energies(U_0, Av_0, U, Av):
 
 
 #######################################################################################################################
+##############                                      Gruneisen Parameter                                   #############
+#######################################################################################################################
+
+def start_isoGru():
+    write_out('////////////////  Isotropic Gruneisen Parameter  ////////////////\n')
+    write_out('           Distribution of the weights to match modes            \n')
+    write_out('        A perfect match between modes has a weight of 0.0        \n')
+
+def start_anisoGru():
+    write_out('///////////////  Anisotropic Gruneisen Parameter  ///////////////\n')
+    write_out('           Distribution of the weights to match modes            \n')
+    write_out('        A perfect match between modes has a weight of 0.0        \n')
+
+def GRU_weight(weight):
+    write_out('New mode - \n')
+    bins = np.arange(0., 1.01, 0.05)
+    for i in range(len(bins) - 1):
+        number = float(len(np.where(weight[np.where(weight >= bins[i])] < bins[i+1])[0])) / len(weight)
+        if number > 0.:
+            write_out('   ' + str(np.around(number*100, 1)) + '% match with a weight between ' +
+                      str(np.around(bins[i], 2)) + '-' + str(np.around(bins[i+1], 2)) + '\n')
+
+#######################################################################################################################
 ##############                                    4th Order Runge-Kutta                                   #############
 #######################################################################################################################
 
