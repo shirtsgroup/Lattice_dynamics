@@ -60,7 +60,7 @@ author = 'Nathan S. Abraham'
 # built documents.
 #
 # The short X.Y version.
-version = ''
+version = '1.0'
 # The full version, including alpha/beta/rc tags.
 release = '1.0'
 
