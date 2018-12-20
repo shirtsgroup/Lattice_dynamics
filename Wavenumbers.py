@@ -503,7 +503,6 @@ def Tinker_Gru_organized_wavenumbers(Expansion_type, Coordinate_file, Expanded_C
     wavenumbers[0], eigenvectors[0] = Tinker_Wavenumber_and_Vectors(Coordinate_file, Parameter_file)
     for i in range(1, len(Expanded_Coordinate_file) + 1):
         if not np.all(wavenumbers[i] == 0.):
-            print("BLAHHHHH")
             pass
         else:
             wavenumbers_unorganized, eigenvectors_unorganized = \

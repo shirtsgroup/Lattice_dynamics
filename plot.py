@@ -115,7 +115,7 @@ def plot_lattice_parameters_one_method():
         else:
             hold_lattice_parameters = np.load(lattice_parameters[0])[:,i]
             error = np.load(lattice_parameters_error[0])[:,i]
-            ax1.errorbar(np.load(temperature[0]), (hold_lattice_parameters - hold_lattice_parameters[0])/hold_lattice_parameters[0]*100,label=label[i] + ' ' + Labels[0], c=color[i], linestyle=line_style[0], yerr=error) 
+            ax1.errorbar(np.load(temperature[0]), hold_lattice_parameters,label=label[i] + ' ' + Labels[0], c=color[i], linestyle=line_style[0], yerr=error) 
     ax1.set_xlabel('Temperature [K]', fontsize=18)
     ax1.set_ylabel('% Change from ' + str(int(np.load(temperature[0])[0])) + 'K', fontsize=18)
     ax1.legend(loc='upper left', fontsize=18)
@@ -127,7 +127,7 @@ def plot_lattice_parameters_one_method():
         else:
             hold_lattice_parameters = np.load(lattice_parameters[0])[:,i]
             error = np.load(lattice_parameters_error[0])[:,i]
-            ax2.errorbar(np.load(temperature[0]), (hold_lattice_parameters - hold_lattice_parameters[0])/hold_lattice_parameters[0]*100, label=label[i] + ' ' + Labels[0], c=color[i-3], linestyle=line_style[0], yerr=error)
+            ax2.errorbar(np.load(temperature[0]), hold_lattice_parameters, label=label[i] + ' ' + Labels[0], c=color[i-3], linestyle=line_style[0], yerr=error)
     ax2.set_xlabel('Temperature [K]', fontsize=18)
     ax2.legend(loc='upper left', fontsize=18)
     plt.tight_layout()
