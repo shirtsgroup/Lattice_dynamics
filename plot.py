@@ -5,7 +5,7 @@ import pylab as plt
 from optparse import OptionParser
 
 # Plotting lattice parameters
-def plot_lattice_parameters_multiple_methods(lattice_parameters, temperature, color, line_style, lattice_parameters_error, Tmax=False, basis=False, save_loc=False):
+def plot_lattice_parameters_multiple_methods(lattice_parameters, temperature, color, line_style, lattice_parameters_error, Tmax=False, basis=False, save_loc=False, correction=False):
     fig, ax = plt.subplots(figsize=(12,6))
     v1 = plt.subplot(231)
     v2 = plt.subplot(232)
@@ -16,43 +16,44 @@ def plot_lattice_parameters_multiple_methods(lattice_parameters, temperature, co
     v1.axhline(y=0, color='black')
     v2.axhline(y=0, color='black')
     v3.axhline(y=0, color='black')
-    a1.axhline(y=0, color='black')
-    a2.axhline(y=0, color='black')
-    a3.axhline(y=0, color='black')
+    a1.axhline(y=90, color='black')
+    a2.axhline(y=90, color='black')
+    a3.axhline(y=90, color='black')
+    base = np.load(lattice_parameters[0])[0]
     for i in range(len(lattice_parameters)):
-        hold_lattice_parameters = np.load(lattice_parameters[i])
-        #base = np.load(lattice_parameters[1])[0]
-        if basis == False:
-            base = hold_lattice_parameters[0]
+        lp = np.load(lattice_parameters[i])
+        if basis == True:
+            lp[:, :3] = (lp[:, :3] - base[:3]) / base[:3] * 100.
         else:
-            base = np.load(lattice_parameters[0])[0]
-        hold_lattice_parameters = (hold_lattice_parameters - base) / base * 100.
+            lp[:, :3] = lp[:, :3]
+
         T = np.load(temperature[i])
         if not np.all(Tmax == False):
             T_place = np.where(T == Tmax[i])[0][0] + 1
         else:
             T_place = -1
         if lattice_parameters_error[i] == '':
-            v1.plot(T[:T_place], hold_lattice_parameters[:T_place, 0], c=color[i], linestyle=line_style[i])
-            v2.plot(T[:T_place], hold_lattice_parameters[:T_place, 1], c=color[i], linestyle=line_style[i])
-            v3.plot(T[:T_place], hold_lattice_parameters[:T_place, 2], c=color[i], linestyle=line_style[i])
-            a1.plot(T[:T_place], hold_lattice_parameters[:T_place, 3], c=color[i], linestyle=line_style[i])
-            a2.plot(T[:T_place], hold_lattice_parameters[:T_place, 4], c=color[i], linestyle=line_style[i])
-            a3.plot(T[:T_place], hold_lattice_parameters[:T_place, 5], c=color[i], linestyle=line_style[i])
+            v1.plot(T[:T_place], lp[:T_place, 0], c=color[i], linestyle=line_style[i])
+            v2.plot(T[:T_place], lp[:T_place, 1], c=color[i], linestyle=line_style[i])
+            v3.plot(T[:T_place], lp[:T_place, 2], c=color[i], linestyle=line_style[i])
+            a1.plot(T[:T_place], lp[:T_place, 3], c=color[i], linestyle=line_style[i])
+            a2.plot(T[:T_place], lp[:T_place, 4], c=color[i], linestyle=line_style[i])
+            a3.plot(T[:T_place], lp[:T_place, 5], c=color[i], linestyle=line_style[i])
         else:
             error = np.load(lattice_parameters_error[i])
-            v1.plot(T[1:T_place], hold_lattice_parameters[1:T_place, 0], c=color[i], linestyle=line_style[i], zorder=0)
-            v2.plot(T[1:T_place], hold_lattice_parameters[1:T_place, 1], c=color[i], linestyle=line_style[i], zorder=0)
-            v3.plot(T[1:T_place], hold_lattice_parameters[1:T_place, 2], c=color[i], linestyle=line_style[i], zorder=0)
-            a1.plot(T[1:T_place], hold_lattice_parameters[1:T_place, 3], c=color[i], linestyle=line_style[i], zorder=0)
-            a2.plot(T[1:T_place], hold_lattice_parameters[1:T_place, 4], c=color[i], linestyle=line_style[i], zorder=0)
-            a3.plot(T[1:T_place], hold_lattice_parameters[1:T_place, 5], c=color[i], linestyle=line_style[i], zorder=0)
-            v1.fill_between(T[1:T_place], hold_lattice_parameters[1:T_place, 0] - np.sign(hold_lattice_parameters[1:T_place, 0]) * error[1:T_place, 0],hold_lattice_parameters[1:T_place, 0] + np.sign(hold_lattice_parameters[1:T_place, 0]) * error[1:T_place, 0], color=color[i], linestyle=line_style[i], zorder=0,alpha=0.3)
-            v2.fill_between(T[1:T_place], hold_lattice_parameters[1:T_place, 1] - np.sign(hold_lattice_parameters[1:T_place, 1]) * error[1:T_place, 1],hold_lattice_parameters[1:T_place, 1] + np.sign(hold_lattice_parameters[1:T_place, 1]) * error[1:T_place, 1],color=color[i], linestyle=line_style[i], zorder=0,alpha=0.3)
-            v3.fill_between(T[1:T_place], hold_lattice_parameters[1:T_place, 2] - np.sign(hold_lattice_parameters[1:T_place, 2]) * error[1:T_place, 2],hold_lattice_parameters[1:T_place, 2] + np.sign(hold_lattice_parameters[1:T_place, 2]) * error[1:T_place, 2],color=color[i], linestyle=line_style[i], zorder=0,alpha=0.3)
-            a1.fill_between(T[1:T_place], hold_lattice_parameters[1:T_place, 3] - np.sign(hold_lattice_parameters[1:T_place, 3]) * error[1:T_place, 3],hold_lattice_parameters[1:T_place, 3] + np.sign(hold_lattice_parameters[1:T_place, 3]) * error[1:T_place, 3],color=color[i], linestyle=line_style[i], zorder=0,alpha=0.3)
-            a2.fill_between(T[1:T_place], hold_lattice_parameters[1:T_place, 4] - np.sign(hold_lattice_parameters[1:T_place, 4]) * error[1:T_place, 4],hold_lattice_parameters[1:T_place, 4] + np.sign(hold_lattice_parameters[1:T_place, 4]) * error[1:T_place, 4],color=color[i], linestyle=line_style[i], zorder=0,alpha=0.3)
-            a3.fill_between(T[1:T_place], hold_lattice_parameters[1:T_place, 5] - np.sign(hold_lattice_parameters[1:T_place, 5]) * error[1:T_place, 5],hold_lattice_parameters[1:T_place, 5] + np.sign(hold_lattice_parameters[1:T_place, 5]) * error[1:T_place, 5],color=color[i], linestyle=line_style[i], zorder=0,alpha=0.3)
+            v1.plot(T[:T_place], lp[:T_place, 0], c=color[i], linestyle=line_style[i], zorder=0)
+            v2.plot(T[:T_place], lp[:T_place, 1], c=color[i], linestyle=line_style[i], zorder=0)
+            v3.plot(T[:T_place], lp[:T_place, 2], c=color[i], linestyle=line_style[i], zorder=0)
+            a1.plot(T[:T_place], lp[:T_place, 3], c=color[i], linestyle=line_style[i], zorder=0)
+            a2.plot(T[:T_place], lp[:T_place, 4], c=color[i], linestyle=line_style[i], zorder=0)
+            a3.plot(T[:T_place], lp[:T_place, 5], c=color[i], linestyle=line_style[i], zorder=0)
+
+            v1.fill_between(T[:T_place], lp[:T_place, 0] - np.sign(lp[:T_place, 0]) * error[:T_place, 0],lp[:T_place, 0] + np.sign(lp[:T_place, 0]) * error[:T_place, 0], color=color[i], linestyle=line_style[i], zorder=0,alpha=0.3)
+            v2.fill_between(T[:T_place], lp[:T_place, 1] - np.sign(lp[:T_place, 1]) * error[:T_place, 1],lp[:T_place, 1] + np.sign(lp[:T_place, 1]) * error[:T_place, 1],color=color[i], linestyle=line_style[i], zorder=0,alpha=0.3)
+            v3.fill_between(T[:T_place], lp[:T_place, 2] - np.sign(lp[:T_place, 2]) * error[:T_place, 2],lp[:T_place, 2] + np.sign(lp[:T_place, 2]) * error[:T_place, 2],color=color[i], linestyle=line_style[i], zorder=0,alpha=0.3)
+            a1.fill_between(T[:T_place], lp[:T_place, 3] - lp[:T_place, 3] * error[:T_place, 3],lp[:T_place, 3] + lp[:T_place, 3] * error[:T_place, 3],color=color[i], linestyle=line_style[i], zorder=0,alpha=0.3)
+            a2.fill_between(T[:T_place], lp[:T_place, 4] - lp[:T_place, 4] * error[:T_place, 4],lp[:T_place, 4] + lp[:T_place, 4] * error[:T_place, 4],color=color[i], linestyle=line_style[i], zorder=0,alpha=0.3)
+            a3.fill_between(T[:T_place], lp[:T_place, 5] - lp[:T_place, 5] * error[:T_place, 5],lp[:T_place, 5] + lp[:T_place, 5] * error[:T_place, 5],color=color[i], linestyle=line_style[i], zorder=0,alpha=0.3)
     x = a1.get_ylim()
     if x[0] > -1.:
         lower = -1.
@@ -93,7 +94,8 @@ def plot_lattice_parameters_multiple_methods(lattice_parameters, temperature, co
     a2.title.set_text(r'$\beta$-Angle')
     a3.title.set_text(r'$\gamma$-Angle')
     fig.text(0.53,0.01,'Temperature [K]', fontsize=20, ha='center')
-    fig.text(0.02, 0.8, '% Expansion from 0 K', fontsize=20, rotation='vertical')
+    v1.set_ylabel('% Expansion\n from 0 K', fontsize=20, rotation='vertical')
+    a1.set_ylabel('Angle [Deg.]', fontsize=20, rotation='vertical')
     plt.tight_layout()
     plt.subplots_adjust(top=0.941, bottom=0.102, left=0.091, right=0.985)
     if not save_loc == False:

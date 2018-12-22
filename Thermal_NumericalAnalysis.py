@@ -327,9 +327,10 @@ def Spline_Intermediate_Points(Output, Method, Program, properties, Temperature,
 ##########################################
 #      Stepwise Isotropic Expansion      #
 ##########################################
-def Isotropic_Stepwise_Expansion(StepWise_Vol_StepFrac, StepWise_Vol_LowerFrac, StepWise_Vol_UpperFrac, Coordinate_file,
-                                 Program, Temperature, Pressure, Output, Method, molecules_in_coord, Wavenum_Tol,
-                                 Statistical_mechanics, min_RMS_gradient, **keyword_parameters):
+def Isotropic_Stepwise_Expansion(inputs):
+        #StepWise_Vol_StepFrac, StepWise_Vol_LowerFrac, StepWise_Vol_UpperFrac, Coordinate_file,
+         #                        Program, Temperature, Pressure, Output, Method, molecules_in_coord, Wavenum_Tol,
+          #                       Statistical_mechanics, min_RMS_gradient, **keyword_parameters):
     """
     This function performs stepwise isotropic QHA either with or without the gruneisen parameter
     :param StepWise_Vol_StepFrac: volumetric fraction step
@@ -354,15 +355,17 @@ def Isotropic_Stepwise_Expansion(StepWise_Vol_StepFrac, StepWise_Vol_LowerFrac, 
     Gruneisen_Vol_FracStep: volume fraction step used to determine the Gruneisen parameter 
     """
     # Setting file endings and determining how many wavenumbers there will be
-    file_ending = Ex.assign_file_ending(Program)
-    number_of_modes = int(Pr.atoms_count(Program, Coordinate_file) * 3)
+    file_ending = Ex.assign_file_ending(inputs.program)
+    number_of_modes = int(Pr.atoms_count(inputs.program, inputs.coordinate_file) * 3)
 
     # Setting up array of volume fractions from the lattice structure
-    lower_volume_fraction = np.arange(StepWise_Vol_LowerFrac, 1.0, StepWise_Vol_StepFrac)[::-1]
+    lower_volume_fraction = np.arange(inputs.stepwise_volume_fraction_lower, 1.0,
+                                      inputs.stepwise_volume_fraction_stepsize)[::-1]
     if len(lower_volume_fraction) > 0:
         if lower_volume_fraction[0] != 1.0:
             lower_volume_fraction = np.insert(lower_volume_fraction, 0, 1.0)
-    upper_volume_fraction = np.arange(1.0 + StepWise_Vol_StepFrac, StepWise_Vol_UpperFrac, StepWise_Vol_StepFrac)
+    upper_volume_fraction = np.arange(1.0 + inputs.stepwise_volume_fraction_stepsize,
+                                      inputs.stepwise_volume_fraction_upper, inputs.stepwise_volume_fraction_stepsize)
     volume_fraction = np.append(lower_volume_fraction, upper_volume_fraction)
 
     # Setting up a matrix to store the wavenumbers in
@@ -370,64 +373,43 @@ def Isotropic_Stepwise_Expansion(StepWise_Vol_StepFrac, StepWise_Vol_LowerFrac, 
     wavenumbers[:, 0] = volume_fraction
 
     # Setting parameters for the Gruneisen parameter and loading in previously found wavenumbers for SiQ
-#    existing_wavenumbers = False
-    if Method == 'SiQg':
+    if inputs.method == 'SiQg':
         print("   Calculating the isotropic Gruneisen parameter")
-        Gruneisen, Wavenumber_Reference, Volume_Reference = Wvn.Call_Wavenumbers(Method, min_RMS_gradient, Output=Output,
-                                                                                 Coordinate_file=Coordinate_file,
-                                                                                 Program=Program,
-                                                                                 Gruneisen_Vol_FracStep=
-                                                                                 keyword_parameters[
-                                                                                     'Gruneisen_Vol_FracStep'],
-                                                                                 molecules_in_coord=molecules_in_coord,
-                                                                                 Parameter_file=
-                                                                                 keyword_parameters['Parameter_file'], cp2kroot=keyword_parameters['cp2kroot'])
+        gruneisen, wavenumber_reference, volume_reference = Wvn.Call_Wavenumbers(inputs)
     elif Method == 'SiQ':
-        Gruneisen = 0.
-        Wavenumber_Reference = 0.
-        Volume_Reference = 0.
-        if os.path.isfile(Output + '_WVN_' + Method + '.npy'):
-            old_wavenumbers = np.load(Output + '_WVN_' + Method + '.npy')
-#            existing_wavenumbers = True
+        gruneisen = 0.
+        wavenumber_reference = 0.
+        volume_reference = 0.
+        if os.path.isfile(inputs.output + '_WVN_' + inputs.method + '.npy'):
+            old_wavenumbers = np.load(inputs.output + '_WVN_' + inputs.method + '.npy')
             for i in range(len(old_wavenumbers[:, 0])):
                 if any(volume_fraction == old_wavenumbers[i,0]):
                     loc = np.where(volume_fraction == old_wavenumbers[i,0])[0][0]
                     wavenumbers[loc] = old_wavenumbers[i]
 
     # setting a matrix for properties versus temperature and pressure
-    properties = np.zeros((len(volume_fraction), len(Temperature), 14))
+    properties = np.zeros((len(volume_fraction), len(inputs.temperature), 14))
 
     # Finding all expanded structures
-    previous_volume = 1.0    
-    lattice_volume = Pr.Volume(Program=Program, Coordinate_file=Coordinate_file)
+    previous_volume = 1.0
+    lattice_volume = Pr.Volume(Program=inputs.program, Coordinate_file=inputs.coordinate_file)
 
     if Program == 'QE':
-        lattfile = Coordinate_file+'bv' 
-        newlattfile = Output + '_' + Method + str(previous_volume) + file_ending+'bv'
+        lattfile = inputs.coordinate_file + 'bv' 
+        newlattfile = inputs.output + '_' + inputs.method + str(previous_volume) + file_ending + 'bv'
         shutil.copyfile(lattfile, newlattfile)
-    subprocess.call(['cp', Coordinate_file, Output + '_' + Method + str(previous_volume) + file_ending])
-### Can this be removed?
-    #os.system('cp ' + lattfile + ' ' + Output + '_' + Method + str(previous_volume) + file_ending+'bv')
-    #if Program == 'QE':
-    #    tocopy =  (Coordinate_file  + 'bv')
-    #    file1 = open(tocopy,'r')
-    #    copyto = (Output + '_' + Method + str(previous_volume) + file_ending+'bv')
-    #    file2 = open(copyto,'w+')
-    #    lines = file1.readlines()
-    #    for linenum in lines:
-    #        print(file2.readlines())
-    #        file2.write(linenum)
-    #    file2.close()
+    subprocess.call(['cp', inputs.coordinate_file, inputs.output + '_' + inputs.method + str(previous_volume) + file_ending])
 
     for i in range(len(volume_fraction)):
         print("   Performing volume fraction of: " + str(volume_fraction[i]))
-        if os.path.isfile('Cords/' + Output + '_' + Method + str(volume_fraction[i]) + file_ending):
-            print("   ... Coordinate file Cords/" + Output + "_" + Method + str(volume_fraction[i]) + file_ending + \
+        if os.path.isfile('Cords/' + inputs.output + '_' + inputs.method + str(volume_fraction[i]) + file_ending):
+            print("   ... Coordinate file Cords/" + inputs.output + "_" + inputs.method + str(volume_fraction[i]) + file_ending + \
                   "already exists")
             # Skipping structures if they've already been constructed
-            subprocess.call(['cp', 'Cords/' + Output + '_' + Method + str(volume_fraction[i]) + file_ending, './'])
+            subprocess.call(['cp', 'Cords/' + inputs.output + '_' + inputs.method + str(volume_fraction[i]) + file_ending, './'])
             if Program == 'QE':
-                os.system('cp Cords/' + Output + '_' + Method + str(volume_fraction[i]) + file_ending + 'bv' + ' ./')
+                os.system('cp Cords/' + inputs.output + '_' + inputs.method + str(volume_fraction[i]) + file_ending + 'bv' + ' ./')
+#NSA: LEFT OFF HERE
         else:
             Ex.Call_Expansion(Method, 'expand', Program, Output + '_' + Method + str(previous_volume) + file_ending,
                               molecules_in_coord, min_RMS_gradient, Parameter_file=keyword_parameters['Parameter_file'],

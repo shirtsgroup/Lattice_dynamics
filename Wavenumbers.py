@@ -14,7 +14,7 @@ from munkres import Munkres, print_matrix
 ##########################################
 #                 Input                  #
 ##########################################
-def Call_Wavenumbers(Method, min_RMS_gradient, **keyword_parameters):
+def Call_Wavenumbers(inputs, **keyword_parameters):
     """
     This function helps to direct how the wavenumbers will be calculated and calls other functions to calculate and 
     return the wavenumbers
@@ -46,27 +46,25 @@ def Call_Wavenumbers(Method, min_RMS_gradient, **keyword_parameters):
     New_Crystal_matrix
     Gruneisen_Lat_FracStep
     """
-    if (Method == 'SiQ') or (Method == 'GiQ') or (Method == 'GaQ') or (Method == 'HA'):
+    if (inputs.method == 'SiQ') or (inputs.method == 'GiQ') or (inputs.method == 'GaQ') or (inputs.method == 'HA'):
         # Directly computing the wavenumbers for a specific program, given a coordinate file
-        if keyword_parameters['Program'] == 'Tinker':
-            wavenumbers = Tinker_Wavenumber(keyword_parameters['Coordinate_file'], keyword_parameters['Parameter_file'])
-        elif keyword_parameters['Program'] == 'CP2K':
-            wavenumbers = CP2K_Wavenumber(keyword_parameters['Coordinate_file'], keyword_parameters['Parameter_file'],
-                                          Output=keyword_parameters['Output'])
-        elif keyword_parameters['Program'] == 'QE':
-            wavenumbers = QE_Wavenumber(keyword_parameters['Coordinate_file'], keyword_parameters['Parameter_file'],
-                                        Output=keyword_parameters['Output'])
-
-        elif keyword_parameters['Program'] == 'Test':
-# What the hell is going on here?
-            if Method == 'GaQ':
+        if inputs.program == 'Tinker':
+            wavenumbers = Tinker_Wavenumber(keyword_parameters['Coordinate_file'], inputs.tinker_parameter_file)
+        elif inputs.program == 'CP2K':
+            wavenumbers = CP2K_Wavenumber(keyword_parameters['Coordinate_file'], inputs.tinker_parameter_file,
+                                          Output=inputs.output)
+        elif inputs.program == 'QE':
+            wavenumbers = QE_Wavenumber(keyword_parameters['Coordinate_file'], inputs.tinker_parameter_file,
+                                        Output=inputs.output)
+        elif inputs.program == 'Test':
+            if inputs.method == 'GaQ':
                 wavenumbers = Test_Wavenumber(keyword_parameters['Coordinate_file'],
                                               keyword_parameters['ref_crystal_matrix'])
             else:
                 wavenumbers = Test_Wavenumber(keyword_parameters['Coordinate_file'], True)
         return wavenumbers
 
-    elif (Method == 'SiQg') or (Method == 'GiQg'):
+    elif (inputs.method == 'SiQg') or (inputs.method == 'GiQg'):
         # Methods that use the Gruneisen parameter
         if ('Gruneisen' in keyword_parameters) and ('Wavenumber_Reference' in keyword_parameters) and \
                 ('Volume_Reference' in keyword_parameters) and ('New_Volume' in keyword_parameters):
@@ -78,32 +76,28 @@ def Call_Wavenumbers(Method, min_RMS_gradient, **keyword_parameters):
             return wavenumbers
         else:
             # If there is a saved Gruneisen parameter and set of wavenumbers
-            if os.path.isfile(keyword_parameters['Output'] + '_GRUwvn_' + Method + '.npy') and os.path.isfile(
-                                            keyword_parameters['Output'] + '_GRU_' + Method + '.npy'):
-                print("   ...Using Gruneisen parameters from: " + keyword_parameters['Output'] + '_GRU_' \
-                      + Method + '.npy')
-                Gruneisen = np.load(keyword_parameters['Output'] + '_GRU_' + Method + '.npy')
-                Wavenumber_Reference = np.load(keyword_parameters['Output'] + '_GRUwvn_' + Method + '.npy')
-                Volume_Reference = Pr.Volume(Coordinate_file=keyword_parameters['Coordinate_file'],
-                                             Program=keyword_parameters['Program'],
-                                             Parameter_file=keyword_parameters['Parameter_file'])
+            if os.path.isfile(inputs.output + '_GRUwvn_' + inputs.method + '.npy') and \
+                    os.path.isfile(inputs.output + '_GRU_' + inputs.method + '.npy'):
+                print("   ...Using Gruneisen parameters from: " + inputs.output + '_GRU_' + inputs.method + '.npy')
+                gruneisen = np.load(inputs.output + '_GRU_' + inputs.method + '.npy')
+                wavenumber_reference = np.load(inputs.output + '_GRUwvn_' + inputs.method + '.npy')
+                volume_reference = Pr.Volume(Coordinate_file=inputs.coordinate_file, Program=inputs.program,
+                                             Parameter_file=inputs.tinker_parameter_file)
             # If the Gruneisen parameter has yet to be determined, here it will be calculated
             # It is assumed that the input Coordinate_file is the lattice minimum strucutre
             else:
-                Gruneisen, Wavenumber_Reference, Volume_Reference = \
-                    Setup_Isotropic_Gruneisen(keyword_parameters['Coordinate_file'],
-                                              keyword_parameters['Program'],
-                                              keyword_parameters['Gruneisen_Vol_FracStep'],
-                                              keyword_parameters['molecules_in_coord'], min_RMS_gradient,
-                                              Parameter_file=keyword_parameters['Parameter_file'],
-                                              Output=keyword_parameters['Output'])
-                print("   ... Saving reference wavenumbers and Gruneisen parameters to: " + \
-                      keyword_parameters['Output'] + '_GRU_' + Method + '.npy')
-                np.save(keyword_parameters['Output'] + '_GRU_' + Method, Gruneisen)
-                np.save(keyword_parameters['Output'] + '_GRUwvn_' + Method, Wavenumber_Reference)
-            return Gruneisen, Wavenumber_Reference, Volume_Reference
+                gruneisen, wavenumber_reference, volume_reference = \
+                    Setup_Isotropic_Gruneisen(inputs.coordinate_file, inputs.program,
+                                              inputs.gruneisen_volume_fraction_stepsize, inputs.number_of_molecules,
+                                              inputs.min_rms_gradient, Parameter_file=inputs.tinker_parameter_file,
+                                              Output=inputs.output)
+                print("   ... Saving reference wavenumbers and Gruneisen parameters to: " + inputs.output
+                      + '_GRU_' + inputs.method + '.npy')
+                np.save(inputs.output + '_GRU_' + inputs.method, gruneisen)
+                np.save(inputs.output + '_GRUwvn_' + inputs.method, wavenumber_reference)
+            return gruneisen, wavenumber_reference, volume_reference
 
-    elif Method == 'GaQg':
+    elif inputs.method == 'GaQg':
         if ('Gruneisen' in keyword_parameters) and ('Wavenumber_Reference' in keyword_parameters) and \
                 ('ref_crystal_matrix' in keyword_parameters):
             # Calculating the wavenumbers of the new anisotropically expanded structure
@@ -112,35 +106,33 @@ def Call_Wavenumbers(Method, min_RMS_gradient, **keyword_parameters):
                                                           keyword_parameters['Wavenumber_Reference'],
                                                           keyword_parameters['ref_crystal_matrix'],
                                                           keyword_parameters['Coordinate_file'],
-                                                          keyword_parameters['Program'])
+                                                          inputs.program)
             return wavenumbers
 
         else:
-            if os.path.isfile(keyword_parameters['Output'] + '_GRUwvn_' + Method + '.npy') and os.path.isfile(
-                                            keyword_parameters['Output'] + '_GRU_' + Method + '.npy'):
+            if os.path.isfile(inputs.output + '_GRUwvn_' + inputs.method + '.npy') and \
+                    os.path.isfile(inputs.output + '_GRU_' + inputs.method + '.npy'):
                 # If the current directory has saved Gruneisen outputs, it will open those and use them
-                print("   ...Using Gruneisen parameters from: " + keyword_parameters['Output'] + '_GRU_' \
-                      + Method + '.npy')
-                Gruneisen = np.load(keyword_parameters['Output'] + '_GRU_' + Method + '.npy')
-                Wavenumber_Reference = np.load(keyword_parameters['Output'] + '_GRUwvn_' + Method + '.npy')
+                print("   ...Using Gruneisen parameters from: " + inputs.output + '_GRU_' + inputs.method + '.npy')
+                gruneisen = np.load(inputs.output + '_GRU_' + inputs.method + '.npy')
+                wavenumber_reference = np.load(inputs.output + '_GRUwvn_' + inputs.method + '.npy')
             else:
                 # Calculating the Gruneisen parameter and wavenumbers
-                Gruneisen, Wavenumber_Reference = \
-                    Setup_Anisotropic_Gruneisen(keyword_parameters['Coordinate_file'], keyword_parameters['Program'],
-                                                keyword_parameters['Gruneisen_Lat_FracStep'],
-                                                keyword_parameters['molecules_in_coord'], min_RMS_gradient,
-                                                Parameter_file=keyword_parameters['Parameter_file'])
+                gruneisen, wavenumber_reference = \
+                    Setup_Anisotropic_Gruneisen(keyword_parameters['Coordinate_file'], inputs.program,
+                                                inputs.gruneisen_matrix_strain_stepsize, inputs.number_of_molecules,
+                                                inputs.min_rms_gradient,
+                                                Parameter_file=inputs.tinker_parameter_file)
 
                 # Saving the wavenumbers for future use
-                print("   ... Saving reference wavenumbers and Gruneisen parameters to: " + \
-                      keyword_parameters['Output'] + '_GRU_/_GRUwvn' + Method + '.npy')
-                np.save(keyword_parameters['Output'] + '_GRU_' + Method, Gruneisen)
-                np.save(keyword_parameters['Output'] + '_GRUwvn_' + Method, Wavenumber_Reference)
-            return Gruneisen, Wavenumber_Reference
-    elif Method == 'SaQply':
-        return Wavenumber_and_Vectors(keyword_parameters['Program'], keyword_parameters['Coordinate_file'],
-                                      keyword_parameters['Parameter_file'])
-
+                print("   ... Saving reference wavenumbers and Gruneisen parameters to: " + inputs.output
+                      + '_GRU_/_GRUwvn' + inputs.method + '.npy')
+                np.save(inputs.output + '_GRU_' + inputs.method, gruneisen)
+                np.save(inputs.output + '_GRUwvn_' + inputs.method, wavenumber_reference)
+            return gruneisen, wavenumber_reference
+    elif inputs.method == 'SaQply':
+        return Wavenumber_and_Vectors(inputs.program, keyword_parameters['Coordinate_file'],
+                                      inputs.tinker_parameter_file)
 
 
 ##########################################
@@ -639,6 +631,8 @@ def Wavenumber_and_Vectors(Program, Coordinate_file, Parameter_file):
         np.fill_diagonal(eigenvectors, 0)
     elif Program == 'CP2K':
         wavenumbers, eigenvectors = CP2K_Wavenumber_and_Vectors(Coordinate_file, Parameter_file)
+    elif Program == 'QE':
+        wavenumbers, eigenvectors = QE_Wavenumber_and_Vectors(Coordinate_file, Parameter_file)
     return wavenumbers, eigenvectors
 
 def Tinker_Wavenumber_and_Vectors(Coordinate_file, Parameter_file):
@@ -670,7 +664,7 @@ def Tinker_Wavenumber_and_Vectors(Coordinate_file, Parameter_file):
     return wavenumbers, eigenvectors
 
 
-def CP2K_Wavenumber_and_Vectors(Coordinate_file, Parameter_file, Output):
+def CP2K_Wavenumber_and_Vectors(Coordinate_file, Parameter_file):
     # Calling CP2K's vibrate executable and extracting the eigenvectors and wavenumbers of the respective
     # .mol file
     import os.path
@@ -699,8 +693,7 @@ def CP2K_Wavenumber_and_Vectors(Coordinate_file, Parameter_file, Output):
             vect += 1
     return wavenumbers, eigenvectors
 
-def QE_Wavenumber_and_Vectors(Coordinate_file, Parameter_file, Output):
-
+def QE_Wavenumber_and_Vectors(Coordinate_file, Parameter_file):
     import os.path
     print('getting wavenumbers')
     if os.path.exists(Coordinate_file[0:-3]+'.mold') == False:
