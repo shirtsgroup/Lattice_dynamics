@@ -386,6 +386,8 @@ class Inputs:
         self.gradient_max_temperature = data['gradient']['max_temperature']
         self.gradient_vol_fraction = data['gradient']['vol_fraction']
         self.gradient_matrix_fractions = data['gradient']['matrix_fractions']
+        if self.gradient_matrix_fractions == None:
+            self.gradient_matrix_fractions = np.zeros(6)
         self.anisotropic_type = data['gradient']['anisotropic_type']
         self.stepwise_volume_fraction_stepsize = data['stepwise']['volume_fraction_stepsize']
         self.stepwise_volume_fraction_lower = data['stepwise']['volume_fraction_lower']

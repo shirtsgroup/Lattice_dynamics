@@ -75,7 +75,7 @@ def Call_Expansion(inputs, purpose, coordinate_file, **keyword_parameters):
             return isotropic_local_gradient, wavenumbers, volume
 
         elif (inputs.method == 'GaQ') or (inputs.method == 'GaQg'):
-            if keyword_parameters['Aniso_LocGrad_Type'] != '1D':
+            if inputs.anisotropic_type != '1D':
                 strain_local_gradient, wavenumbers = \
                     Anisotropic_Local_Gradient(inputs, coordinate_file, keyword_parameters['Temperature'],
                                                keyword_parameters['LocGrd_dC'],

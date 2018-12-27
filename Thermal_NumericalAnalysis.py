@@ -74,7 +74,7 @@ def Runge_Kutta_Fourth_Order(inputs, coordinate_file, temperature, **keyword_par
         RK_grad = np.zeros(4)
     elif (inputs.method == 'GaQ') or (inputs.method == 'GaQg'):
         # Setting array to save 4 gradients for the six different strains d\eta/dT
-        if keyword_parameters['Aniso_LocGrad_Type'] == '1D':
+        if inputs.anisotropic_type == '1D':
             RK_grad = np.zeros(6)
         else:
             RK_grad = np.zeros((4, 6))
@@ -132,7 +132,7 @@ def Runge_Kutta_Fourth_Order(inputs, coordinate_file, temperature, **keyword_par
                                   output_file='RK4')
 
             elif (inputs.method == 'GaQ') or (inputs.method == 'GaQg'):
-                if keyword_parameters['Aniso_LocGrad_Type'] != '1D':
+                if inputs.anisotropic_type != '1D':
                     # For anisotropic expansion, determining the strain of th input strucutre for the next step
                     RK_crystal_matrix = Ex.array_to_triangle_crystal_matrix(RK_grad[i] * temperature_steps[i + 1])
                 else:
@@ -141,8 +141,8 @@ def Runge_Kutta_Fourth_Order(inputs, coordinate_file, temperature, **keyword_par
                                                                             keyword_parameters['dC_dLambda'])
 
                 # Expanding the crystal to the next step size
-                Ex.Call_Expansion(inputs, 'expand', coordinate_file, dcrystal_matrix=RK_crystal_matrix, Output='RK4')
-
+                Ex.Call_Expansion(inputs, 'expand', coordinate_file, dcrystal_matrix=RK_crystal_matrix,
+                                  output_file='RK4')
 
         # Multiplying the found gradient by the fraction it will contribute to the overall gradient
         RK_grad[i] = RK_grad[i] * RK_multiply[i]
@@ -380,11 +380,9 @@ def Isotropic_Stepwise_Expansion(inputs):
                           'bv' + ' ./')
 
         else:
-            Ex.Call_Expansion(inputs.method, 'expand', inputs.program, inputs.output + '_' + inputs.method +
-                              str(previous_volume) + file_ending, inputs.number_of_molecules, inputs.min_rms_gradient,
-                              Parameter_file=inputs.tinker_parameter_file,
-                              volume_fraction_change=(volume_fraction[i] / previous_volume),
-                              Output=inputs.output + '_' + inputs.method + str(volume_fraction[i]))
+            Ex.Call_Expansion(inputs, 'expand', inputs.output + '_' + inputs.method + str(previous_volume)
+                              + file_ending, volume_fraction_change=(volume_fraction[i] / previous_volume),
+                              output_file=inputs.output + '_' + inputs.method + str(volume_fraction[i]))
 
         # Calculating wavenumbers of new expanded strucutre
         find_wavenumbers = True
@@ -453,7 +451,7 @@ def stepwise_expansion(inputs):
     if inputs.method == 'SaQply':
         eigenvectors = np.zeros((len(volumes), number_of_modes, number_of_modes))
         wavenumbers_hold = \
-            Wvn.Call_Wavenumbers(inputs)
+            Wvn.Call_Wavenumbers(inputs, Coordinate_file=inputs.coordinate_file)
 
     # setting a matrix for properties versus temperature and pressure
     properties = np.zeros((len(volumes), len(inputs.temperature), 14))
@@ -501,14 +499,14 @@ def stepwise_expansion(inputs):
 
     np.save('out_raw', properties)
     if inputs.method == 'SaQply':
-        poly_order = 3
-        minimum_gibbs_properties = Pr.polynomial_properties_optimize(properties[:, 0, 6], V0, wavenumbers, eigenvectors,
-                                                                     inputs.number_of_molecules,
-                                                                     inputs.statistical_mechanics, inputs.temperature,
-                                                                     inputs.pressure, inputs.eq_of_state,
-                                                                     inputs.poly_order, properties[:, 0, :],
-                                                                     inputs.output, inputs.program)
-
+        print("polynomial fit is not working yet")
+#NSA: This is working yet
+#        minimum_gibbs_properties = Pr.polynomial_properties_optimize(properties[:, 0, 6], V0, wavenumbers, eigenvectors,
+#                                                                     inputs.number_of_molecules,
+#                                                                     inputs.statistical_mechanics, inputs.temperature,
+#                                                                     inputs.pressure, inputs.eq_of_state,
+#                                                                     inputs.poly_order, properties[:, 0, :],
+#                                                                     inputs.output, inputs.program)
     else:
         minimum_gibbs_properties = np.zeros((len(inputs.temperature), 14))
         for i in range(len(properties[0, :, 0])):
