@@ -46,43 +46,25 @@ def temperature_lattice_dynamics(inputs):
     if (inputs.method == 'SiQ') or (inputs.method == 'SiQg'):
         # Stepwise Isotropic QHA
         print("Performing Stepwise Isotropic Quasi-Harmonic Approximation")
-
-
-
-
-
-
-# NSA: LEFT OFF HERE
         properties = TNA.Isotropic_Stepwise_Expansion(inputs)
-                                                      #StepWise_Vol_StepFrac, StepWise_Vol_LowerFrac,
-                                                      #StepWise_Vol_UpperFrac, Coordinate_file, Program, Temperature,
-                                                      #Pressure, Output, Method, molecules_in_coord, Wavenum_Tol,
-                                                      #Statistical_mechanics, min_RMS_gradient,
-                                                      #Parameter_file=Parameter_file,
-                                                      #Gruneisen_Vol_FracStep=Gruneisen_Vol_FracStep,
-                                                      #cp2kroot=cp2kroot)
+
+        print("   Saving user specified properties in indipendent files:")
+        Pr.Save_Properties(inputs, properties)
+
+    elif (inputs.method == 'GiQ') or (inputs.method == 'GiQg'):
+        if inputs.gradient_vol_fraction == (0. or None):
+            LocGrd_dV = Ss.isotropic_gradient_settings(inputs)
+
+        else:
+            V_0 = Pr.Volume(Program=inputs.program, Coordinate_file=inputs.coordinate_file)
+            LocGrd_dV = inputs.gradient_vol_fraction * V_0
+        # Gradient Isotropic QHA
+        print("Performing Gradient Isotropic Quasi-Harmonic Approximation")
+        properties = TNA.Isotropic_Gradient_Expansion(inputs, LocGrd_dV)
+
         print("   Saving user specified properties in indipendent files:")
         Pr.Save_Properties(inputs, properties)
 """
-    elif (Method == 'GiQ') or (Method == 'GiQg'):
-        if LocGrd_Vol_FracStep == 0.:
-            LocGrd_dV = Ss.isotropic_gradient_settings(Coordinate_file, Program, Parameter_file, molecules_in_coord,
-                                                       min_RMS_gradient, Output, Pressure)
-        else:
-            V_0 = Pr.Volume(Program=Program, Coordinate_file=Coordinate_file)
-            LocGrd_dV = LocGrd_Vol_FracStep * V_0
-        # Gradient Isotropic QHA
-        print("Performing Gradient Isotropic Quasi-Harmonic Approximation")
-        properties = TNA.Isotropic_Gradient_Expansion(Coordinate_file, Program, molecules_in_coord, Output, Method,
-                                                      Gradient_MaxTemp, Pressure, LocGrd_dV,
-                                                      Statistical_mechanics, NumAnalysis_step, NumAnalysis_method,
-                                                      Temperature, min_RMS_gradient,
-                                                      Parameter_file=Parameter_file,
-                                                      Gruneisen_Vol_FracStep=Gruneisen_Vol_FracStep,
-                                                      cp2kroot=cp2kroot)
-        print("   Saving user specified properties in indipendent files:")
-        Pr.Save_Properties(properties, properties_to_save, Output, Method, Statistical_mechanics)
-
     elif ((Method == 'GaQ') or (Method == 'GaQg')) and (Aniso_LocGrad_Type != '1D'):
         if any(LocGrd_CMatrix_FracStep != 0.):
             crystal_matrix_array = Ex.triangle_crystal_matrix_to_array(Ex.Lattice_parameters_to_Crystal_matrix(Pr.Lattice_parameters(Program, Coordinate_file)))

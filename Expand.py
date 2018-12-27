@@ -14,8 +14,7 @@ import fileinput
 ##########################################
 #                 Input                  #
 ##########################################
-def Call_Expansion(Method, Purpose, Program, Coordinate_file, molecules_in_coord, min_RMS_gradient,
-                   **keyword_parameters):
+def Call_Expansion(inputs, purpose, coordinate_file, **keyword_parameters):
     """
     :param Method: Harmonic approximation ('HA');
                    Stepwise Isotropic QHA ('SiQ');
@@ -49,68 +48,52 @@ def Call_Expansion(Method, Purpose, Program, Coordinate_file, molecules_in_coord
     dcrystal_matrix: changes in the crystal matrix
     crystal_matrix_reference
     """
-    # If there is no parameter_file, one is just inputted so there is no errors
-    if 'Parmaeter_file' in keyword_parameters:
-        keyword_parameters['Parameter_file'] == ''
-
     # Expanded a strucutre being input
-    if Purpose == 'expand':
-        if (Method == 'GiQ') or (Method == 'GiQg') or (Method == 'SiQ') or (Method == 'SiQg'):
+    if purpose == 'expand':
+        if (inputs.method == 'GiQ') or (inputs.method == 'GiQg') or (inputs.method == 'SiQ') or \
+                (inputs.method == 'SiQg'):
             dlattice_parameters = Isotropic_Change_Lattice_Parameters(keyword_parameters['volume_fraction_change'],
-                                                                      Program, Coordinate_file)
+                                                                      inputs.program, coordinate_file)
             
-            Expand_Structure(Coordinate_file, Program, 'lattice_parameters', molecules_in_coord,
-                             keyword_parameters['Output'], min_RMS_gradient, 
-                             Parameter_file=keyword_parameters['Parameter_file'],
-                             dlattice_parameters=dlattice_parameters)
-        elif (Method == 'GaQ') or (Method == 'GaQg'):
-            Expand_Structure(Coordinate_file, Program, 'crystal_matrix', molecules_in_coord, keyword_parameters['Output'],
-                             min_RMS_gradient, Parameter_file=keyword_parameters['Parameter_file'],
+            Expand_Structure(coordinate_file, inputs.program, 'lattice_parameters', inputs.number_of_molecules,
+                             keyword_parameters['output_file'], inputs.min_rms_gradient,
+                             Parameter_file=inputs.tinker_parameter_file, dlattice_parameters=dlattice_parameters)
+        elif (inputs.method == 'GaQ') or (inputs.method == 'GaQg'):
+            Expand_Structure(coordinate_file, inputs.program, 'crystal_matrix', inputs.number_of_molecules,
+                             keyword_parameters['output_file'], inputs.min_rms_gradient,
+                             Parameter_file=inputs.tinker_parameter_file,
                              dcrystal_matrix=keyword_parameters['dcrystal_matrix'])
 
     # Fining the local gradient of expansion for inputted strucutre
-    elif Purpose == 'local_gradient':
-#### GiQ and GiQg can be condensed
-        if Method == 'GiQ':
+    elif purpose == 'local_gradient':
+        if (inputs.method == 'GiQg') or (inputs.method == 'GiQ'):
             isotropic_local_gradient, wavenumbers, volume = \
-                Isotropic_Local_Gradient(Coordinate_file, Program, keyword_parameters['Temperature'],
-                                         keyword_parameters['Pressure'], keyword_parameters['LocGrd_dV'],
-                                         molecules_in_coord,
-                                         keyword_parameters['Statistical_mechanics'], Method, min_RMS_gradient,
-                                         Parameter_file=keyword_parameters['Parameter_file'])
-            return isotropic_local_gradient, wavenumbers, volume
-        elif Method == 'GiQg':
-            isotropic_local_gradient, wavenumbers, volume = \
-                Isotropic_Local_Gradient(Coordinate_file, Program, keyword_parameters['Temperature'],
-                                         keyword_parameters['Pressure'], keyword_parameters['LocGrd_dV'],
-                                         molecules_in_coord,
-                                         keyword_parameters['Statistical_mechanics'], Method, min_RMS_gradient,
-                                         Parameter_file=keyword_parameters['Parameter_file'],
-                                         Gruneisen=keyword_parameters['Gruneisen'],
+                Isotropic_Local_Gradient(inputs, coordinate_file, keyword_parameters['Temperature'],
+                                         keyword_parameters['LocGrd_dV'], Gruneisen=keyword_parameters['Gruneisen'],
                                          Wavenumber_Reference=keyword_parameters['Wavenumber_Reference'],
                                          Volume_Reference=keyword_parameters['Volume_Reference'])
             return isotropic_local_gradient, wavenumbers, volume
 
-        elif (Method == 'GaQ') or (Method == 'GaQg'):
+        elif (inputs.method == 'GaQ') or (inputs.method == 'GaQg'):
             if keyword_parameters['Aniso_LocGrad_Type'] != '1D':
                 strain_local_gradient, wavenumbers = \
-                    Anisotropic_Local_Gradient(Coordinate_file, Program, keyword_parameters['Temperature'],
+                    Anisotropic_Local_Gradient(coordinate_file, inputs.program, keyword_parameters['Temperature'],
                                                keyword_parameters['Pressure'],
-                                               keyword_parameters['LocGrd_dC'], molecules_in_coord,
-                                               keyword_parameters['Statistical_mechanics'], Method,
-                                               keyword_parameters['Aniso_LocGrad_Type'], min_RMS_gradient,
+                                               keyword_parameters['LocGrd_dC'], inputs.number_of_molecules,
+                                               keyword_parameters['Statistical_mechanics'], inputs.method,
+                                               keyword_parameters['Aniso_LocGrad_Type'], inputs.min_rms_gradient,
                                                keyword_parameters['ref_crystal_matrix'],
                                                Parameter_file=keyword_parameters['Parameter_file'],
                                                Gruneisen=keyword_parameters['Gruneisen'],
                                                Wavenumber_Reference=keyword_parameters['Wavenumber_Reference'])
             else:
                 strain_local_gradient, wavenumbers = \
-                    Anisotropic_Local_Gradient_1D(Coordinate_file, Program, keyword_parameters['Temperature'],
+                    Anisotropic_Local_Gradient_1D(coordinate_file, inputs.program, keyword_parameters['Temperature'],
                                                   keyword_parameters['Pressure'],
                                                   keyword_parameters['LocGrd_dLambda'], keyword_parameters['dC_dLambda'], 
-                                                  molecules_in_coord,
-                                                  keyword_parameters['Statistical_mechanics'], Method,
-                                                  keyword_parameters['Aniso_LocGrad_Type'], min_RMS_gradient,
+                                                  inputs.number_of_molecules,
+                                                  keyword_parameters['Statistical_mechanics'], inputs.method,
+                                                  keyword_parameters['Aniso_LocGrad_Type'], inputs.min_rms_gradient,
                                                   keyword_parameters['ref_crystal_matrix'],
                                                   Parameter_file=keyword_parameters['Parameter_file'],
                                                   Gruneisen=keyword_parameters['Gruneisen'],
@@ -613,8 +596,7 @@ def Expand_Structure(Coordinate_file, Program, Expansion_type, molecules_in_coor
 ###################################################
 #       Local Gradient of Thermal  Expansion      #
 ###################################################
-def Isotropic_Local_Gradient(Coordinate_file, Program, Temperature, Pressure, LocGrd_dV,
-                             molecules_in_coord, Statistical_mechanics, Method, min_RMS_gradient, **keyword_parameters):
+def Isotropic_Local_Gradient(inputs, coordinate_file, temperature, LocGrd_dV, **keyword_parameters):
     """
     This function calculates the local gradient of isotropic expansion for a given coordinate file
     
@@ -638,103 +620,90 @@ def Isotropic_Local_Gradient(Coordinate_file, Program, Temperature, Pressure, Lo
     Volume_reference: reference volume for the Gruneisen parameter
     """
     # Assigning general names for expanded and compressed structures
-    if Program == 'Tinker':
-        coordinate_plus = 'plus.xyz'
-        coordinate_minus = 'minus.xyz'
-    elif Program == 'Test':
-        coordinate_plus = 'plus.npy'
-        coordinate_minus = 'minus.npy'
-        keyword_parameters['Parameter_file'] = ''
-    elif Program == 'CP2K':
-        coordinate_plus = 'plus.pdb'
-        coordinate_minus = 'minus.pdb'
-    elif Program == 'QE':
-        coordinate_plus = 'plus.pw'
-        coordinate_minus = 'minus.pw'
+    file_ending = assign_file_ending(inputs.program)
+
+    coordinate_plus = 'plus' + file_ending
+    coordinate_minus = 'minus' + file_ending
 
     # Determining the volume of Coordinate_file
-    volume = Pr.Volume(Program=Program, Coordinate_file=Coordinate_file)
+    volume = Pr.Volume(Program=inputs.program, Coordinate_file=coordinate_file)
 
     # Determining the change in lattice parameter for isotropic expansion
-    dlattice_parameters_p = Isotropic_Change_Lattice_Parameters((volume + LocGrd_dV) / volume, Program, Coordinate_file)
-    dlattice_parameters_m = Isotropic_Change_Lattice_Parameters((volume - LocGrd_dV) / volume, Program, Coordinate_file)
+    dlattice_parameters_p = Isotropic_Change_Lattice_Parameters((volume + LocGrd_dV) / volume, inputs.program,
+                                                                coordinate_file)
+    dlattice_parameters_m = Isotropic_Change_Lattice_Parameters((volume - LocGrd_dV) / volume, inputs.program,
+                                                                coordinate_file)
 
     # Building the isotropically expanded and compressed strucutres
-    Expand_Structure(Coordinate_file, Program, 'lattice_parameters', molecules_in_coord, 'plus', min_RMS_gradient,
-                     dlattice_parameters=dlattice_parameters_p, Parameter_file=keyword_parameters['Parameter_file'])
-    Expand_Structure(Coordinate_file, Program, 'lattice_parameters', molecules_in_coord, 'minus', min_RMS_gradient,
-                     dlattice_parameters=dlattice_parameters_m, Parameter_file=keyword_parameters['Parameter_file'])
+    Expand_Structure(coordinate_file, inputs.program, 'lattice_parameters', inputs.number_of_molecules, 'plus',
+                     inputs.min_rms_gradient, dlattice_parameters=dlattice_parameters_p,
+                     Parameter_file=inputs.tinker_parameter_file)
+    Expand_Structure(coordinate_file, inputs.program, 'lattice_parameters', inputs.number_of_molecules, 'minus',
+                     inputs.min_rms_gradient, dlattice_parameters=dlattice_parameters_m,
+                     Parameter_file=inputs.tinker_parameter_file)
+
     # Calculating wavenumbers coordinate_file, plus.*, and minus.*
-    if Method == 'GiQ':
-        wavenumbers = Wvn.Call_Wavenumbers(Method, min_RMS_gradient, Coordinate_file=Coordinate_file,
-                                           Parameter_file=keyword_parameters['Parameter_file'],
-                                           Program=Program)
-        wavenumbers_plus = Wvn.Call_Wavenumbers(Method, min_RMS_gradient, Coordinate_file=coordinate_plus,
-                                                Parameter_file=keyword_parameters['Parameter_file'],
-                                                Program=Program)
-        wavenumbers_minus = Wvn.Call_Wavenumbers(Method, min_RMS_gradient, Coordinate_file=coordinate_minus,
-                                                 Parameter_file=keyword_parameters['Parameter_file'],
-                                                 Program=Program)
+    if inputs.method == 'GiQ':
+        wavenumbers = Wvn.Call_Wavenumbers(inputs, Coordinate_file=coordinate_file)
+        wavenumbers_plus = Wvn.Call_Wavenumbers(inputs, Coordinate_file=coordinate_plus)
+        wavenumbers_minus = Wvn.Call_Wavenumbers(inputs, Coordinate_file=coordinate_minus)
     else:
-        wavenumbers = Wvn.Call_Wavenumbers(Method, min_RMS_gradient, Gruneisen=keyword_parameters['Gruneisen'],
+        wavenumbers = Wvn.Call_Wavenumbers(inputs, Gruneisen=keyword_parameters['Gruneisen'],
                                            Wavenumber_Reference=keyword_parameters['Wavenumber_Reference'],
                                            Volume_Reference=keyword_parameters['Volume_Reference'],
                                            New_Volume=volume)
-        wavenumbers_plus = Wvn.Call_Wavenumbers(Method, min_RMS_gradient, Gruneisen=keyword_parameters['Gruneisen'],
+        wavenumbers_plus = Wvn.Call_Wavenumbers(inputs, Gruneisen=keyword_parameters['Gruneisen'],
                                                 Wavenumber_Reference=keyword_parameters['Wavenumber_Reference'],
                                                 Volume_Reference=keyword_parameters['Volume_Reference'],
                                                 New_Volume=volume + LocGrd_dV)
-        wavenumbers_minus = Wvn.Call_Wavenumbers(Method, min_RMS_gradient, Gruneisen=keyword_parameters['Gruneisen'],
+        wavenumbers_minus = Wvn.Call_Wavenumbers(inputs, Gruneisen=keyword_parameters['Gruneisen'],
                                                  Wavenumber_Reference=keyword_parameters['Wavenumber_Reference'],
                                                  Volume_Reference=keyword_parameters['Volume_Reference'],
                                                  New_Volume=volume - LocGrd_dV)
 
-    # If temperature is zero, we assume that the local gradient is the same at 0.1K
-    if Temperature == 0.:
-        Temperature = 1e-03
+    # If temperature is zero, we assume that the local gradient is the same at 0.001K
+    if temperature == 0.:
+        temperature = 1e-03
 
     # Calculating the numerator of the local gradient -dS/dV
-    dS = (Pr.Vibrational_Entropy(Temperature, wavenumbers_plus, Statistical_mechanics)/molecules_in_coord -
-          Pr.Vibrational_Entropy(Temperature, wavenumbers_minus, Statistical_mechanics)/molecules_in_coord) / \
-         (2 * LocGrd_dV)
+    dS = (Pr.Vibrational_Entropy(temperature, wavenumbers_plus, inputs.statistical_mechanics) /
+          inputs.number_of_molecules - Pr.Vibrational_Entropy(temperature, wavenumbers_minus,
+                                                              inputs.statistical_mechanics) /
+          inputs.number_of_molecules) / (2 * LocGrd_dV)
 
     # Calculating the denominator of the local gradient d**2G/dV**2
-    ddG = (Pr.Gibbs_Free_Energy(Temperature, Pressure, Program, wavenumbers_plus, coordinate_plus,
-                                Statistical_mechanics, molecules_in_coord,
-                                Parameter_file=keyword_parameters['Parameter_file'])[0] -
-           2*Pr.Gibbs_Free_Energy(Temperature, Pressure, Program, wavenumbers, Coordinate_file,
-                                  Statistical_mechanics, molecules_in_coord,
-                                  Parameter_file=keyword_parameters['Parameter_file'])[0] +
-           Pr.Gibbs_Free_Energy(Temperature, Pressure, Program, wavenumbers_minus, coordinate_minus,
-                                Statistical_mechanics, molecules_in_coord,
-                                Parameter_file=keyword_parameters['Parameter_file'])[0]) / \
-          (LocGrd_dV**2)
+    ddG = (Pr.Gibbs_Free_Energy(temperature, inputs.pressure, inputs.program, wavenumbers_plus, coordinate_plus,
+                                inputs.statistical_mechanics, inputs.number_of_molecules,
+                                Parameter_file=inputs.tinker_parameter_file)[0] -
+           2 * Pr.Gibbs_Free_Energy(temperature, inputs.pressure, inputs.program, wavenumbers, coordinate_file,
+                                    inputs.statistical_mechanics, inputs.number_of_molecules,
+                                    Parameter_file=inputs.tinker_parameter_file)[0] +
+           Pr.Gibbs_Free_Energy(temperature, inputs.pressure, inputs.program, wavenumbers_minus, coordinate_minus,
+                                inputs.statistical_mechanics, inputs.number_of_molecules,
+                                Parameter_file=inputs.tinker_parameter_file)[0]) / (LocGrd_dV ** 2)
 
     # Computing the backward, central, and forward finite difference of dG/dV
     dG = np.zeros(3)
-    dG[0] = (Pr.Gibbs_Free_Energy(Temperature, Pressure, Program, wavenumbers, Coordinate_file,
-                                  Statistical_mechanics, molecules_in_coord,
-                                  Parameter_file=keyword_parameters['Parameter_file'])[0] -
-             Pr.Gibbs_Free_Energy(Temperature, Pressure, Program, wavenumbers_minus, coordinate_minus,
-                                  Statistical_mechanics, molecules_in_coord,
-                                  Parameter_file=keyword_parameters['Parameter_file'])[0]) / \
-            (LocGrd_dV)
+    dG[0] = (Pr.Gibbs_Free_Energy(temperature, inputs.pressure, inputs.program, wavenumbers, coordinate_file,
+                                  inputs.statistical_mechanics, inputs.number_of_molecules,
+                                  Parameter_file=inputs.tinker_parameter_file)[0] -
+             Pr.Gibbs_Free_Energy(temperature, inputs.pressure, inputs.program, wavenumbers_minus, coordinate_minus,
+                                  inputs.statistical_mechanics, inputs.number_of_molecules,
+                                  Parameter_file=inputs.tinker_parameter_file)[0]) / (LocGrd_dV)
 
-    dG[1] = (Pr.Gibbs_Free_Energy(Temperature, Pressure, Program, wavenumbers_plus, coordinate_plus,
-                                  Statistical_mechanics, molecules_in_coord,
-                                  Parameter_file=keyword_parameters['Parameter_file'])[0] -
-             Pr.Gibbs_Free_Energy(Temperature, Pressure, Program, wavenumbers_minus, coordinate_minus,
-                                  Statistical_mechanics, molecules_in_coord,
-                                  Parameter_file=keyword_parameters['Parameter_file'])[0]) / \
-            (2 * LocGrd_dV)
+    dG[1] = (Pr.Gibbs_Free_Energy(temperature, inputs.pressure, inputs.program, wavenumbers_plus, coordinate_plus,
+                                  inputs.statistical_mechanics, inputs.number_of_molecules,
+                                  Parameter_file=inputs.tinker_parameter_file)[0] -
+             Pr.Gibbs_Free_Energy(temperature, inputs.pressure, inputs.program, wavenumbers_minus, coordinate_minus,
+                                  inputs.statistical_mechanics, inputs.number_of_molecules,
+                                  Parameter_file=inputs.tinker_parameter_file)[0]) / (2 * LocGrd_dV)
 
-    dG[2] = (Pr.Gibbs_Free_Energy(Temperature, Pressure, Program, wavenumbers_plus, coordinate_plus,
-                                  Statistical_mechanics, molecules_in_coord,
-                                  Parameter_file=keyword_parameters['Parameter_file'])[0] -
-             Pr.Gibbs_Free_Energy(Temperature, Pressure, Program, wavenumbers, Coordinate_file,
-                                  Statistical_mechanics, molecules_in_coord,
-                                  Parameter_file=keyword_parameters['Parameter_file'])[0]) / \
-            (LocGrd_dV)
+    dG[2] = (Pr.Gibbs_Free_Energy(temperature, inputs.pressure, inputs.program, wavenumbers_plus, coordinate_plus,
+                                  inputs.statistical_mechanics, inputs.number_of_molecules,
+                                  Parameter_file=inputs.tinker_parameter_file)[0] -
+             Pr.Gibbs_Free_Energy(temperature, inputs.pressure, inputs.program, wavenumbers, coordinate_file,
+                                  inputs.statistical_mechanics, inputs.number_of_molecules,
+                                  Parameter_file=inputs.tinker_parameter_file)[0]) / (LocGrd_dV)
 
 
     # Saving numerical outputs

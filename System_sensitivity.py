@@ -20,13 +20,14 @@ def program_cutoff(Program):
         cutoff = 5e-04
     return cutoff
 
-def isotropic_gradient_settings(Coordinate_file, Program, Parameter_file, molecules_in_coord, min_RMS_gradient, Output, 
-                                Pressure):
+def isotropic_gradient_settings(inputs):
+        #Coordinate_file, Program, Parameter_file, molecules_in_coord, min_RMS_gradient, Output,
+         #                       Pressure):
     # Determining the file ending based on the program
-    file_ending = Ex.assign_file_ending(Program)
+    file_ending = Ex.assign_file_ending(inputs.program)
 
     # Setting the energy cutoff
-    cutoff = program_cutoff(Program)
+    cutoff = program_cutoff(inputs.program)
 
     # Fractional step sizes to take
     steps = np.array([5e-05, 1e-04, 5e-04, 1e-03, 5e-03, 1e-02, 5e-02, 1e-01, 5e-01])
@@ -35,24 +36,27 @@ def isotropic_gradient_settings(Coordinate_file, Program, Parameter_file, molecu
     n_steps = len(steps)
 
     # Potential energy of input file and a place to store the expanded structures potential energy
-    U_0 = (Pr.Potential_energy(Coordinate_file, Program, Parameter_file=Parameter_file) \
-           + Pr.PV_energy(Pressure, Pr.Volume(Program=Program, Coordinate_file=Coordinate_file))) / \
-          molecules_in_coord
+    U_0 = (Pr.Potential_energy(inputs.coordinate_file, inputs.program, Parameter_file=inputs.tinker_parameter_file) \
+           + Pr.PV_energy(inputs.pressure, Pr.Volume(Program=inputs.program, Coordinate_file=inputs.coordinate_file))) / \
+          inputs.number_of_molecules
     U = np.zeros((n_steps))
 
     for i in range(n_steps):
         # Setting how much the lattice parameters must be changed
-        dlattice_parameters = Ex.Isotropic_Change_Lattice_Parameters(1. + steps[i], Program, Coordinate_file)
+        dlattice_parameters = Ex.Isotropic_Change_Lattice_Parameters(1. + steps[i], inputs.program,
+                                                                     inputs.coordinate_file)
 
         # Expanding the strucutre
-        Ex.Expand_Structure(Coordinate_file, Program, 'lattice_parameters', molecules_in_coord, Output,
-                            min_RMS_gradient, Parameter_file=Parameter_file, dlattice_parameters=dlattice_parameters)
+        Ex.Expand_Structure(inputs.coordinate_file, inputs.program, 'lattice_parameters', inputs.number_of_molecules,
+                            inputs.output, inputs.min_rms_gradient, Parameter_file=inputs.tinker_parameter_file,
+                            dlattice_parameters=dlattice_parameters)
 
         # Computing the potential energy
-        U[i] = (Pr.Potential_energy(Output + file_ending, Program, Parameter_file=Parameter_file) \
-                + Pr.PV_energy(Pressure, Pr.Volume(Program=Program, Coordinate_file=Output + file_ending))) / \
-                molecules_in_coord
-        subprocess.call(['rm', Output + file_ending])
+        U[i] = (Pr.Potential_energy(inputs.output + file_ending, inputs.program,
+                                    Parameter_file=inputs.tinker_parameter_file) \
+                + Pr.PV_energy(inputs.pressure, Pr.Volume(Program=inputs.program, Coordinate_file=inputs.output + file_ending))) / \
+                inputs.number_of_molecules
+        subprocess.call(['rm', inputs.output + file_ending])
 
         if (U[i] - U_0) > cutoff:
             # Ending the run if we've exceeded the energy cut-off
@@ -68,14 +72,14 @@ def isotropic_gradient_settings(Coordinate_file, Program, Parameter_file, molecu
     plt.ylim((0., 2*cutoff))
     plt.axhline(y=cutoff, c='grey', linestyle='--')
     plt.tight_layout()
-    plt.savefig(Output + '_LocGrd_Vol_FracStep.pdf')
+    plt.savefig(inputs.output + '_LocGrd_Vol_FracStep.pdf')
     plt.close()
 
     # Printing step size
     print("After analysis, LocGrd_Vol_FracStep = ", LocGrd_Vol_FracStep)
 
     # initial volume
-    V_0 = Pr.Volume(Program=Program, Coordinate_file=Coordinate_file)
+    V_0 = Pr.Volume(Program=inputs.program, Coordinate_file=inputs.coordinate_file)
 
     # returning the value of dV
     return LocGrd_Vol_FracStep * V_0

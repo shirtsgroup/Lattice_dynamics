@@ -38,7 +38,7 @@ def Properties(inputs, Coordinate_file, wavenumbers, Temperature):
     properties[0] = Temperature  # Temperature
     properties[1] = inputs.pressure  # Pressure
     if inputs.program == 'Tinker':
-        properties[3] = Tinker_U(Coordinate_file, inputs.parameter_file) / inputs.number_of_molecules
+        properties[3] = Tinker_U(Coordinate_file, inputs.tinker_parameter_file) / inputs.number_of_molecules
         # Potential energy
         properties[7:13] = Tinker_Lattice_Parameters(Coordinate_file)  # Lattice parameters
     elif inputs.program == 'CP2K':
@@ -78,15 +78,8 @@ def Properties_with_Temperature(inputs, Coordinate_file, wavenumbers):
     **Optional Inputs
     Parameter_file = Optional input for program
     """
-    if 'Parameter_file' in keyword_parameters:
-        pass
-    else:
-        keyword_parameters['Parameter_file'] = ''
-
     properties = np.zeros((len(inputs.temperature), 14))
-    properties[0, :] = Properties(Coordinate_file, wavenumbers, inputs.temperature[0], inputs.pressure, inputs.program,
-                                  inputs.statistical_mechanics, inputs.number_of_molecules, inputs.cp2k_root,
-                                  Parameter_file=inputs.tinker_parameter_file)
+    properties[0, :] = Properties(inputs, Coordinate_file, wavenumbers, inputs.temperature[0])
     properties[:, 0] = inputs.temperature
     properties[:, 1] = properties[0, 1]
     properties[:, 3] = properties[0, 3]
