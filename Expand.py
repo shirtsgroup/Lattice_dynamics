@@ -51,7 +51,7 @@ def Call_Expansion(inputs, purpose, coordinate_file, **keyword_parameters):
     # Expanded a strucutre being input
     if purpose == 'expand':
         if (inputs.method == 'GiQ') or (inputs.method == 'GiQg') or (inputs.method == 'SiQ') or \
-                (inputs.method == 'SiQg'):
+                (inputs.method == 'SiQg') or (inputs.method == 'SaQply'):
             dlattice_parameters = Isotropic_Change_Lattice_Parameters(keyword_parameters['volume_fraction_change'],
                                                                       inputs.program, coordinate_file)
             
@@ -77,25 +77,17 @@ def Call_Expansion(inputs, purpose, coordinate_file, **keyword_parameters):
         elif (inputs.method == 'GaQ') or (inputs.method == 'GaQg'):
             if keyword_parameters['Aniso_LocGrad_Type'] != '1D':
                 strain_local_gradient, wavenumbers = \
-                    Anisotropic_Local_Gradient(coordinate_file, inputs.program, keyword_parameters['Temperature'],
-                                               keyword_parameters['Pressure'],
-                                               keyword_parameters['LocGrd_dC'], inputs.number_of_molecules,
-                                               keyword_parameters['Statistical_mechanics'], inputs.method,
-                                               keyword_parameters['Aniso_LocGrad_Type'], inputs.min_rms_gradient,
-                                               keyword_parameters['ref_crystal_matrix'],
-                                               Parameter_file=keyword_parameters['Parameter_file'],
+                    Anisotropic_Local_Gradient(inputs, coordinate_file, keyword_parameters['Temperature'],
+                                               keyword_parameters['LocGrd_dC'],
+                                               ref_crystal_matrix=keyword_parameters['ref_crystal_matrix'],
                                                Gruneisen=keyword_parameters['Gruneisen'],
                                                Wavenumber_Reference=keyword_parameters['Wavenumber_Reference'])
             else:
                 strain_local_gradient, wavenumbers = \
-                    Anisotropic_Local_Gradient_1D(coordinate_file, inputs.program, keyword_parameters['Temperature'],
-                                                  keyword_parameters['Pressure'],
-                                                  keyword_parameters['LocGrd_dLambda'], keyword_parameters['dC_dLambda'], 
-                                                  inputs.number_of_molecules,
-                                                  keyword_parameters['Statistical_mechanics'], inputs.method,
-                                                  keyword_parameters['Aniso_LocGrad_Type'], inputs.min_rms_gradient,
-                                                  keyword_parameters['ref_crystal_matrix'],
-                                                  Parameter_file=keyword_parameters['Parameter_file'],
+                    Anisotropic_Local_Gradient_1D(inputs, coordinate_file, keyword_parameters['Temperature'],
+                                                  keyword_parameters['LocGrd_dLambda'],
+                                                  keyword_parameters['dC_dLambda'],
+                                                  ref_crystal_matrix=keyword_parameters['ref_crystal_matrix'],
                                                   Gruneisen=keyword_parameters['Gruneisen'],
                                                   Wavenumber_Reference=keyword_parameters['Wavenumber_Reference'])
             return strain_local_gradient, wavenumbers
@@ -714,9 +706,7 @@ def Isotropic_Local_Gradient(inputs, coordinate_file, temperature, LocGrd_dV, **
     return dS/ddG, wavenumbers, volume
 
 
-def Anisotropic_Local_Gradient(Coordinate_file, Program, Temperature, Pressure, LocGrd_dC,
-                               molecules_in_coord, Statistical_mechanics, Method, Aniso_LocGrad_Type,
-                               min_RMS_gradient, ref_crystal_matrix, **keyword_parameters):
+def Anisotropic_Local_Gradient(inputs, coordinate_file, temperature, LocGrd_dC, **keyword_parameters):
     """
     This function calculates the local gradient of anisotropic expansion for a given coordinate file
 
@@ -748,7 +738,7 @@ def Anisotropic_Local_Gradient(Coordinate_file, Program, Temperature, Pressure, 
     min_numerical_crystal_matrix = 1.0e-7
 
     # Determining the file ending of the coordinate files
-    file_ending = assign_file_ending(Program)
+    file_ending = assign_file_ending(inputs.program)
 
     # Preparing the matrix with each entry as d**2G/(dC*dC)
     ddG_ddC = np.zeros((6, 6))
@@ -767,34 +757,32 @@ def Anisotropic_Local_Gradient(Coordinate_file, Program, Temperature, Pressure, 
     # Making array for dG/dC
     dG_dC = np.zeros((6, 3))
 
-    if Temperature == 0.:
+    if temperature == 0.:
         # If temperature is zero, we assume that the local gradient is the same at 0.1K
-        Temperature = 1e-10
+        temperature = 1e-10
 
 
     # Modified anisotropic Local Gradient
-    if Aniso_LocGrad_Type == '6D':
+    if inputs.anisotropic_type == '6D':
         diag_limit = 6
         off_diag_limit = 6
-    elif Aniso_LocGrad_Type == '3D':
+    elif inputs.anisotropic_type == '3D':
         diag_limit = 3
         off_diag_limit = 3
     else:
-        print("Aniso_LocGrad_Type = ", Aniso_LocGrad_Type, " is not a valid option.")
+        print("Aniso_LocGrad_Type = ", inputs.anisotropic_type, " is not a valid option.")
         sys.exit()
 
     # Retrieving the wavenumbers of the initial structure
-    wavenumber_keywords = { 'Coordinate_file' : Coordinate_file,
-                            'Parameter_file' : keyword_parameters['Parameter_file'],
-                            'Gruneisen' : keyword_parameters['Gruneisen'],
-                            'Wavenumber_Reference' : keyword_parameters['Wavenumber_Reference'],
-                            'ref_crystal_matrix': ref_crystal_matrix,
-                            'Program': Program}
-    wavenumbers = Wvn.Call_Wavenumbers(Method, min_RMS_gradient, **wavenumber_keywords)
+    wavenumbers = Wvn.Call_Wavenumbers(inputs, Coordinate_file=coordinate_file,
+                                       ref_crystal_matrix=keyword_parameters['ref_crystal_matrix'],
+                                       Gruneisen=keyword_parameters['Gruneisen'],
+                                       Wavenumber_Reference=keyword_parameters['Wavenumber_Reference'])
 
-    dG_dict['0'], U_0, Av_0 = Pr.Gibbs_Free_Energy(Temperature, Pressure, Program, wavenumbers, Coordinate_file,
-                                                   Statistical_mechanics, molecules_in_coord,
-                                                   Parameter_file=keyword_parameters['Parameter_file']) 
+    dG_dict['0'], U_0, Av_0 = Pr.Gibbs_Free_Energy(temperature, inputs.pressure, inputs.program, wavenumbers,
+                                                   coordinate_file, inputs.statistical_mechanics,
+                                                   inputs.number_of_molecules,
+                                                   Parameter_file=inputs.tinker_parameter_file)
 
     for i in range(diag_limit):
         # Calculating the diagonals of ddG_ddeta and the vector dS_deta
@@ -815,63 +803,76 @@ def Anisotropic_Local_Gradient(Coordinate_file, Program, Temperature, Pressure, 
             else:
                 cm_factor = 1.0
                 out_factor = 1
-            Expand_Structure(Coordinate_file, Program, 'crystal_matrix', molecules_in_coord, d, min_RMS_gradient,
-                             dcrystal_matrix=array_to_triangle_crystal_matrix(cm_factor*cm_array),
-                             Parameter_file=keyword_parameters['Parameter_file'])
+            Expand_Structure(coordinate_file, inputs.program, 'crystal_matrix', inputs.number_of_molecules, d,
+                             inputs.min_rms_gradient,
+                             dcrystal_matrix=array_to_triangle_crystal_matrix(cm_factor * cm_array),
+                             Parameter_file=inputs.tinker_parameter_file)
 
-            wavenumber_keywords['Coordinate_file'] = d + file_ending
-            wavenumbers_dict[d] = Wvn.Call_Wavenumbers(Method, min_RMS_gradient, **wavenumber_keywords)
-            dG_dict[d], U[i, out_factor], Av[i, out_factor] = Pr.Gibbs_Free_Energy(Temperature, Pressure, Program, wavenumbers_dict[d], d + file_ending,
-                                                         Statistical_mechanics, molecules_in_coord,
-                                                         Parameter_file=keyword_parameters['Parameter_file'])
+            wavenumbers_dict[d] = Wvn.Call_Wavenumbers(inputs, Coordinate_file=d + file_ending,
+                                                       ref_crystal_matrix=keyword_parameters['ref_crystal_matrix'],
+                                                       Gruneisen=keyword_parameters['Gruneisen'],
+                                                       Wavenumber_Reference=keyword_parameters['Wavenumber_Reference'])
+            dG_dict[d], U[i, out_factor], Av[i, out_factor] = \
+                Pr.Gibbs_Free_Energy(temperature, inputs.pressure, inputs.program, wavenumbers_dict[d], d + file_ending,
+                                     inputs.statistical_mechanics, inputs.number_of_molecules,
+                                     Parameter_file=inputs.tinker_parameter_file)
 
         # Computing the derivative of entropy as a funciton of strain using a finite difference approach
-        Sp = Pr.Vibrational_Entropy(Temperature, wavenumbers_dict['p'], Statistical_mechanics) / molecules_in_coord
-        Sm = Pr.Vibrational_Entropy(Temperature, wavenumbers_dict['m'], Statistical_mechanics) / molecules_in_coord
+        Sp = Pr.Vibrational_Entropy(temperature, wavenumbers_dict['p'], inputs.statistical_mechanics) / \
+             inputs.number_of_molecules
+        Sm = Pr.Vibrational_Entropy(temperature, wavenumbers_dict['m'], inputs.statistical_mechanics) / \
+             inputs.number_of_molecules
         dS_dC[i] = (Sp - Sm) / (2 * LocGrd_dC[i])
 
         # Calculating the finite difference of dG/deta for forward, central, and backwards
-        dG_dC[i, 0] =  (dG_dict['0']-dG_dict['m']) / (LocGrd_dC[i])
-        dG_dC[i, 1] =  (dG_dict['p']-dG_dict['m']) / (2 * LocGrd_dC[i])
-        dG_dC[i, 2] =  (dG_dict['p']-dG_dict['0']) / (LocGrd_dC[i])
+        dG_dC[i, 0] = (dG_dict['0'] - dG_dict['m']) / (LocGrd_dC[i])
+        dG_dC[i, 1] = (dG_dict['p'] - dG_dict['m']) / (2 * LocGrd_dC[i])
+        dG_dC[i, 2] = (dG_dict['p'] - dG_dict['0']) / (LocGrd_dC[i])
 
-        # Computing the second derivative Gibbs free energy as a funciton of strain using a finite difference approach
-        ddG_ddC[i, i] = (dG_dict['p']-2*dG_dict['0']+dG_dict['m']) / (LocGrd_dC[i] ** 2) 
+        # Computing the second derivative Gibbs free energy as a function of strain using a finite difference approach
+        ddG_ddC[i, i] = (dG_dict['p'] - 2 * dG_dict['0'] + dG_dict['m']) / (LocGrd_dC[i] ** 2)
 
-        #otherwise, these stay as zero
+        # otherwise, these stay as zero
         if i < off_diag_limit:
             # Computing the off diagonals of d**2 G/ (deta*deta)
             for j in np.arange(i + 1, off_diag_limit):
                 if LocGrd_dC[j] < min_numerical_crystal_matrix:
-                    continue # don't bother to calculate them distance changed is too small.
+                    continue  # don't bother to calculate them distance changed is too small.
                 # Setting the strain of the second element for the off diagonal
                 cm_array_2 = np.zeros(6)
                 cm_array_2[j] = LocGrd_dC[j]
 
-                # Expanding the strucuture for a 4 different strains
+                # Expanding the structure for a 4 different strains
                 delta2 = list()
                 for di in delta1:
                     for dj in delta1:
                         d2 = di+dj
                         delta2.append(d2) # create the list of 2D changes as length 2 strings
-                        if dj == 'm': # if the second dimension is a minus, dcrystal_matrix is negative
+                        if dj == 'm':  # if the second dimension is a minus, dcrystal_matrix is negative
                             cm_factor = -1.0
                         else:
                             cm_factor = 1.0
 
-                        Expand_Structure(di + file_ending, Program, 'crystal_matrix', molecules_in_coord, d2,
-                                 min_RMS_gradient, dcrystal_matrix=array_to_triangle_crystal_matrix(cm_factor*cm_array_2),
-                                 Parameter_file=keyword_parameters['Parameter_file'])
+                        Expand_Structure(di + file_ending, inputs.program, 'crystal_matrix', inputs.number_of_molecules,
+                                         d2, inputs.min_rms_gradient,
+                                         dcrystal_matrix=array_to_triangle_crystal_matrix(cm_factor * cm_array_2),
+                                         Parameter_file=inputs.tinker_parameter_file)
 
                 for d in delta2:
-                    wavenumber_keywords['Coordinate_file'] = d + file_ending
-                    wavenumbers_dict[d] = Wvn.Call_Wavenumbers(Method, min_RMS_gradient,**wavenumber_keywords)
-                    dG_dict[d], ignore, ignore = Pr.Gibbs_Free_Energy(Temperature, Pressure, Program, wavenumbers_dict[d],
-                                                      d + file_ending, Statistical_mechanics, molecules_in_coord,
-                                                      Parameter_file=keyword_parameters['Parameter_file'])
+                    wavenumbers_dict[d] = \
+                        Wvn.Call_Wavenumbers(inputs, Coordinate_file=d + file_ending,
+                                             ref_crystal_matrix=keyword_parameters['ref_crystal_matrix'],
+                                             Gruneisen=keyword_parameters['Gruneisen'],
+                                             Wavenumber_Reference=keyword_parameters['Wavenumber_Reference'])
+
+                    dG_dict[d], ignore, ignore = \
+                        Pr.Gibbs_Free_Energy(temperature, inputs.pressure, inputs.program, wavenumbers_dict[d],
+                                             d + file_ending, inputs.statistical_mechanics, inputs.number_of_molecules,
+                                             Parameter_file=inputs.tinker_parameter_file)
 
                 # Calculating the diagonal elements of d**2 G/(deta*deta)
-                ddG_ddC[i, j] = (dG_dict['pp'] - dG_dict['pm'] - dG_dict['mp'] + dG_dict['mm']) / (4 * LocGrd_dC[i] * LocGrd_dC[j])
+                ddG_ddC[i, j] = (dG_dict['pp'] - dG_dict['pm'] - dG_dict['mp'] + dG_dict['mm']) / \
+                                (4 * LocGrd_dC[i] * LocGrd_dC[j])
 
                 # Making d**2 G/(deta*deta) symetric
                 ddG_ddC[j, i] = ddG_ddC[i, j]
@@ -891,33 +892,29 @@ def Anisotropic_Local_Gradient(Coordinate_file, Program, Temperature, Pressure, 
     return dC_dT, wavenumbers
 
 
-def Anisotropic_Local_Gradient_1D(Coordinate_file, Program, Temperature, Pressure, LocGrd_dLambda, dC_dLambda, molecules_in_coord,
-                                  Statistical_mechanics, Method, Aniso_LocGrad_Type, min_RMS_gradient, ref_crystal_matrix,
+def Anisotropic_Local_Gradient_1D(inputs, coordinate_file, temperature, LocGrd_dLambda, dC_dLambda,
                                   **keyword_parameters):
     # Determining the file ending of the coordinate files
-    file_ending = assign_file_ending(Program)
+    file_ending = assign_file_ending(inputs.program)
 
-    if Temperature == 0.:
+    if temperature == 0.:
         # If temperature is zero, we assume that the local gradient is the same at 0.1K
-        Temperature = 1e-3
+        temperature = 1e-3
 
     # Retrieving the wavenumbers of the initial structure
-    wavenumber_keywords = { 'Coordinate_file' : Coordinate_file,
-                            'Parameter_file' : keyword_parameters['Parameter_file'],
-                            'Gruneisen' : keyword_parameters['Gruneisen'],
+    wavenumber_keywords = { 'Gruneisen' : keyword_parameters['Gruneisen'],
                             'Wavenumber_Reference' : keyword_parameters['Wavenumber_Reference'],
-                            'ref_crystal_matrix': ref_crystal_matrix,
-                            'Program': Program}
-    wavenumbers = Wvn.Call_Wavenumbers(Method, min_RMS_gradient, **wavenumber_keywords)
+                            'ref_crystal_matrix': keyword_parameters['ref_crystal_matrix']}
+    wavenumbers = Wvn.Call_Wavenumbers(inputs, Coordinate_file=coordinate_file, **wavenumber_keywords)
 
     G = np.zeros(3)
     U = np.zeros(3) 
     Av = np.zeros(3)
     S = np.zeros(3)
 
-    G[1], U[1], Av[1] = Pr.Gibbs_Free_Energy(Temperature, Pressure, Program, wavenumbers, Coordinate_file,
-                                             Statistical_mechanics, molecules_in_coord,
-                                             Parameter_file=keyword_parameters['Parameter_file'])
+    G[1], U[1], Av[1] = Pr.Gibbs_Free_Energy(temperature, inputs.poressure, inputs.program, wavenumbers,
+                                             coordinate_file, inputs.statistical_mechanics, inputs.number_of_molecules,
+                                             Parameter_file=inputs.tinker_parameter_file)
 
     crystal_matrix_array = LocGrd_dLambda * dC_dLambda
     # Straining the input structure by the current diagonal
@@ -929,27 +926,29 @@ def Anisotropic_Local_Gradient_1D(Coordinate_file, Program, Temperature, Pressur
         else:
             cm_factor = 1.0
             out_factor = 2
-        Expand_Structure(Coordinate_file, Program, 'crystal_matrix', molecules_in_coord, d, min_RMS_gradient,
+        Expand_Structure(coordinate_file, inputs.program, 'crystal_matrix', inputs.number_of_molecules, d,
+                         inputs.min_rms_gradient,
                          dcrystal_matrix=array_to_triangle_crystal_matrix(cm_factor * crystal_matrix_array),
-                         Parameter_file=keyword_parameters['Parameter_file'])
+                         Parameter_file=inputs.tinker_parameter_file)
 
-        wavenumber_keywords['Coordinate_file'] = d + file_ending
-        wavenumbers_hold = Wvn.Call_Wavenumbers(Method, min_RMS_gradient, **wavenumber_keywords)
-        G[out_factor], U[out_factor], Av[out_factor] = Pr.Gibbs_Free_Energy(Temperature, Pressure, Program, wavenumbers_hold, d + file_ending,
-                                                     Statistical_mechanics, molecules_in_coord,
-                                                     Parameter_file=keyword_parameters['Parameter_file'])
+        wavenumbers_hold = Wvn.Call_Wavenumbers(inputs, Coordinate_file=d + file_ending, **wavenumber_keywords)
+        G[out_factor], U[out_factor], Av[out_factor] = \
+            Pr.Gibbs_Free_Energy(temperature, inputs.pressure, inputs.program, wavenumbers_hold, d + file_ending,
+                                 inputs.statistical_mechanics, inputs.number_of_molecules,
+                                 Parameter_file=inputs.tinker_parameter_file)
 
-        S[out_factor] = Pr.Vibrational_Entropy(Temperature, wavenumbers_hold, Statistical_mechanics) / molecules_in_coord
+        S[out_factor] = Pr.Vibrational_Entropy(temperature, wavenumbers_hold, inputs.statistical_mechanics) / \
+                        inputs.number_of_molecules
         subprocess.call(['rm', d + file_ending])
 
     dS_dLambda = (S[2] - S[0]) / (2 * LocGrd_dLambda)
 
     # Calculating the finite difference of dG/deta for forward, central, and backwards
     dG_dLambda = np.zeros(3)
-    dG_dLambda[0] =  (G[1] - G[0]) / (LocGrd_dLambda)
-    dG_dLambda[1] =  (G[2] - G[0]) / (2 * LocGrd_dLambda)
-    dG_dLambda[2] =  (G[2] - G[1]) / (LocGrd_dLambda)
-    # Computing the second derivative Gibbs free energy as a funciton of strain using a finite difference approach
+    dG_dLambda[0] = (G[1] - G[0]) / (LocGrd_dLambda)
+    dG_dLambda[1] = (G[2] - G[0]) / (2 * LocGrd_dLambda)
+    dG_dLambda[2] = (G[2] - G[1]) / (LocGrd_dLambda)
+    # Computing the second derivative Gibbs free energy as a function of strain using a finite difference approach
     ddG_ddLambda = (G[2] - 2 * G[1] + G[0]) / (LocGrd_dLambda ** 2)
 
     dLambda_dT = dS_dLambda / ddG_ddLambda

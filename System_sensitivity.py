@@ -86,12 +86,12 @@ def isotropic_gradient_settings(inputs):
 
 
 
-def anisotropic_gradient_settings(Coordinate_file, Program, Parameter_file, molecules_in_coord, min_RMS_gradient, Output):
+def anisotropic_gradient_settings(inputs):
     # Determining the file ending based on the program
-    file_ending = Ex.assign_file_ending(Program)
+    file_ending = Ex.assign_file_ending(inputs.program)
 
     # Setting the energy cutoff
-    cutoff = program_cutoff(Program)
+    cutoff = program_cutoff(inputs.program)
 
     # Fractional step sizes to take
     steps = np.array([5e-05, 1e-04, 5e-04, 1e-03, 5e-03, 1e-02, 5e-02, 1e-01, 5e-01, 1., 5., 1e01, 5e01, 1e02, 5e02])
@@ -100,12 +100,13 @@ def anisotropic_gradient_settings(Coordinate_file, Program, Parameter_file, mole
     n_steps = len(steps)
 
     # Potential energy of input file and a place to store the expanded structures potential energy
-    U_0 = Pr.Potential_energy(Coordinate_file, Program, Parameter_file=Parameter_file) / \
-          molecules_in_coord
+    U_0 = Pr.Potential_energy(inputs.coordinate_file, inputs.program, Parameter_file=inputs.tinker_parameter_file) / \
+          inputs.number_of_molecules
     U = np.zeros((6, n_steps))
 
     # Determining the tensor parameters of the input file
-    crystal_matrix = Ex.Lattice_parameters_to_Crystal_matrix(Pr.Lattice_parameters(Program, Coordinate_file))
+    crystal_matrix = Ex.Lattice_parameters_to_Crystal_matrix(Pr.Lattice_parameters(inputs.program,
+                                                                                   inputs.coordinate_file))
     crystal_matrix_array = Ex.triangle_crystal_matrix_to_array(crystal_matrix)
 
     LocGrd_CMatrix_FracStep = np.zeros(6)
@@ -117,11 +118,12 @@ def anisotropic_gradient_settings(Coordinate_file, Program, Parameter_file, mole
             if np.absolute(crystal_matrix_array[j]) < 1e-4:
                 dlattice_matrix_array[j] = steps[i]
             dlattice_matrix = Ex.array_to_triangle_crystal_matrix(dlattice_matrix_array)
-            Ex.Expand_Structure(Coordinate_file, Program, 'crystal_matrix', molecules_in_coord,
-                                Output, min_RMS_gradient, Parameter_file=Parameter_file,
+            Ex.Expand_Structure(inputs.coordinate_file, inputs.program, 'crystal_matrix', inputs.number_of_molecules,
+                                inputs.output, inputs.min_rms_gradient, Parameter_file=inputs.tinker_parameter_file,
                                 dcrystal_matrix=dlattice_matrix)
-            U[j, i] = Pr.Potential_energy(Output + file_ending, Program, Parameter_file=Parameter_file) / molecules_in_coord
-            subprocess.call(['rm', Output + file_ending])
+            U[j, i] = Pr.Potential_energy(inputs.output + file_ending, inputs.program,
+                                          Parameter_file=inputs.tinker_parameter_file) / inputs.number_of_molecules
+            subprocess.call(['rm', inputs.output + file_ending])
             if (U[j, i] - U_0) > cutoff:
                 LocGrd_CMatrix_FracStep[j] = steps[i]
                 LocGrd_CMatrix_Step[j] = np.absolute(dlattice_matrix_array[j])
@@ -131,11 +133,11 @@ def anisotropic_gradient_settings(Coordinate_file, Program, Parameter_file, mole
     # Plotting the results
     plt.xlabel('$\log({dC/C_{0}})$', fontsize=22)
     plt.ylabel('$\Delta U$ [kcal/mol]', fontsize=22)
-    plt.ylim((0., 2*cutoff))
+    plt.ylim((0., 2 * cutoff))
     plt.axhline(y=cutoff, c='grey', linestyle='--')
     plt.legend(loc='upper right',ncol=2, fontsize=18)
     plt.tight_layout()
-    plt.savefig(Output + '_LocGrd_CMatrix_FracStep.pdf')
+    plt.savefig(inputs.output + '_LocGrd_CMatrix_FracStep.pdf')
     plt.close()
 
     # Printing step size
@@ -145,13 +147,12 @@ def anisotropic_gradient_settings(Coordinate_file, Program, Parameter_file, mole
     return LocGrd_CMatrix_Step
 
 
-def anisotropic_gradient_settings_1D(Coordinate_file, Program, Parameter_file, molecules_in_coord, min_RMS_gradient,
-                                     Output, dC_dLambda):
+def anisotropic_gradient_settings_1D(inputs, dC_dLambda):
     # Determining the file ending based on the program
-    file_ending = Ex.assign_file_ending(Program)
+    file_ending = Ex.assign_file_ending(inputs.program)
 
     # Setting the energy cutoff
-    cutoff = program_cutoff(Program)
+    cutoff = program_cutoff(inputs.program)
 
     # Lambda step sizes to take
     steps = np.array([5e-02, 1e-01, 5e-01, 1e01, 5e01, 1e02, 5e02, 1e03, 5e03])
@@ -160,19 +161,19 @@ def anisotropic_gradient_settings_1D(Coordinate_file, Program, Parameter_file, m
     n_steps = len(steps)
 
     # Potential energy of input file and a place to store the expanded structures potential energy
-    U_0 = Pr.Potential_energy(Coordinate_file, Program, Parameter_file=Parameter_file) / \
-          molecules_in_coord
+    U_0 = Pr.Potential_energy(inputs.coordinate_file, inputs.program, Parameter_file=inputs.tinker_parameter_file) / \
+          inputs.number_of_molecules
     U = np.zeros(n_steps)
 
     for i in range(n_steps):
         dlattice_matrix = Ex.array_to_triangle_crystal_matrix(steps[i] * dC_dLambda)
 
-        Ex.Expand_Structure(Coordinate_file, Program, 'crystal_matrix', molecules_in_coord,
-                            Output, min_RMS_gradient, Parameter_file=Parameter_file,
+        Ex.Expand_Structure(inputs.coordinate_file, inputs.program, 'crystal_matrix', inputs.number_of_molecules,
+                            inputs.output, inputs.min_rms_gradient, Parameter_file=inputs.tinker_parameter_file,
                             dcrystal_matrix=dlattice_matrix)
-        U[i] = Pr.Potential_energy(Output + file_ending, Program, Parameter_file=Parameter_file) / \
-               molecules_in_coord
-        subprocess.call(['rm', Output + file_ending])
+        U[i] = Pr.Potential_energy(inputs.output + file_ending, inputs.program,
+                                   Parameter_file=inputs.tinker_parameter_file) / inputs.number_of_molecules
+        subprocess.call(['rm', inputs.output + file_ending])
         if (U[i] - U_0) > cutoff:
             LocGrd_dLambda = steps[i]
             end_plot = i
@@ -185,7 +186,7 @@ def anisotropic_gradient_settings_1D(Coordinate_file, Program, Parameter_file, m
     plt.ylim((0., 2*cutoff))
     plt.axhline(y=cutoff, c='grey', linestyle='--')
     plt.tight_layout()
-    plt.savefig(Output + '_LocGrd_Lambda_FracStep.pdf')
+    plt.savefig(inputs.output + '_LocGrd_Lambda_FracStep.pdf')
     plt.close()
     print('dLambda used: ', LocGrd_dLambda)
     # returning the value of dV

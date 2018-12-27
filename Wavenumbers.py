@@ -119,10 +119,9 @@ def Call_Wavenumbers(inputs, **keyword_parameters):
             else:
                 # Calculating the Gruneisen parameter and wavenumbers
                 gruneisen, wavenumber_reference = \
-                    Setup_Anisotropic_Gruneisen(keyword_parameters['Coordinate_file'], inputs.program,
+                    Setup_Anisotropic_Gruneisen(inputs.coordinate_file, inputs.program,
                                                 inputs.gruneisen_matrix_strain_stepsize, inputs.number_of_molecules,
-                                                inputs.min_rms_gradient,
-                                                Parameter_file=inputs.tinker_parameter_file)
+                                                inputs.min_rms_gradient, Parameter_file=inputs.tinker_parameter_file)
 
                 # Saving the wavenumbers for future use
                 print("   ... Saving reference wavenumbers and Gruneisen parameters to: " + inputs.output

@@ -64,54 +64,41 @@ def temperature_lattice_dynamics(inputs):
 
         print("   Saving user specified properties in indipendent files:")
         Pr.Save_Properties(inputs, properties)
-"""
-    elif ((Method == 'GaQ') or (Method == 'GaQg')) and (Aniso_LocGrad_Type != '1D'):
-        if any(LocGrd_CMatrix_FracStep != 0.):
-            crystal_matrix_array = Ex.triangle_crystal_matrix_to_array(Ex.Lattice_parameters_to_Crystal_matrix(Pr.Lattice_parameters(Program, Coordinate_file)))
-            LocGrd_dC = np.absolute(LocGrd_CMatrix_FracStep * crystal_matrix_array)
+
+    elif ((inputs.method == 'GaQ') or (inputs.method == 'GaQg')) and (inputs.anisotropic_type != '1D'):
+        if any(inputs.gradient_matrix_fractions != 0.):
+            crystal_matrix_array = Ex.triangle_crystal_matrix_to_array(Ex.Lattice_parameters_to_Crystal_matrix(
+                Pr.Lattice_parameters(inputs.program, inputs.coordinate_file)))
+            LocGrd_dC = np.absolute(inputs.gradient_matrix_fractions * crystal_matrix_array)
             for i in range(len(LocGrd_dC)):
                 if LocGrd_dC[i] == 0.:
-                    LocGrd_dC[i] = LocGrd_CMatrix_FracStep[i]
+                    LocGrd_dC[i] = inputs.gradient_matrix_fractions[i]
         else:
-            LocGrd_dC = Ss.anisotropic_gradient_settings(Coordinate_file, Program, Parameter_file, molecules_in_coord,
-                                                         min_RMS_gradient, Output)
+            LocGrd_dC = Ss.anisotropic_gradient_settings(inputs)
         print("Performing Gradient Anisotropic Quasi-Harmonic Approximation")
-        properties = TNA.Anisotropic_Gradient_Expansion(Coordinate_file, Program, molecules_in_coord, Output, Method,
-                                                        Gradient_MaxTemp, Pressure, LocGrd_dC,
-                                                        Statistical_mechanics, NumAnalysis_step,
-                                                        NumAnalysis_method, Aniso_LocGrad_Type, Temperature,
-                                                        min_RMS_gradient, Gruneisen_Lat_FracStep=Gruneisen_Lat_FracStep, 
-                                                        Parameter_file=Parameter_file, cp2kroot=cp2kroot)
-        print("   Saving user specified properties in indipendent files:")
-        Pr.Save_Properties(properties, properties_to_save, Output, Method, Statistical_mechanics)
+        properties = TNA.Anisotropic_Gradient_Expansion(inputs, LocGrd_dC)
+        print("   Saving user specified properties in independent files:")
+        Pr.Save_Properties(inputs, properties)
 
-    elif (Method == 'GaQ') or (Method == 'GaQg') and (Aniso_LocGrad_Type == '1D'):
-        if any(LocGrd_CMatrix_FracStep != 0.):
-            crystal_matrix_array = Ex.triangle_crystal_matrix_to_array(Ex.Lattice_parameters_to_Crystal_matrix(Pr.Lattice_parameters(Program, Coordinate_file)))
-            LocGrd_dC = np.absolute(LocGrd_CMatrix_FracStep * crystal_matrix_array)
+    elif (inputs.method == 'GaQ') or (inputs.method == 'GaQg') and (inputs.anisotropic_type == '1D'):
+        if any(inputs.gradient_matrix_fractions != 0.):
+            crystal_matrix_array = Ex.triangle_crystal_matrix_to_array(Ex.Lattice_parameters_to_Crystal_matrix(
+                Pr.Lattice_parameters(inputs.program, inputs.coordinate_file)))
+            LocGrd_dC = np.absolute(inputs.gradient_matrix_fractions * crystal_matrix_array)
         else:
-            LocGrd_dC = Ss.anisotropic_gradient_settings(Coordinate_file, Program, Parameter_file, molecules_in_coord,
-                                                         min_RMS_gradient, Output)
+            LocGrd_dC = Ss.anisotropic_gradient_settings(inputs)
         print("Performing 1D-Gradient Anisotropic Quasi-Harmonic Approximation")
-        properties = TNA.Anisotropic_Gradient_Expansion_1D(Coordinate_file, Program, molecules_in_coord, Output, Method,
-                                                           Gradient_MaxTemp, Pressure, LocGrd_dC,
-                                                           Statistical_mechanics, NumAnalysis_step,
-                                                           NumAnalysis_method, Aniso_LocGrad_Type, Temperature,
-                                                           min_RMS_gradient, Gruneisen_Lat_FracStep=Gruneisen_Lat_FracStep,
-                                                           Parameter_file=Parameter_file, cp2kroot=cp2kroot)
+        properties = TNA.Anisotropic_Gradient_Expansion_1D(inputs, LocGrd_dC)
         print("   Saving user specified properties in independent files:")
-        Pr.Save_Properties(properties, properties_to_save, Output, Method, Statistical_mechanics)
+        Pr.Save_Properties(inputs, properties)
 
-    elif Method == 'SaQply':
+    elif inputs.method == 'SaQply':
         print("Performing Quasi-Anisotropic Quasi-Harmonic Approximation")
-        properties = TNA.stepwise_expansion(StepWise_Vol_StepFrac, StepWise_Vol_LowerFrac, StepWise_Vol_UpperFrac,
-                                            Coordinate_file, Program, Temperature, Pressure, Output, Method,
-                                            molecules_in_coord, Wavenum_Tol, Statistical_mechanics, min_RMS_gradient,
-                                            eq_of_state, Parameter_file=Parameter_file, cp2kroot=cp2kroot)
+        properties = TNA.stepwise_expansion(inputs)
         print("   Saving user specified properties in independent files:")
-        Pr.Save_Properties(properties, properties_to_save, Output, Method, Statistical_mechanics)
+        Pr.Save_Properties(inputs, properties)
     print("Lattice dynamic calculation is complete!")
-"""
+
 
 """
 def write_input_file(Temperature, Pressure, Method, Program, Output, Coordinate_file, Parameter_file, 
