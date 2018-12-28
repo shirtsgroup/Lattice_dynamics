@@ -5,87 +5,67 @@ import pylab as plt
 from optparse import OptionParser
 
 # Plotting lattice parameters
-def plot_lattice_parameters_multiple_methods(lattice_parameters, temperature, color, line_style, lattice_parameters_error, Tmax=False, basis=False, save_loc=False, correction=False):
+def plot_lattice_parameters_multiple_methods(lattice_parameters, temperature, color, line_style, 
+                                             lattice_parameters_error, Tmax=False, percent=True, save_loc=False, 
+                                             correction=False):
     fig, ax = plt.subplots(figsize=(12,6))
     v1 = plt.subplot(231)
-    v2 = plt.subplot(232)
-    v3 = plt.subplot(233)
-    a1 = plt.subplot(234)
-    a2 = plt.subplot(235)
-    a3 = plt.subplot(236)
-    v1.axhline(y=0, color='black')
-    v2.axhline(y=0, color='black')
-    v3.axhline(y=0, color='black')
-    a1.axhline(y=90, color='black')
-    a2.axhline(y=90, color='black')
-    a3.axhline(y=90, color='black')
-    base = np.load(lattice_parameters[0])[0]
+    v2 = plt.subplot(232, sharex=v1)
+    v3 = plt.subplot(233, sharex=v1)
+    a1 = plt.subplot(234, sharex=v1)
+    a2 = plt.subplot(235, sharex=v1)
+    a3 = plt.subplot(236, sharex=v1)
+    if percent == True:
+        v1.axhline(y=0, color='black')
+        v2.axhline(y=0, color='black')
+        v3.axhline(y=0, color='black')
     for i in range(len(lattice_parameters)):
         lp = np.load(lattice_parameters[i])
-        if basis == True:
-            lp[:, :3] = (lp[:, :3] - base[:3]) / base[:3] * 100.
+        if percent == True:
+            if lattice_parameters_error[i] == '':
+                lp[:, :3] = (lp[:, :3] - lp[0, :3]) / lp[0, :3] * 100.
+            else:
+                base = np.load(lattice_parameters[0])
+                lp[:, :3] = (lp[:, :3] - base[0, :3]) / base[0, :3] * 100.
         else:
-            lp[:, :3] = lp[:, :3]
+            pass
 
         T = np.load(temperature[i])
         if not np.all(Tmax == False):
-            T_place = np.where(T == Tmax[i])[0][0] + 1
+            Tp = np.where(T == Tmax[i])[0][0] + 1
         else:
-            T_place = -1
+            Tp = -1
         if lattice_parameters_error[i] == '':
-            v1.plot(T[:T_place], lp[:T_place, 0], c=color[i], linestyle=line_style[i])
-            v2.plot(T[:T_place], lp[:T_place, 1], c=color[i], linestyle=line_style[i])
-            v3.plot(T[:T_place], lp[:T_place, 2], c=color[i], linestyle=line_style[i])
-            a1.plot(T[:T_place], lp[:T_place, 3], c=color[i], linestyle=line_style[i])
-            a2.plot(T[:T_place], lp[:T_place, 4], c=color[i], linestyle=line_style[i])
-            a3.plot(T[:T_place], lp[:T_place, 5], c=color[i], linestyle=line_style[i])
+            v1.plot(T[:Tp], lp[:Tp, 0], c=color[i], linestyle=line_style[i])
+            v2.plot(T[:Tp], lp[:Tp, 1], c=color[i], linestyle=line_style[i])
+            v3.plot(T[:Tp], lp[:Tp, 2], c=color[i], linestyle=line_style[i])
+            a1.plot(T[:Tp], lp[:Tp, 3], c=color[i], linestyle=line_style[i])
+            a2.plot(T[:Tp], lp[:Tp, 4], c=color[i], linestyle=line_style[i])
+            a3.plot(T[:Tp], lp[:Tp, 5], c=color[i], linestyle=line_style[i])
         else:
             error = np.load(lattice_parameters_error[i])
-            v1.plot(T[:T_place], lp[:T_place, 0], c=color[i], linestyle=line_style[i], zorder=0)
-            v2.plot(T[:T_place], lp[:T_place, 1], c=color[i], linestyle=line_style[i], zorder=0)
-            v3.plot(T[:T_place], lp[:T_place, 2], c=color[i], linestyle=line_style[i], zorder=0)
-            a1.plot(T[:T_place], lp[:T_place, 3], c=color[i], linestyle=line_style[i], zorder=0)
-            a2.plot(T[:T_place], lp[:T_place, 4], c=color[i], linestyle=line_style[i], zorder=0)
-            a3.plot(T[:T_place], lp[:T_place, 5], c=color[i], linestyle=line_style[i], zorder=0)
+            v1.plot(T[1:Tp], lp[1:Tp, 0], c=color[i], linestyle=line_style[i], zorder=0)
+            v2.plot(T[1:Tp], lp[1:Tp, 1], c=color[i], linestyle=line_style[i], zorder=0)
+            v3.plot(T[1:Tp], lp[1:Tp, 2], c=color[i], linestyle=line_style[i], zorder=0)
+            a1.plot(T[1:Tp], lp[1:Tp, 3], c=color[i], linestyle=line_style[i], zorder=0)
+            a2.plot(T[1:Tp], lp[1:Tp, 4], c=color[i], linestyle=line_style[i], zorder=0)
+            a3.plot(T[1:Tp], lp[1:Tp, 5], c=color[i], linestyle=line_style[i], zorder=0)
 
-            v1.fill_between(T[:T_place], lp[:T_place, 0] - np.sign(lp[:T_place, 0]) * error[:T_place, 0],lp[:T_place, 0] + np.sign(lp[:T_place, 0]) * error[:T_place, 0], color=color[i], linestyle=line_style[i], zorder=0,alpha=0.3)
-            v2.fill_between(T[:T_place], lp[:T_place, 1] - np.sign(lp[:T_place, 1]) * error[:T_place, 1],lp[:T_place, 1] + np.sign(lp[:T_place, 1]) * error[:T_place, 1],color=color[i], linestyle=line_style[i], zorder=0,alpha=0.3)
-            v3.fill_between(T[:T_place], lp[:T_place, 2] - np.sign(lp[:T_place, 2]) * error[:T_place, 2],lp[:T_place, 2] + np.sign(lp[:T_place, 2]) * error[:T_place, 2],color=color[i], linestyle=line_style[i], zorder=0,alpha=0.3)
-            a1.fill_between(T[:T_place], lp[:T_place, 3] - lp[:T_place, 3] * error[:T_place, 3],lp[:T_place, 3] + lp[:T_place, 3] * error[:T_place, 3],color=color[i], linestyle=line_style[i], zorder=0,alpha=0.3)
-            a2.fill_between(T[:T_place], lp[:T_place, 4] - lp[:T_place, 4] * error[:T_place, 4],lp[:T_place, 4] + lp[:T_place, 4] * error[:T_place, 4],color=color[i], linestyle=line_style[i], zorder=0,alpha=0.3)
-            a3.fill_between(T[:T_place], lp[:T_place, 5] - lp[:T_place, 5] * error[:T_place, 5],lp[:T_place, 5] + lp[:T_place, 5] * error[:T_place, 5],color=color[i], linestyle=line_style[i], zorder=0,alpha=0.3)
-    x = a1.get_ylim()
-    if x[0] > -1.:
-        lower = -1.
-    else:
-        lower = x[0]
-    if x[1] < 1.:
-        upper = 1.
-    else:
-        upper = x[1]
-    a1.set_ylim((lower, upper))
-
-    x = a2.get_ylim()
-    if x[0] > -1.:
-        lower = -1.
-    else:
-        lower = x[0]
-    if x[1] < 1.:
-        upper = 1.
-    else:
-        upper = x[1]
-    a2.set_ylim((lower, upper))
-
-    x = a3.get_ylim()
-    if x[0] > -1.:
-        lower = -1.
-    else:
-        lower = x[0]
-    if x[1] < 1.:
-        upper = 1.
-    else:
-        upper = x[1]
-    a3.set_ylim((lower, upper))
+            v1.fill_between(T[1:Tp], lp[1:Tp, 0] - np.sign(lp[1:Tp, 0]) * error[1:Tp, 0], lp[1:Tp, 0] 
+                            + np.sign(lp[1:Tp, 0]) * error[1:Tp, 0],color=color[i], linestyle=line_style[i], 
+                            zorder=0,alpha=0.3)
+            v2.fill_between(T[1:Tp], lp[1:Tp, 1] - np.sign(lp[1:Tp, 1]) * error[1:Tp, 1], lp[1:Tp, 1] 
+                            + np.sign(lp[1:Tp, 1]) * error[1:Tp, 1],color=color[i], linestyle=line_style[i], 
+                            zorder=0,alpha=0.3)
+            v3.fill_between(T[1:Tp], lp[1:Tp, 2] - np.sign(lp[1:Tp, 2]) * error[1:Tp, 2], lp[1:Tp, 2] 
+                            + np.sign(lp[1:Tp, 2]) * error[1:Tp, 2],color=color[i], linestyle=line_style[i], 
+                            zorder=0,alpha=0.3)
+            a1.fill_between(T[1:Tp], lp[1:Tp, 3] - error[1:Tp, 3], lp[1:Tp, 3] + error[1:Tp, 3], color=color[i], 
+                            linestyle=line_style[i], zorder=0, alpha=0.3)
+            a2.fill_between(T[1:Tp], lp[1:Tp, 4] - error[1:Tp, 4], lp[1:Tp, 4] + error[1:Tp, 4], color=color[i], 
+                            linestyle=line_style[i], zorder=0, alpha=0.3)
+            a3.fill_between(T[1:Tp], lp[1:Tp, 5] - error[1:Tp, 5], lp[1:Tp, 5] + error[1:Tp, 5], color=color[i], 
+                            linestyle=line_style[i], zorder=0, alpha=0.3)
 
     v1.title.set_text('a-Vector')
     v2.title.set_text('b-Vector')
@@ -96,6 +76,7 @@ def plot_lattice_parameters_multiple_methods(lattice_parameters, temperature, co
     fig.text(0.53,0.01,'Temperature [K]', fontsize=20, ha='center')
     v1.set_ylabel('% Expansion\n from 0 K', fontsize=20, rotation='vertical')
     a1.set_ylabel('Angle [Deg.]', fontsize=20, rotation='vertical')
+    plt.xlim(0., max(Tmax))
     plt.tight_layout()
     plt.subplots_adjust(top=0.941, bottom=0.102, left=0.091, right=0.985)
     if not save_loc == False:
