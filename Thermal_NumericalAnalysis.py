@@ -238,11 +238,11 @@ def Spline_Intermediate_Points(inputs, properties, **keyword_parameters):
         # Adding properties found for lower bound temperature in Numerical analysis to output matrix
 
         for j in range(len(temperature)):
-            if temperature[j] == properties[i, 0]:
-                properties_out[count] = properties[i]
-                count += 1
-
-            elif properties[i, 0] < temperature[j] < properties[i + 1, 0]:
+#            if temperature[j] == properties[i, 0]:
+#                properties_out[count] = properties[i]
+#                count += 1
+#
+            if (properties[i, 0] <= temperature[j] < properties[i + 1, 0]) or (temperature[j] == properties[i+1, 0] == properties[-1, 0]):
                 print("   Using a Spline, adding intermediate temperature at:" + str(temperature[j]) + " K")
                 # Computing the properties for all intermediate temperature points
                 theta = (temperature[j] - properties[i, 0]) / h
@@ -255,17 +255,17 @@ def Spline_Intermediate_Points(inputs, properties, **keyword_parameters):
                     for k in range(6):
                         new_cm_array[k] = RK_Dense_Output(theta, y[i, k], y[i + 1, k], tangent[i, 1, k + 1],
                                                         tangent[i + 1, 1, k + 1], h)
-
+    
                 # Expanding the strucutre, from the structure at the last temperature to the next intermediate step
                 if os.path.isfile('Cords/' + inputs.output + '_' + inputs.method + 'T' + str(temperature[j]) +
                                           file_ending):
-                     subprocess.call(['cp', 'Cords/' + inputs.output + '_' + inputs.method + 'T' + str(temperature[j])
+                    subprocess.call(['cp', 'Cords/' + inputs.output + '_' + inputs.method + 'T' + str(temperature[j])
                                       + file_ending, 'hold' + file_ending])
                 else:
                     Ex.Call_Expansion(inputs, 'expand', 'temp' + file_ending, volume_fraction_change=new_volume / y[i],
                                       dcrystal_matrix=Ex.array_to_triangle_crystal_matrix(new_cm_array - y[i]),
                                       output_file='hold')
-
+    
                 # Computing the wavenumbers for the new structure
                 wavenumbers = Wvn.Call_Wavenumbers(inputs, Coordinate_file='hold' + file_ending,
                                                    Gruneisen=keyword_parameters['Gruneisen'],
@@ -273,14 +273,14 @@ def Spline_Intermediate_Points(inputs, properties, **keyword_parameters):
                                                    Volume_Reference=properties[0, 6], 
                                                    ref_crystal_matrix=Ex.Lattice_parameters_to_Crystal_matrix(properties[0, 7:13]),
                                                    New_Volume=new_volume)
-
+    
                 # Computing the properites
                 properties_out[count] = Pr.Properties(inputs, 'hold' + file_ending, wavenumbers, temperature[j])
 
                 # Moving new intermediate structure to the Cords directory for storage
                 subprocess.call(['mv', 'hold' + file_ending, 'Cords/' + inputs.output + '_' + inputs.method + 'T' +
                                  str(temperature[j]) + file_ending])
-
+    
                 count += 1
 
     # Setting the last numerical step to the output matrix
@@ -893,6 +893,7 @@ def Anisotropic_Gradient_Expansion_1D(inputs, LocGrd_dC):
         dC_dLambda = np.load(inputs.output + '_dC_' + inputs.method + '.npy')
     else:
         NO.gradient_output(temperature[0], inputs.program, inputs.coordinate_file)
+        
         dC_dLambda, wavenumbers[0, 1:] = Ex.Anisotropic_Local_Gradient(inputs, inputs.coordinate_file, 0., LocGrd_dC,
                                                                        Gruneisen=gruneisen,
                                                                        Wavenumber_Reference=wavenumber_reference,
@@ -924,7 +925,7 @@ def Anisotropic_Gradient_Expansion_1D(inputs, LocGrd_dC):
         print("   Determining local gradient and thermal properties at: " + str(temperature[i]) + " K")
         if (any(wavenumbers[i, 4:] != 0.) or inputs.method == 'GaQg') and (dLambda_dT[i, 1] != 0.):
             print("   ... Using expansion gradient and wavenumbers previously found")
-            if input.method == 'GaQg':
+            if inputs.method == 'GaQg':
                 wavenumbers[i + 1, 1:] = Wvn.Call_Wavenumbers(inputs, Gruneisen=gruneisen,
                                                               Wavenumber_Reference=wavenumber_reference,
                                                               ref_crystal_matrix=ref_crystal_matrix,
@@ -1007,7 +1008,7 @@ def Anisotropic_Gradient_Expansion_1D(inputs, LocGrd_dC):
 
     # Saving the raw data before minimizing
     properties = Spline_Intermediate_Points(inputs, properties, Gruneisen=gruneisen,
-                                            Wavenumber_Reference=wavenumber_reference)
+                                            Wavenumber_Reference=wavenumber_reference, ref_crystal_matrix=ref_crystal_matrix)
     print("   All properties have been saved in " + inputs.output + "_raw.npy")
     np.save(inputs.output+'_raw', properties)
     return properties

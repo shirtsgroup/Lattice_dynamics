@@ -763,7 +763,7 @@ def Anisotropic_Local_Gradient(inputs, coordinate_file, temperature, LocGrd_dC, 
 
 
     # Modified anisotropic Local Gradient
-    if inputs.anisotropic_type == '6D':
+    if (inputs.anisotropic_type == '6D') or ((inputs.anisotropic_type == '1D') and not os.path.isfile(inputs.output + '_dC_' + inputs.method + '.npy')):
         diag_limit = 6
         off_diag_limit = 6
     elif inputs.anisotropic_type == '3D':
@@ -912,7 +912,7 @@ def Anisotropic_Local_Gradient_1D(inputs, coordinate_file, temperature, LocGrd_d
     Av = np.zeros(3)
     S = np.zeros(3)
 
-    G[1], U[1], Av[1] = Pr.Gibbs_Free_Energy(temperature, inputs.poressure, inputs.program, wavenumbers,
+    G[1], U[1], Av[1] = Pr.Gibbs_Free_Energy(temperature, inputs.pressure, inputs.program, wavenumbers,
                                              coordinate_file, inputs.statistical_mechanics, inputs.number_of_molecules,
                                              Parameter_file=inputs.tinker_parameter_file)
 
