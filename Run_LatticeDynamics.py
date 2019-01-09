@@ -398,7 +398,7 @@ class Inputs:
         self.stepwise_volume_fraction_upper = data['stepwise']['volume_fraction_upper']
         self.gruneisen_volume_fraction_stepsize = data['gruneisen']['volume_fraction_stepsize']
         self.gruneisen_matrix_strain_stepsize = data['gruneisen']['matrix_strain_stepsize']
-        self.wavenumber_tolerance = data['wavenumber_tolerance']
+        self.wavenumber_tolerance = np.absolute(float(data['wavenumber_tolerance']))
         self.min_rms_gradient = data['min_rms_gradient']
         self.eq_of_state = data['eq_of_state']
         self.poly_order = data['poly_order']

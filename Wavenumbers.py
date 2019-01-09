@@ -47,22 +47,7 @@ def Call_Wavenumbers(inputs, **keyword_parameters):
     Gruneisen_Lat_FracStep
     """
     if (inputs.method == 'SiQ') or (inputs.method == 'GiQ') or (inputs.method == 'GaQ') or (inputs.method == 'HA'):
-        # Directly computing the wavenumbers for a specific program, given a coordinate file
-        if inputs.program == 'Tinker':
-            wavenumbers = Tinker_Wavenumber(keyword_parameters['Coordinate_file'], inputs.tinker_parameter_file)
-        elif inputs.program == 'CP2K':
-            wavenumbers = CP2K_Wavenumber(keyword_parameters['Coordinate_file'], inputs.tinker_parameter_file,
-                                          Output=inputs.output)
-        elif inputs.program == 'QE':
-            wavenumbers = QE_Wavenumber(keyword_parameters['Coordinate_file'], inputs.tinker_parameter_file,
-                                        Output=inputs.output)
-        elif inputs.program == 'Test':
-            if inputs.method == 'GaQ':
-                wavenumbers = Test_Wavenumber(keyword_parameters['Coordinate_file'],
-                                              keyword_parameters['ref_crystal_matrix'])
-            else:
-                wavenumbers = Test_Wavenumber(keyword_parameters['Coordinate_file'], True)
-        return wavenumbers
+        return program_wavenumbers(inputs, keyword_parameters['Coordinate_file'])
 
     elif (inputs.method == 'SiQg') or (inputs.method == 'GiQg'):
         # Methods that use the Gruneisen parameter
@@ -133,6 +118,26 @@ def Call_Wavenumbers(inputs, **keyword_parameters):
         return Wavenumber_and_Vectors(inputs.program, keyword_parameters['Coordinate_file'],
                                       inputs.tinker_parameter_file)
 
+def program_wavenumbers(inputs, Coordinate_file):
+    # Directly computing the wavenumbers for a specific program, given a coordinate file
+    if inputs.program == 'Tinker':
+        wavenumbers = Tinker_Wavenumber(Coordinate_file, inputs.tinker_parameter_file)
+    elif inputs.program == 'CP2K':
+        wavenumbers = CP2K_Wavenumber(Coordinate_file, inputs.tinker_parameter_file, Output=inputs.output)
+    elif inputs.program == 'QE':
+        wavenumbers = QE_Wavenumber(Coordinate_file, inputs.tinker_parameter_file, Output=inputs.output)
+    elif inputs.program == 'Test':
+        if inputs.method == 'GaQ':
+            wavenumbers = Test_Wavenumber(Coordinate_file,
+                                          Ex.Lattice_parameters_to_Crystal_matrix(np.load(inputs.coordinate_file)))
+        else:
+            wavenumbers = Test_Wavenumber(Coordinate_file, True)
+
+    # Determining if the wavenumbers computed fit witihin the user specified tolerance
+    if not np.all(inputs.wavenumber_tolerance > wavenumbers[:3] > -1 * inputs.wavenumber_tolerance):
+        print("WARNING: Wavenumbers did not fall between necessary tolerance of: " +str(inputs.wavenumber_tolerance) +
+              " cm^-1")
+    return wavenumbers
 
 ##########################################
 #       TINKER MOLECULAR MODELING        #
