@@ -26,7 +26,7 @@ stepwise:
 gruneisen:
    volume_fraction_stepsize: 1.5e-3
    matrix_strain_stepsize: 1.5e-03
-wavenumber_tolerance: -1.0
+wavenumber_tolerance: 1.0
 min_rms_gradient: 0.0001
 eq_of_state: None
 poly_order: 3
