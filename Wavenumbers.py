@@ -71,11 +71,7 @@ def Call_Wavenumbers(inputs, **keyword_parameters):
             # If the Gruneisen parameter has yet to be determined, here it will be calculated
             # It is assumed that the input Coordinate_file is the lattice minimum strucutre
             else:
-                gruneisen, wavenumber_reference, volume_reference = \
-                    Setup_Isotropic_Gruneisen(inputs.coordinate_file, inputs.program,
-                                              inputs.gruneisen_volume_fraction_stepsize, inputs.number_of_molecules,
-                                              inputs.min_rms_gradient, Parameter_file=inputs.tinker_parameter_file,
-                                              Output=inputs.output)
+                gruneisen, wavenumber_reference, volume_reference = Setup_Isotropic_Gruneisen(inputs)
                 print("   ... Saving reference wavenumbers and Gruneisen parameters to: " + inputs.output
                       + '_GRU_' + inputs.method + '.npy')
                 np.save(inputs.output + '_GRU_' + inputs.method, gruneisen)
@@ -309,8 +305,7 @@ def Test_Wavenumber(Coordinate_file, ref_crystal_matrix, function='Test3', Gru=F
 ##########################################
 #     Isotropic Gruneisen Parameter      #
 ##########################################
-def Setup_Isotropic_Gruneisen(Coordinate_file, Program, Gruneisen_Vol_FracStep, molecules_in_coord, min_RMS_gradient,
-                              **keyword_parameters):
+def Setup_Isotropic_Gruneisen(inputs):
     """
     This function calculates the Isotropic Gruneisen parameters for a given coordinate file.
     Calculated numerically given a specified volume fraction stepsize
@@ -328,60 +323,68 @@ def Setup_Isotropic_Gruneisen(Coordinate_file, Program, Gruneisen_Vol_FracStep, 
     Parameter_file = Optional input for program
     """
     # Change in lattice parameters for expanded structure
-    dLattice_Parameters = Ex.Isotropic_Change_Lattice_Parameters((1+Gruneisen_Vol_FracStep), Program, Coordinate_file)
+    dLattice_Parameters = Ex.Isotropic_Change_Lattice_Parameters((1 + inputs.gruneisen_volume_fraction_stepsize),
+                                                                 inputs.program, inputs.coordinate_file)
 
     # Determining wavenumbers of lattice strucutre and expanded strucutre
     # Also, assigning a file ending name for the nex coordinate file (program dependent)
-    if Program == 'Tinker':
-        Ex.Expand_Structure(Coordinate_file, Program, 'lattice_parameters', molecules_in_coord, 'temp', min_RMS_gradient,
-                            dlattice_parameters=dLattice_Parameters,
-                            Parameter_file=keyword_parameters['Parameter_file'])
-        Organized_wavenumbers = Tinker_Gru_organized_wavenumbers('Isotropic', Coordinate_file, 'temp.xyz', keyword_parameters['Parameter_file'])
+    if inputs.program == 'Tinker':
+        Ex.Expand_Structure(inputs.coordinate_file, inputs.program, 'lattice_parameters', inputs.number_of_molecules,
+                            'temp', inputs.min_rms_gradient, dlattice_parameters=dLattice_Parameters,
+                            Parameter_file=inputs.tinker_parameter_file)
+        Organized_wavenumbers = Tinker_Gru_organized_wavenumbers('Isotropic', inputs.coordinate_file, 'temp.xyz',
+                                                                 inputs.tinker_parameter_file)
         Wavenumber_Reference = Organized_wavenumbers[0] 
         Wavenumber_expand = Organized_wavenumbers[1]
-        lattice_parameters = Pr.Tinker_Lattice_Parameters(Coordinate_file)
+        lattice_parameters = Pr.Tinker_Lattice_Parameters(inputs.coordinate_file)
         file_ending = '.xyz'
-    if Program == 'CP2K':
-        Ex.Expand_Structure(Coordinate_file, Program, 'lattice_parameters', molecules_in_coord, 'temp', min_RMS_gradient,
-                            dlattice_parameters=dLattice_Parameters,
-                            Parameter_file=keyword_parameters['Parameter_file'])
-        Organized_wavenumbers = CP2K_Gru_organized_wavenumbers('Isotropic', Coordinate_file, 'temp.pdb', keyword_parameters['Parameter_file'], keyword_parameters['Output'])
+    if inputs.program == 'CP2K':
+        Ex.Expand_Structure(inputs.coordinate_file, inputs.program, 'lattice_parameters', inputs.number_of_molecules,
+                            'temp', inputs.min_rms_gradient, dlattice_parameters=dLattice_Parameters,
+                            Parameter_file=inputs.tinker_parameter_file)
+        Organized_wavenumbers = CP2K_Gru_organized_wavenumbers('Isotropic', inputs.coordinate_file, 'temp.pdb',
+                                                               inputs.tinker_parameter_file, inputs.output)
         Wavenumber_Reference = Organized_wavenumbers[0] 
         Wavenumber_expand = Organized_wavenumbers[1]
-        lattice_parameters = Pr.CP2K_Lattice_Parameters(Coordinate_file)
+        lattice_parameters = Pr.CP2K_Lattice_Parameters(inputs.coordinate_file)
         file_ending = '.pdb'
-    elif Program == 'QE':
-        Ex.Expand_Structure(Coordinate_file, Program, 'lattice_parameters', molecules_in_coord, Coordinate_file[0:-3], min_RMS_gradient,
-			    dlattice_parameters=[0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-                            Parameter_file=keyword_parameters['Parameter_file'])
-        Ex.Expand_Structure(Coordinate_file, Program, 'lattice_parameters', molecules_in_coord, 'temp', min_RMS_gradient,
-                            dlattice_parameters=dLattice_Parameters,
-                            Parameter_file=keyword_parameters['Parameter_file'])
-        Organized_wavenumbers = QE_Gru_organized_wavenumbers('Isotropic', Coordinate_file, 'temp.pw', keyword_parameters['Parameter_file'], keyword_parameters['Output'])
+    elif inputs.program == 'QE':
+        Ex.Expand_Structure(inputs.coordinate_file, inputs.program, 'lattice_parameters', inputs.number_of_molecules,
+                            inputs.coordinate_file[0:-3], inputs.min_rms_gradient,
+                            dlattice_parameters=[0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                            Parameter_file=inputs.tinker_parameter_file)
+        Ex.Expand_Structure(inputs.coordinate_file, inputs.program, 'lattice_parameters', inputs.number_of_molecules,
+                            'temp', inputs.min_rms_gradient, dlattice_parameters=dLattice_Parameters,
+                            Parameter_file=inputs.tinker_parameter_file)
+        Organized_wavenumbers = QE_Gru_organized_wavenumbers('Isotropic', inputs.coordinate_file, 'temp.pw',
+                                                             inputs.tinker_parameter_file, inputs.output)
         Wavenumber_Reference = Organized_wavenumbers[0]
         Wavenumber_expand = Organized_wavenumbers[1]
-        lattice_parameters, matrix = Pr.QE_Lattice_Parameters(Coordinate_file)
+        lattice_parameters, matrix = Pr.QE_Lattice_Parameters(inputs.coordinate_file)
         file_ending = '.pw'
 
-    elif Program == 'Test':
-        Ex.Expand_Structure(Coordinate_file, Program, 'lattice_parameters', molecules_in_coord, 'temp', min_RMS_gradient,
-                            dlattice_parameters=dLattice_Parameters)
-        Wavenumber_Reference = Test_Wavenumber(Coordinate_file, True)
+    elif inputs.program == 'Test':
+        Ex.Expand_Structure(inputs.coordinate_file, inputs.program, 'lattice_parameters', inputs.number_of_molecules,
+                            'temp', inputs.min_rms_gradient, dlattice_parameters=dLattice_Parameters)
+        Wavenumber_Reference = Test_Wavenumber(inputs.coordinate_file, True)
         Wavenumber_expand = Test_Wavenumber('temp.npy', True)
-        lattice_parameters = Pr.Test_Lattice_Parameters(Coordinate_file)
+        lattice_parameters = Pr.Test_Lattice_Parameters(inputs.coordinate_file)
         file_ending = '.npy'
 
     # Calculating the volume of the lattice minimum and expanded structure
     Volume_Reference = Pr.Volume(lattice_parameters=lattice_parameters)
-    Volume_expand = Volume_Reference + Gruneisen_Vol_FracStep*Volume_Reference
+    Volume_expand = Volume_Reference + inputs.gruneisen_volume_fraction_stepsize * Volume_Reference
 
     # Calculating the Gruneisen parameter and zeroing out the parameters for the translational modes
-    if (np.any(Wavenumber_Reference[3:]) < 0.) or (np.any(Wavenumber_expand[3:]) < 0 ):
-        print('Negative wavenumbers found in computing the Gruneisen parameters')
+    if not (np.all(inputs.wavenumber_tolerance > Wavenumber_Reference[:3] > -1 * inputs.wavenumber_tolerance) or
+            np.all(inputs.wavenumber_tolerance > Wavenumber_expand[:3] > -1 * inputs.wavenumber_tolerance)):
+        print("WARNING: Wavenumbers did not fall between necessary tolerance of: " +str(inputs.wavenumber_tolerance) +
+              " cm^-1")
         print('Lattice Minimum Wavenumbers: ', Wavenumber_Reference)
         print('Expanded Wavenumber: ', Wavenumber_expand)
         print('Exiting code')
         sys.exit()
+    
     Gruneisen = np.zeros(len(Wavenumber_Reference))
     Gruneisen[3:] = -(np.log(Wavenumber_Reference[3:]) - np.log(Wavenumber_expand[3:]))/(np.log(Volume_Reference) -
                                                                                          np.log(Volume_expand))
