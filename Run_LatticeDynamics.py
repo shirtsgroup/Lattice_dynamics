@@ -81,9 +81,10 @@ def temperature_lattice_dynamics(inputs):
         Pr.Save_Properties(inputs, properties)
 
     elif (inputs.method == 'GaQ') or (inputs.method == 'GaQg') and (inputs.anisotropic_type == '1D'):
-        if any(inputs.gradient_matrix_fractions != 0.):
+        if np.any(inputs.gradient_matrix_fractions != 0.):
             crystal_matrix_array = Ex.triangle_crystal_matrix_to_array(Ex.Lattice_parameters_to_Crystal_matrix(
                 Pr.Lattice_parameters(inputs.program, inputs.coordinate_file)))
+
             LocGrd_dC = np.absolute(inputs.gradient_matrix_fractions * crystal_matrix_array)
         else:
             LocGrd_dC = Ss.anisotropic_gradient_settings(inputs)
@@ -385,9 +386,12 @@ class Inputs:
         self.gradient_numerical_step = data['gradient']['numerical_step']
         self.gradient_max_temperature = data['gradient']['max_temperature']
         self.gradient_vol_fraction = data['gradient']['vol_fraction']
-        self.gradient_matrix_fractions = data['gradient']['matrix_fractions']
-        #if self.gradient_matrix_fractions == None:
-        #    self.gradient_matrix_fractions = np.zeros(6)
+        if data['gradient']['matrix_fractions'] is None:
+            self.gradient_matrix_fractions = np.zeros(6)
+        elif len(data['gradient']['matrix_fractions']) == 6:
+            self.gradient_matrix_fractions = np.array(data['gradient']['matrix_fractions'])
+        else:
+            self.gradient_matrix_fractions = np.zeros(6)
         self.anisotropic_type = data['gradient']['anisotropic_type']
         self.stepwise_volume_fraction_stepsize = data['stepwise']['volume_fraction_stepsize']
         self.stepwise_volume_fraction_lower = data['stepwise']['volume_fraction_lower']
