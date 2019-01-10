@@ -32,7 +32,7 @@ def plot_lattice_parameters_multiple_methods(lattice_parameters, temperature, co
 
         T = np.load(temperature[i])
         if not np.all(Tmax == False):
-            Tp = np.where(T == Tmax[i])[0][0] + 1
+            Tp = np.where(T <= Tmax[i])[0][-1]
         else:
             Tp = -1
         if lattice_parameters_error[i] == '':
