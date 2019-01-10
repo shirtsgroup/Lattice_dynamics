@@ -99,10 +99,7 @@ def Call_Wavenumbers(inputs, **keyword_parameters):
                 wavenumber_reference = np.load(inputs.output + '_GRUwvn_' + inputs.method + '.npy')
             else:
                 # Calculating the Gruneisen parameter and wavenumbers
-                gruneisen, wavenumber_reference = \
-                    Setup_Anisotropic_Gruneisen(inputs.coordinate_file, inputs.program,
-                                                inputs.gruneisen_matrix_strain_stepsize, inputs.number_of_molecules,
-                                                inputs.min_rms_gradient, Parameter_file=inputs.tinker_parameter_file)
+                gruneisen, wavenumber_reference = Setup_Anisotropic_Gruneisen(inputs)
 
                 # Saving the wavenumbers for future use
                 print("   ... Saving reference wavenumbers and Gruneisen parameters to: " + inputs.output
@@ -384,7 +381,7 @@ def Setup_Isotropic_Gruneisen(inputs):
         print('Expanded Wavenumber: ', Wavenumber_expand)
         print('Exiting code')
         sys.exit()
-    
+
     Gruneisen = np.zeros(len(Wavenumber_Reference))
     Gruneisen[3:] = -(np.log(Wavenumber_Reference[3:]) - np.log(Wavenumber_expand[3:]))/(np.log(Volume_Reference) -
                                                                                          np.log(Volume_expand))
@@ -415,28 +412,29 @@ def Get_Iso_Gruneisen_Wavenumbers(Gruneisen, Wavenumber_Reference, Volume_Refere
 ##########################################
 # Strain Ansotropic Gruneisen Parameter  #
 ##########################################
-def Setup_Anisotropic_Gruneisen(Coordinate_file, Program, strain, molecules_in_coord, min_RMS_gradient,
-                                **keyword_parameters):
+def Setup_Anisotropic_Gruneisen(inputs):
     # Starting by straining the crystal in the six principal directions
     for i in range(6):
         # Making expanded structures in th direction of the six principal strains
         applied_strain = np.zeros(6)
-        applied_strain[i] = strain
-        Ex.Expand_Structure(Coordinate_file, Program, 'strain', molecules_in_coord, 'temp_' + str(i), min_RMS_gradient,
-                            strain=Ex.strain_matrix(applied_strain),
-                            crystal_matrix=Ex.Lattice_parameters_to_Crystal_matrix(Pr.Lattice_parameters(Program, Coordinate_file)),
-                            Parameter_file=keyword_parameters['Parameter_file'])
+        applied_strain[i] = inputs.gruneisen_matrix_strain_stepsize
+        Ex.Expand_Structure(inputs.oordinate_file, inputs.program, 'strain', inputs.number_of_molecules,
+                            'temp_' + str(i), inputs.min_rms_gradient, strain=Ex.strain_matrix(applied_strain),
+                            crystal_matrix=
+                            Ex.Lattice_parameters_to_Crystal_matrix(Pr.Lattice_parameters(inputs.program,
+                                                                                          inputs.coordinate_file)),
+                            Parameter_file=inputs.tinker_parameter_file)
 
     # Setting an array of the names of expanded strucutres
     expanded_coordinates = ['temp_0', 'temp_1', 'temp_2', 'temp_3', 'temp_4', 'temp_5']
 
-    if Program == 'Tinker':
+    if inputs.program == 'Tinker':
         file_ending = '.xyz'
 
         # Organizing the Tinker wavenumbers
-        Organized_wavenumbers = Tinker_Gru_organized_wavenumbers('Anisotropic', Coordinate_file, 
+        Organized_wavenumbers = Tinker_Gru_organized_wavenumbers('Anisotropic', inputs.coordinate_file,
                                                                  [s + '.xyz' for s in expanded_coordinates],
-                                                                 keyword_parameters['Parameter_file'])
+                                                                 inputs.tinker_parameter_file)
 
         # Setting aside the reference wavenumbers
         Wavenumber_Reference = Organized_wavenumbers[0]
@@ -446,20 +444,37 @@ def Setup_Anisotropic_Gruneisen(Coordinate_file, Program, strain, molecules_in_c
 
         for i in range(6):
             # Calculating the Gruneisen parameters
-            Gruneisen[3:, i] = -(np.log(Organized_wavenumbers[i + 1, 3:]) - np.log(Wavenumber_Reference[3:])) / strain
+            Gruneisen[3:, i] = -(np.log(Organized_wavenumbers[i + 1, 3:]) - np.log(Wavenumber_Reference[3:])) \
+                               / inputs.gruneisen_matrix_strain_stepsize
             subprocess.call(['rm', expanded_coordinates[i] + file_ending])
 
-    elif Program == 'Test':
+    elif inputs.program == 'Test':
         file_ending = '.npy'
-        Wavenumber_Reference = Test_Wavenumber(Coordinate_file, False)
+        Wavenumber_Reference = Test_Wavenumber(inputs.coordinate_file, False)
+        if not np.all(inputs.wavenumber_tolerance > Wavenumber_Reference[:3] > -1 * inputs.wavenumber_tolerance):
+            print("WARNING: Wavenumbers did not fall between necessary tolerance of: " +
+                  str(inputs.wavenumber_tolerance) + " cm^-1")
+            print('Lattice Minimum Wavenumbers: ', Wavenumber_Reference[:3])
+            print('Exiting code')
+            sys.exit()
+
         Gruneisen = np.zeros((len(Wavenumber_Reference), 6))
 #        Gruneisen = np.load('wvnChange_test.npy')
         for i in range(6):
             applied_strain = np.zeros(6)
-            applied_strain[i] = strain
+            applied_strain[i] = inputs.gruneisen_matrix_strain_stepsize
             Wavenumber_expand = Test_Wavenumber(expanded_coordinates[i] + file_ending,
-                                                Ex.Lattice_parameters_to_Crystal_matrix(Pr.Test_Lattice_Parameters(Coordinate_file)), Gru=True)
-            Gruneisen[3:, i] = -(np.log(Wavenumber_expand[3:]) - np.log(Wavenumber_Reference[3:])) / strain
+                                                Ex.Lattice_parameters_to_Crystal_matrix(Pr.Test_Lattice_Parameters(
+                                                    inputs.coordinate_file)), Gru=True)
+            if not np.all(inputs.wavenumber_tolerance > Wavenumber_Reference[:3] > -1 * inputs.wavenumber_tolerance):
+                print("WARNING: Wavenumbers did not fall between necessary tolerance of: " +
+                      str(inputs.wavenumber_tolerance) + " cm^-1")
+                print('Strain ' + str(i) + ' Minimum Wavenumbers: ', Wavenumber_expand[:10])
+                print('Exiting code')
+                sys.exit()
+
+            Gruneisen[3:, i] = -(np.log(Wavenumber_expand[3:]) - np.log(Wavenumber_Reference[3:])) \
+                               / inputs.gruneisen_matrix_strain_stepsize
             subprocess.call(['rm', expanded_coordinates[i] + file_ending])
     return Gruneisen, Wavenumber_Reference
 
@@ -472,7 +487,7 @@ def Get_Aniso_Gruneisen_Wavenumbers(Gruneisen, Wavenumber_Reference, ref_crystal
     wavenumbers = np.zeros(len(Wavenumber_Reference))
 
     for i in np.arange(3, len(wavenumbers), 1):
-        # Computing the change to each wavenumber due to the curren strain
+        # Computing the change to each wavenumber due to the current strain
         wavenumbers[i] = Wavenumber_Reference[i]*np.exp(-1.*np.sum(np.dot(applied_strain, Gruneisen[i])))
     return wavenumbers
 
