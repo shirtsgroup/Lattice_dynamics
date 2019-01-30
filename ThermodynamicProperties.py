@@ -16,8 +16,7 @@ import matplotlib.pyplot as plt
 ##########################################
 #           Export PROPERTIES            #
 ##########################################
-def Properties(Coordinate_file, wavenumbers, Temperature, Pressure, Program, Statistical_mechanics, molecules_in_coord, cp2kroot,
-               Parameter_file=''):
+def Properties(inputs, Coordinate_file, wavenumbers, Temperature):
     """
     Function to calculate all properties for a single temperature and pressure
 
@@ -37,30 +36,31 @@ def Properties(Coordinate_file, wavenumbers, Temperature, Pressure, Program, Sta
     """
     properties = np.zeros(14)
     properties[0] = Temperature  # Temperature
-    properties[1] = Pressure  # Pressure
-    if Program == 'Tinker':
-        properties[3] = Tinker_U(Coordinate_file, Parameter_file) / molecules_in_coord
+    properties[1] = inputs.pressure  # Pressure
+    if inputs.program == 'Tinker':
+        properties[3] = Tinker_U(Coordinate_file, inputs.tinker_parameter_file) / inputs.number_of_molecules
         # Potential energy
         properties[7:13] = Tinker_Lattice_Parameters(Coordinate_file)  # Lattice parameters
-    elif Program == 'CP2K':
-        properties[3] = CP2K_U(Coordinate_file) / molecules_in_coord  # Potential energy
+    elif inputs.program == 'CP2K':
+        properties[3] = CP2K_U(Coordinate_file) / inputs.number_of_molecules  # Potential energy
         properties[7:13] = CP2K_Lattice_Parameters(Coordinate_file)  # Lattice parameters
-    elif Program == 'QE':
-        properties[3] = QE_U(Coordinate_file) / molecules_in_coord
+    elif inputs.program == 'QE':
+        properties[3] = QE_U(Coordinate_file) / inputs.number_of_molecules
         properties[7:13], matrix = QE_Lattice_Parameters(Coordinate_file)
-    elif Program == 'Test':
-        properties[3] = Test_U(Coordinate_file) / molecules_in_coord  # Potential energy
+    elif inputs.program == 'Test':
+        properties[3] = Test_U(Coordinate_file) / inputs.number_of_molecules  # Potential energy
         properties[7:13] = Test_Lattice_Parameters(Coordinate_file)  # Lattice parameters
     properties[6] = Volume(lattice_parameters=properties[7:13])  # Volume
-    properties[4] = Vibrational_Helmholtz(Temperature, wavenumbers, Statistical_mechanics) / molecules_in_coord
-    properties[13] = Vibrational_Entropy(Temperature, wavenumbers, Statistical_mechanics) / molecules_in_coord
-    properties[5] = PV_energy(Pressure, properties[6]) / molecules_in_coord  # PV
+    properties[4] = Vibrational_Helmholtz(Temperature, wavenumbers, inputs.statistical_mechanics) / \
+                    inputs.number_of_molecules
+    properties[13] = Vibrational_Entropy(Temperature, wavenumbers, inputs.statistical_mechanics) / \
+                     inputs.number_of_molecules
+    properties[5] = PV_energy(inputs.pressure, properties[6]) / inputs.number_of_molecules  # PV
     properties[2] = sum(properties[3:6])  # Gibbs free energy
     return properties
 
 
-def Properties_with_Temperature(Coordinate_file, wavenumbers, Temperature, Pressure, Program, Statistical_mechanics,
-                                molecules_in_coord, cp2kroot, **keyword_parameters):
+def Properties_with_Temperature(inputs, Coordinate_file, wavenumbers):
     """
     This function collects the properties for a specific coordinate file over a temperature range
 
@@ -78,29 +78,24 @@ def Properties_with_Temperature(Coordinate_file, wavenumbers, Temperature, Press
     **Optional Inputs
     Parameter_file = Optional input for program
     """
-    if 'Parameter_file' in keyword_parameters:
-        pass
-    else:
-        keyword_parameters['Parameter_file'] = ''
-
-    properties = np.zeros((len(Temperature), 14))
-    properties[0, :] = Properties(Coordinate_file, wavenumbers, Temperature[0], Pressure, Program,
-                                          Statistical_mechanics, molecules_in_coord, cp2kroot,
-                                          Parameter_file=keyword_parameters['Parameter_file'])
-    properties[:, 0] = Temperature
+    properties = np.zeros((len(inputs.temperature), 14))
+    properties[0, :] = Properties(inputs, Coordinate_file, wavenumbers, inputs.temperature[0])
+    properties[:, 0] = inputs.temperature
     properties[:, 1] = properties[0, 1]
     properties[:, 3] = properties[0, 3]
     properties[:, 7:13] = properties[0, 7:13]
     properties[:, 6] = properties[0, 6]
     properties[:, 5] = properties[0, 5]
-    for i in range(1, len(Temperature)):
-        properties[i, 4] = Vibrational_Helmholtz(Temperature[i], wavenumbers, Statistical_mechanics) / molecules_in_coord
-        properties[i, 13] = Vibrational_Entropy(Temperature[i], wavenumbers, Statistical_mechanics) / molecules_in_coord
+    for i in range(1, len(inputs.temperature)):
+        properties[i, 4] = Vibrational_Helmholtz(inputs.temperature[i], wavenumbers, inputs.statistical_mechanics) / \
+                           inputs.number_of_molecules
+        properties[i, 13] = Vibrational_Entropy(inputs.temperature[i], wavenumbers, inputs.statistical_mechanics) / \
+                            inputs.number_of_molecules
         properties[i, 2] = sum(properties[i, 3:6])
     return properties
 
 
-def Save_Properties(properties, Properties_to_save, Output, Method, Statistical_mechanics):
+def Save_Properties(inputs, properties):#properties, Properties_to_save, Output, Method, Statistical_mechanics):
     """
     Function for saving user specified properties
 
@@ -126,34 +121,37 @@ def Save_Properties(properties, Properties_to_save, Output, Method, Statistical_
     Statistical_mechanics = 'Classical' Classical mechanics
                             'Quantum' Quantum mechanics
     """
-    for i in Properties_to_save:
+    for i in inputs.properties_to_save:
         if i == 'T':  # Temperature
-            print("   ... Saving temperature in: " + Output + "_T_" + Method + ".npy")
-            np.save(Output + '_T_' + Method, properties[:, 0])
+            print("   ... Saving temperature in: " + inputs.output + "_T_" + inputs.method + ".npy")
+            np.save(inputs.output + '_T_' + inputs.method, properties[:, 0])
         if i == 'P':  # Pressure
-            print("   ... Saving Pressure in: " + Output + "_P_" + Method + ".npy")
-            np.save(Output + '_P_' + Method, properties[:, 1])
+            print("   ... Saving Pressure in: " + inputs.output + "_P_" + inputs.method + ".npy")
+            np.save(inputs.output + '_P_' + inputs.method, properties[:, 1])
         if i == 'G':  # Gibbs free energy
-            print("   ... Saving Gibbs free energy in: " + Output + "_G" + Statistical_mechanics + "_" + Method +\
-                  ".npy")
-            np.save(Output + '_G' + Statistical_mechanics + '_' + Method, properties[:, 2])
+            print("   ... Saving Gibbs free energy in: " + inputs.output + "_G" + inputs.statistical_mechanics + "_" +
+                  inputs.method + ".npy")
+            np.save(inputs.output + '_G' + inputs.statistical_mechanics + '_' + inputs.method, properties[:, 2])
         if i == 'U':  # Potential energy
-            print("   ... Saving potential energy in: " + Output + "_U" + Statistical_mechanics + "_" + Method + ".npy")
-            np.save(Output + '_U' + Statistical_mechanics + '_' + Method, properties[:, 3])
+            print("   ... Saving potential energy in: " + inputs.output + "_U" + inputs.statistical_mechanics + "_" +
+                  inputs.method + ".npy")
+            np.save(inputs.output + '_U' + inputs.statistical_mechanics + '_' + inputs.method, properties[:, 3])
         if i == 'Av':  # Helmholtz vibrational energy
-            print("   ... Saving vibrational Helmholtz free energy in: " + Output + "_Av" + Statistical_mechanics + "_"\
-                  + Method + ".npy")
-            np.save(Output + '_Av' + Statistical_mechanics + '_' + Method, properties[:, 4])
+            print("   ... Saving vibrational Helmholtz free energy in: " + inputs.output + "_Av" +
+                  inputs.statistical_mechanics + "_" + inputs.method + ".npy")
+            np.save(inputs.output + '_Av' + inputs.statistical_mechanics + '_' + inputs.method, properties[:, 4])
         if i == 'V':  # Volume
-            print("   ... Saving volume in: " + Output + "_V" + Statistical_mechanics + "_" + Method + ".npy")
-            np.save(Output + '_V' + Statistical_mechanics + '_' + Method, properties[:, 6])
+            print("   ... Saving volume in: " + inputs.output + "_V" + inputs.statistical_mechanics + "_" +
+                  inputs.method + ".npy")
+            np.save(inputs.output + '_V' + inputs.statistical_mechanics + '_' + inputs.method, properties[:, 6])
         if i == 'h':  # Lattice parameters
-            print("   ... Saving lattice parameters in: " + Output + "_h" + Statistical_mechanics + "_" + Method +\
-                  ".npy")
-            np.save(Output + '_h' + Statistical_mechanics + '_' + Method, properties[:, 7:13])
+            print("   ... Saving lattice parameters in: " + inputs.output + "_h" + inputs.statistical_mechanics +
+                  "_" + inputs.method + ".npy")
+            np.save(inputs.output + '_h' + inputs.statistical_mechanics + '_' + inputs.method, properties[:, 7:13])
         if i == 'S':  # Entropy
-            print("   ... Saving entropy in: " + Output + "_S" + Statistical_mechanics + "_" + Method + ".npy")
-            np.save(Output + '_S' + Statistical_mechanics + '_' + Method, properties[:, 13])
+            print("   ... Saving entropy in: " + inputs.output + "_S" + inputs.statistical_mechanics + "_" +
+                  inputs.method + ".npy")
+            np.save(inputs.output + '_S' + inputs.statistical_mechanics + '_' + inputs.method, properties[:, 13])
 
 def polynomial_properties_optimize(volumes, V0, wavenumbers, eigenvectors, molecules_in_coord, Statistical_mechanics,
                                    Temperature, Pressure, eq_of_state, poly_order, prop_0K, Output, Program):

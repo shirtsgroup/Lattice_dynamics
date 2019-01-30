@@ -11,6 +11,7 @@ Welcome to Lattice Dynamics's documentation!
    :caption: Contents:
 
    introduction
+   theory 
 
 
 Indices and tables

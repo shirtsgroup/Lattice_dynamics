@@ -12,123 +12,96 @@ import Thermal_NumericalAnalysis as TNA
 import Expand as Ex
 import System_sensitivity as Ss
 import pressure_setup as ps
+import yaml
 
-def Temperature_Lattice_Dynamics(Temperature=[0.,300.], Pressure=1., Method='HA', Program='Test',
-                                 Output='out', Coordinate_file='test.npy', Parameter_file='keyfile.key',
-                                 molecules_in_coord=1, properties_to_save=['G', 'T', 'V'], NumAnalysis_method='RK4',
-                                 NumAnalysis_step=300.0, LocGrd_Vol_FracStep=0., LocGrd_CMatrix_FracStep=0.,
-                                 StepWise_Vol_StepFrac=1e-3, StepWise_Vol_LowerFrac=0.97, StepWise_Vol_UpperFrac=1.16,
-                                 Statistical_mechanics='Classical', Gruneisen_Vol_FracStep=1.5e-3, 
-                                 Gruneisen_Lat_FracStep=1.e-3, Wavenum_Tol=-1., Gradient_MaxTemp=300.0, 
-                                 Aniso_LocGrad_Type='6D', min_RMS_gradient=0.0001, cp2kroot='BNZ_NMA_p3',
-                                 eq_of_state='None'):
+path = os.path.realpath(__file__).strip('Run_LatticeDynamics.py')
 
-    Temperature = np.array(Temperature).astype(float)
-    if Method == 'HA':
+
+def temperature_lattice_dynamics(inputs):
+    if inputs.method == 'HA':
         print("Performing Harmonic Approximation")
         # Running the Harmonic Approximation
-        if os.path.isfile(Output + '_' + Method + '_WVN.npy'):
-            wavenumbers = np.load(Output + '_' + Method + '_WVN.npy')
-            print("   Importing wavenumbers from:" + Output + '_' + Method + '_WVN.npy')
+        if os.path.isfile(inputs.output + '_' + inputs.method + '_WVN.npy'):
+            wavenumbers = np.load(inputs.output + '_' + inputs.method + '_WVN.npy')
+            print("   Importing wavenumbers from:" + inputs.output + '_' + inputs.method + '_WVN.npy')
         else:
             print("   Computing wavenumbers of coordinate file")
-            wavenumbers = Wvn.Call_Wavenumbers(Method, min_RMS_gradient, Program=Program, Coordinate_file=Coordinate_file,
-                                               Parameter_file=Parameter_file, Output=Output)
-            np.save(Output + '_' + Method + '_WVN', wavenumbers)
+            wavenumbers = Wvn.Call_Wavenumbers(inputs, Coordinate_file=inputs.coordinate_file,
+                                               Parameter_file=inputs.tinker_parameter_file)
+            np.save(inputs.output + '_' + inputs.method + '_WVN', wavenumbers)
 
-        if all(wavenumbers > Wavenum_Tol):
-            print("   All wavenumbers are greater than tolerance of: " + str(Wavenum_Tol) + " cm^-1")
-            properties = Pr.Properties_with_Temperature(Coordinate_file, wavenumbers, Temperature, Pressure, Program,
-                                                        Statistical_mechanics, molecules_in_coord, cp2kroot=cp2kroot,
-                                                        Parameter_file=Parameter_file)
-            print("   All properties have been saved in " + Output + "_raw.npy")
-            np.save(Output + '_raw', properties)
+        if all(wavenumbers > inputs.wavenumber_tolerance):
+            print("   All wavenumbers are greater than tolerance of: " + str(inputs.wavenumber_tolerance) + " cm^-1")
+            properties = Pr.Properties_with_Temperature(inputs, inputs.coordinate_file, wavenumbers)
+            print("   All properties have been saved in " + inputs.output + "_raw.npy")
+            np.save(inputs.output + '_raw', properties)
             print("   Saving user specified properties in indipendent files:")
-            Pr.Save_Properties(properties, properties_to_save, Output, Method, Statistical_mechanics)
+            Pr.Save_Properties(inputs, properties)
+
     else:
         if os.path.isdir('Cords') != True:
             print("Creating directory 'Cords/' to store structures along Gibbs free energy path")
             subprocess.call(['mkdir', 'Cords'])
 
-    if (Method == 'SiQ') or (Method == 'SiQg'):
+    if (inputs.method == 'SiQ') or (inputs.method == 'SiQg'):
         # Stepwise Isotropic QHA
         print("Performing Stepwise Isotropic Quasi-Harmonic Approximation")
-        properties = TNA.Isotropic_Stepwise_Expansion(StepWise_Vol_StepFrac, StepWise_Vol_LowerFrac,
-                                                      StepWise_Vol_UpperFrac, Coordinate_file, Program, Temperature,
-                                                      Pressure, Output, Method, molecules_in_coord, Wavenum_Tol,
-                                                      Statistical_mechanics, min_RMS_gradient,
-                                                      Parameter_file=Parameter_file,
-                                                      Gruneisen_Vol_FracStep=Gruneisen_Vol_FracStep,
-                                                      cp2kroot=cp2kroot)
-        print("   Saving user specified properties in indipendent files:")
-        Pr.Save_Properties(properties, properties_to_save, Output, Method, Statistical_mechanics)
+        properties = TNA.Isotropic_Stepwise_Expansion(inputs)
 
-    elif (Method == 'GiQ') or (Method == 'GiQg'):
-        if LocGrd_Vol_FracStep == 0.:
-            LocGrd_dV = Ss.isotropic_gradient_settings(Coordinate_file, Program, Parameter_file, molecules_in_coord,
-                                                       min_RMS_gradient, Output, Pressure)
+        print("   Saving user specified properties in indipendent files:")
+        Pr.Save_Properties(inputs, properties)
+
+    elif (inputs.method == 'GiQ') or (inputs.method == 'GiQg'):
+        if inputs.gradient_vol_fraction == (0. or None):
+            LocGrd_dV = Ss.isotropic_gradient_settings(inputs)
+
         else:
-            V_0 = Pr.Volume(Program=Program, Coordinate_file=Coordinate_file)
-            LocGrd_dV = LocGrd_Vol_FracStep * V_0
+            V_0 = Pr.Volume(Program=inputs.program, Coordinate_file=inputs.coordinate_file)
+            LocGrd_dV = inputs.gradient_vol_fraction * V_0
         # Gradient Isotropic QHA
         print("Performing Gradient Isotropic Quasi-Harmonic Approximation")
-        properties = TNA.Isotropic_Gradient_Expansion(Coordinate_file, Program, molecules_in_coord, Output, Method,
-                                                      Gradient_MaxTemp, Pressure, LocGrd_dV,
-                                                      Statistical_mechanics, NumAnalysis_step, NumAnalysis_method,
-                                                      Temperature, min_RMS_gradient,
-                                                      Parameter_file=Parameter_file,
-                                                      Gruneisen_Vol_FracStep=Gruneisen_Vol_FracStep,
-                                                      cp2kroot=cp2kroot)
-        print("   Saving user specified properties in indipendent files:")
-        Pr.Save_Properties(properties, properties_to_save, Output, Method, Statistical_mechanics)
+        properties = TNA.Isotropic_Gradient_Expansion(inputs, LocGrd_dV)
 
-    elif ((Method == 'GaQ') or (Method == 'GaQg')) and (Aniso_LocGrad_Type != '1D'):
-        if any(LocGrd_CMatrix_FracStep != 0.):
-            crystal_matrix_array = Ex.triangle_crystal_matrix_to_array(Ex.Lattice_parameters_to_Crystal_matrix(Pr.Lattice_parameters(Program, Coordinate_file)))
-            LocGrd_dC = np.absolute(LocGrd_CMatrix_FracStep * crystal_matrix_array)
+        print("   Saving user specified properties in indipendent files:")
+        Pr.Save_Properties(inputs, properties)
+
+    elif ((inputs.method == 'GaQ') or (inputs.method == 'GaQg')) and (inputs.anisotropic_type != '1D'):
+        if any(inputs.gradient_matrix_fractions != 0.):
+            crystal_matrix_array = Ex.triangle_crystal_matrix_to_array(Ex.Lattice_parameters_to_Crystal_matrix(
+                Pr.Lattice_parameters(inputs.program, inputs.coordinate_file)))
+            LocGrd_dC = np.absolute(inputs.gradient_matrix_fractions * crystal_matrix_array)
             for i in range(len(LocGrd_dC)):
                 if LocGrd_dC[i] == 0.:
-                    LocGrd_dC[i] = LocGrd_CMatrix_FracStep[i]
+                    LocGrd_dC[i] = inputs.gradient_matrix_fractions[i]
         else:
-            LocGrd_dC = Ss.anisotropic_gradient_settings(Coordinate_file, Program, Parameter_file, molecules_in_coord,
-                                                         min_RMS_gradient, Output)
+            LocGrd_dC = Ss.anisotropic_gradient_settings(inputs)
         print("Performing Gradient Anisotropic Quasi-Harmonic Approximation")
-        properties = TNA.Anisotropic_Gradient_Expansion(Coordinate_file, Program, molecules_in_coord, Output, Method,
-                                                        Gradient_MaxTemp, Pressure, LocGrd_dC,
-                                                        Statistical_mechanics, NumAnalysis_step,
-                                                        NumAnalysis_method, Aniso_LocGrad_Type, Temperature,
-                                                        min_RMS_gradient, Gruneisen_Lat_FracStep=Gruneisen_Lat_FracStep, 
-                                                        Parameter_file=Parameter_file, cp2kroot=cp2kroot)
-        print("   Saving user specified properties in indipendent files:")
-        Pr.Save_Properties(properties, properties_to_save, Output, Method, Statistical_mechanics)
+        properties = TNA.Anisotropic_Gradient_Expansion(inputs, LocGrd_dC)
+        print("   Saving user specified properties in independent files:")
+        Pr.Save_Properties(inputs, properties)
 
-    elif (Method == 'GaQ') or (Method == 'GaQg') and (Aniso_LocGrad_Type == '1D'):
-        if any(LocGrd_CMatrix_FracStep != 0.):
-            crystal_matrix_array = Ex.triangle_crystal_matrix_to_array(Ex.Lattice_parameters_to_Crystal_matrix(Pr.Lattice_parameters(Program, Coordinate_file)))
-            LocGrd_dC = np.absolute(LocGrd_CMatrix_FracStep * crystal_matrix_array)
+    elif (inputs.method == 'GaQ') or (inputs.method == 'GaQg') and (inputs.anisotropic_type == '1D'):
+        if np.any(inputs.gradient_matrix_fractions != 0.):
+            crystal_matrix_array = Ex.triangle_crystal_matrix_to_array(Ex.Lattice_parameters_to_Crystal_matrix(
+                Pr.Lattice_parameters(inputs.program, inputs.coordinate_file)))
+
+            LocGrd_dC = np.absolute(inputs.gradient_matrix_fractions * crystal_matrix_array)
         else:
-            LocGrd_dC = Ss.anisotropic_gradient_settings(Coordinate_file, Program, Parameter_file, molecules_in_coord,
-                                                         min_RMS_gradient, Output)
+            LocGrd_dC = Ss.anisotropic_gradient_settings(inputs)
         print("Performing 1D-Gradient Anisotropic Quasi-Harmonic Approximation")
-        properties = TNA.Anisotropic_Gradient_Expansion_1D(Coordinate_file, Program, molecules_in_coord, Output, Method,
-                                                           Gradient_MaxTemp, Pressure, LocGrd_dC,
-                                                           Statistical_mechanics, NumAnalysis_step,
-                                                           NumAnalysis_method, Aniso_LocGrad_Type, Temperature,
-                                                           min_RMS_gradient, Gruneisen_Lat_FracStep=Gruneisen_Lat_FracStep,
-                                                           Parameter_file=Parameter_file, cp2kroot=cp2kroot)
+        properties = TNA.Anisotropic_Gradient_Expansion_1D(inputs, LocGrd_dC)
         print("   Saving user specified properties in independent files:")
-        Pr.Save_Properties(properties, properties_to_save, Output, Method, Statistical_mechanics)
+        Pr.Save_Properties(inputs, properties)
 
-    elif Method == 'SaQply':
+    elif inputs.method == 'SaQply':
         print("Performing Quasi-Anisotropic Quasi-Harmonic Approximation")
-        properties = TNA.stepwise_expansion(StepWise_Vol_StepFrac, StepWise_Vol_LowerFrac, StepWise_Vol_UpperFrac,
-                                            Coordinate_file, Program, Temperature, Pressure, Output, Method,
-                                            molecules_in_coord, Wavenum_Tol, Statistical_mechanics, min_RMS_gradient,
-                                            eq_of_state, Parameter_file=Parameter_file, cp2kroot=cp2kroot)
+        properties = TNA.stepwise_expansion(inputs)
         print("   Saving user specified properties in independent files:")
-        Pr.Save_Properties(properties, properties_to_save, Output, Method, Statistical_mechanics)
+        Pr.Save_Properties(inputs, properties)
     print("Lattice dynamic calculation is complete!")
 
+
+"""
 def write_input_file(Temperature, Pressure, Method, Program, Output, Coordinate_file, Parameter_file, 
                      molecules_in_coord, properties_to_save, NumAnalysis_method, NumAnalysis_step, LocGrd_Vol_FracStep,
                      LocGrd_CMatrix_FracStep, StepWise_Vol_StepFrac, StepWise_Vol_LowerFrac, 
@@ -163,22 +136,21 @@ def write_input_file(Temperature, Pressure, Method, Program, Output, Coordinate_
         myfile.write('Gradient_MaxTemp = ' + str(Gradient_MaxTemp) + '\n')
         myfile.write('Aniso_LocGrad_Type = ' + str(Aniso_LocGrad_Type) + '\n')
         myfile.write('min_RMS_gradient = ' + str(min_RMS_gradient) + '\n')
-
-
-if __name__ == '__main__':
-    import argparse
-    parser = argparse.ArgumentParser(description='Calculate free energies as a function of T using lattice dynamics')
-    parser.add_argument('-i', '--input_file', dest='Input_file', default='input_test.py',
-                        help='Input file containing all parameters for the run')
-    parser.add_argument('-D', '--Start_Fresh', action='store_true',
-                        help='Removes any files from previous runs')
-
-    args = parser.parse_args()
+"""
+def old_input_file(Input_file, data):
+    try:
+        data['coordinate_file'] = subprocess.check_output("less " + str(args.Input_file) + " | grep Coordinate_file"
+                                                                                   " | grep = ", shell=True).decode("utf-8")
+        data['coordinate_file'] = data['coordinate_file'].split('=')[1].strip()
+    except subprocess.CalledProcessError as grepexc:
+        print("Coordinate file was not provided")
+        print("Exiting code")
+        sys.exit()
 
     try:
-        Method = subprocess.check_output("less " + str(args.Input_file) + " | grep Method | grep = ", shell=True).decode("utf-8")
-        Method = str(Method).split('=')[1].strip()
-        if Method not in ['HA', 'SiQ', 'SiQg', 'GiQ', 'GiQg', 'GaQ', 'GaQg', 'SaQply']:
+        data['method'] = subprocess.check_output("less " + str(Input_file) + " | grep Method | grep = ", shell=True).decode("utf-8")
+        data['method'] = str(data['method']).split('=')[1].strip()
+        if data['method'] not in ['HA', 'SiQ', 'SiQg', 'GiQ', 'GiQg', 'GaQ', 'GaQg', 'SaQply']:
             print("Input method is not supported. Please select from the following:")
             print("   HA, SiQ, SiQg, GiQ, GiQg, GaQ, GaQg")
             print("Exiting code")
@@ -189,9 +161,9 @@ if __name__ == '__main__':
         sys.exit()
 
     try:
-        Program = subprocess.check_output("less " + str(args.Input_file) + " | grep Program | grep = ", shell=True).decode("utf-8")
-        Program = Program.split('=')[1].strip()
-        if Program not in ['Tinker', 'Test', 'CP2K', 'QE']:
+        data['program'] = subprocess.check_output("less " + str(Input_file) + " | grep Program | grep = ", shell=True).decode("utf-8")
+        data['program'] = data['program'].split('=')[1].strip()
+        if data['program'] not in ['Tinker', 'Test', 'CP2K', 'QE']:
             print("Input program is not supported. Please select from the following:")
             print("   Tinker, Test")
             print("Exiting code")
@@ -202,10 +174,10 @@ if __name__ == '__main__':
         sys.exit()
 
     try:
-        Statistical_mechanics = subprocess.check_output("less " + str(args.Input_file) + " | grep Statistical_mechanics"
+        data['statistical_mechanics'] = subprocess.check_output("less " + str(Input_file) + " | grep Statistical_mechanics"
                                                                                          " | grep = ", shell=True).decode("utf-8")
-        Statistical_mechanics = Statistical_mechanics.split('=')[1].strip()
-        if Statistical_mechanics not in ['Classical', 'Quantum']:
+        data['statistical_mechanics'] = data['statistical_mechanics'].split('=')[1].strip()
+        if data['statistical_mechanics'] not in ['Classical', 'Quantum']:
             print("Input statistical mechanics is not supported. Please select from the following:")
             print("   Classical, Quantum")
             print("Exiting code")
@@ -216,278 +188,240 @@ if __name__ == '__main__':
         sys.exit()
 
     try:
-        Temperature = subprocess.check_output("less " + str(args.Input_file) + " | grep Temperature"
+        data['temperature'] = subprocess.check_output("less " + str(Input_file) + " | grep Temperature"
                                                                                " | grep = ", shell=True).decode("utf-8")
-        Temperature = np.array(Temperature.split('=')[1].strip().split(',')).astype(float)
+        data['temperature'] = data['temperature'].split('=')[1].strip()
     except subprocess.CalledProcessError as grepexc:
-        if Method in ['HA', 'SiQ', 'SiQg']:
-            Temperature = [0.0, 25.0, 50.0, 75.0, 100.0]
-            print("No temperatures were selected, using default temperatures of:")
-            print("   " + str(Temperature))
-        else:
-            Temperature = []
+        print('Using default temperatures')
 
     try:
-        Pressure = subprocess.check_output("less " + str(args.Input_file) + " | grep Pressure | grep = ", shell=True).decode("utf-8")
-        Pressure = np.array(Pressure.split('=')[1].strip().split(',')).astype(float) 
-        if len(Pressure) == 1:
-            Pressure = Pressure[0]
-            pressure_scan = False
-        elif len(Pressure) > 1:
-            pressure_scan = True
+        data['pressure'] = subprocess.check_output("less " + str(Input_file) + " | grep Pressure | grep = ", shell=True).decode("utf-8")
+        data['pressure'] = np.array(data['pressure'].split('=')[1].strip().split(',')).astype(float)
     except subprocess.CalledProcessError as grepexc:
         print("No pressure was selected, using default pressure")
-        Pressure = 1.
 
     try:
-        Output = subprocess.check_output("less " + str(args.Input_file) + " | grep Output | grep = ", shell=True).decode("utf-8")
-        Output = Output.split('=')[1].strip()
+        data['output'] = subprocess.check_output("less " + str(Input_file) + " | grep Output | grep = ", shell=True).decode("utf-8")
+        data['output'] = data['output'].split('=')[1].strip()
     except subprocess.CalledProcessError as grepexc:
-        Output = 'out'
-
-
-    # Removing all old files if flagged
-    if args.Start_Fresh:
-        subprocess.call(['rm -rf Cords numerical_checks.out minimization.out out_*'], shell=True)
-
+        pass
 
     try:
-        Coordinate_file = subprocess.check_output("less " + str(args.Input_file) + " | grep Coordinate_file"
-                                                                                   " | grep = ", shell=True).decode("utf-8")
-        Coordinate_file = Coordinate_file.split('=')[1].strip()
-    except subprocess.CalledProcessError as grepexc:
-        print("Coordinate file was not provided")
-        print("Exiting code")
-        sys.exit()
-
-    try:
-        Parameter_file = subprocess.check_output("less " + str(args.Input_file) + " | grep Parameter_file"
+        data['tinker']['parameter_file'] = subprocess.check_output("less " + str(Input_file) + " | grep Parameter_file"
                                                                                   " | grep = ", shell=True).decode("utf-8")
-        Parameter_file = Parameter_file.split('=')[1].strip()
+        data['tinker']['parameter_file'] = data['tinker']['parameter_file'].split('=')[1].strip()
     except subprocess.CalledProcessError as grepexc:
-        Parameter_file = ''
-        if Program == 'Tinker':
-            print("Parameter file was not provided for Tinker")
-            print("Exiting code")
-            sys.exit()
+        pass
 
     try:
-        molecules_in_coord = subprocess.check_output("less " + str(args.Input_file) + " | grep molecules_in_coord"
+        data['number_of_molecules'] = subprocess.check_output("less " + str(Input_file) + " | grep molecules_in_coord"
                                                                                       " | grep = ", shell=True).decode("utf-8")
-        molecules_in_coord = int(molecules_in_coord.split('=')[1].strip())
+        data['number_of_molecules'] = int(data['number_of_molecules'].split('=')[1].strip())
     except subprocess.CalledProcessError as grepexc:
-        if Program == 'Test':
-            molecules_in_coord = 1
-        else:
-            print("Number of molecules in system was not specified")
-            print("Exiting code")
-            sys.exit()
+        pass
 
     try:
-        properties_to_save_temp = subprocess.check_output("less " + str(args.Input_file) + " | grep properties_to_save"
+        data['properties_to_save'] = subprocess.check_output("less " + str(Input_file) + " | grep properties_to_save"
                                                                                            " | grep = ", shell=True).decode("utf-8")
-        properties_to_save_temp = properties_to_save_temp.split('=')[1].strip().split(',')
-        properties_to_save = []
-        for i in range(len(properties_to_save_temp)):
-            if properties_to_save_temp[i] in ['G', 'S', 'T', 'P', 'Av', 'V', 'h', 'U']:
-                properties_to_save.append(properties_to_save_temp[i])
-            else:
-                print("The following input is not a choice in properites: " + properties_to_save_temp[i])
+        data['properties_to_save'] = data['properties_to_save'].split('=')[1].strip()
     except subprocess.CalledProcessError as grepexc:
-        properties_to_save = ['G', 'T']
+        pass
 
     try:
-        NumAnalysis_method = subprocess.check_output("less " + str(args.Input_file) + " | grep NumAnalysis_method"
+        data['gradient']['numerical_method'] = subprocess.check_output("less " + str(Input_file) + " | grep NumAnalysis_method"
                                                                                       " | grep = ", shell=True).decode("utf-8")
-        NumAnalysis_method = NumAnalysis_method.split('=')[1].strip()
+        data['gradient']['numerical_method'] = data['gradient']['numerical_method'].split('=')[1].strip()
     except subprocess.CalledProcessError as grepexc:
-        NumAnalysis_method = 'Euler'
-        if Method in ['GiQ', 'GiQg', 'GaQ', 'GaQg']:
-            print("Numerical analysis method  was not specified")
-            print("... Using default method: Euler")
+        pass
 
     try:
-        NumAnalysis_step = subprocess.check_output("less " + str(args.Input_file) + " | grep NumAnalysis_step"
+        data['gradient']['numerical_step'] = subprocess.check_output("less " + str(Input_file) + " | grep NumAnalysis_step"
                                                                                     " | grep = ", shell=True).decode("utf-8")
-        NumAnalysis_step = float(NumAnalysis_step.split('=')[1].strip())
+        data['gradient']['numerical_step'] = float(data['gradient']['numerical_step'].split('=')[1].strip())
     except subprocess.CalledProcessError as grepexc:
-        NumAnalysis_step = 150.
-        if Method in ['GiQ', 'GiQg', 'GaQ', 'GaQg']:
-            print("Numerical analysis step size  was not specified")
-            print("... Using default step size: " + str(NumAnalysis_step))
+        pass
 
     try:
-        LocGrd_Vol_FracStep = subprocess.check_output("less " + str(args.Input_file) + " | grep LocGrd_Vol_FracStep"
+        data['gradient']['vol_fraction'] = subprocess.check_output("less " + str(Input_file) + " | grep LocGrd_Vol_FracStep"
                                                                                        " | grep = ", shell=True).decode("utf-8")
-        LocGrd_Vol_FracStep = float(LocGrd_Vol_FracStep.split('=')[1].strip())
+        data['gradient']['vol_fraction'] = float(data['gradient']['vol_fraction'].split('=')[1].strip())
     except subprocess.CalledProcessError as grepexc:
-        LocGrd_Vol_FracStep = 0.
+        pass
 
     try:
-        LocGrd_CMatrix_FracStep = subprocess.check_output("less " + str(args.Input_file) + " | grep LocGrd_CMatrix_FracStep"
+        data['gradient']['matrix_fractions'] = subprocess.check_output("less " + str(Input_file) + " | grep LocGrd_CMatrix_FracStep"
                                                                                      " | grep = ", shell=True).decode("utf-8")
-        LocGrd_CMatrix_FracStep = np.array(LocGrd_CMatrix_FracStep.split('=')[1].strip().split(',')).astype(float)
+        data['gradient']['matrix_fractions'] = np.array(data['gradient']['matrix_fractions'].split('=')[1].strip().split(',')).astype(float)
     except subprocess.CalledProcessError as grepexc:
-        LocGrd_CMatrix_FracStep = np.zeros(6)
+        pass
 
     try:
-        StepWise_Vol_StepFrac = subprocess.check_output("less " + str(args.Input_file) + " | grep StepWise_Vol_StepFrac"
+        data['stepwise']['volume_fraction_stepsize'] = subprocess.check_output("less " + str(Input_file) + " | grep StepWise_Vol_StepFrac"
                                                                                          " | grep = ", shell=True).decode("utf-8")
-        StepWise_Vol_StepFrac = float(StepWise_Vol_StepFrac.split('=')[1].strip())
+        data['stepwise']['volume_fraction_stepsize'] = float(data['stepwise']['volume_fraction_stepsize'].split('=')[1].strip())
     except subprocess.CalledProcessError as grepexc:
-        StepWise_Vol_StepFrac = 1.5e-03
+        pass
 
     try:
-        StepWise_Vol_LowerFrac = subprocess.check_output("less " + str(args.Input_file) + " | grep "
+        data['stepwise']['volume_fraction_lower'] = subprocess.check_output("less " + str(Input_file) + " | grep "
                                                                                           "StepWise_Vol_LowerFrac"
                                                                                           " | grep = ", shell=True).decode("utf-8")
-        StepWise_Vol_LowerFrac = float(StepWise_Vol_LowerFrac.split('=')[1].strip())
+        data['stepwise']['volume_fraction_lower'] = float(data['stepwise']['volume_fraction_lower'].split('=')[1].strip())
     except subprocess.CalledProcessError as grepexc:
-        StepWise_Vol_LowerFrac = 0.99
+        pass
 
     try:
-        StepWise_Vol_UpperFrac = subprocess.check_output("less " + str(args.Input_file) + " | grep "
+        data['stepwise']['volume_fraction_upper'] = subprocess.check_output("less " + str(Input_file) + " | grep "
                                                                                           "StepWise_Vol_UpperFrac"
                                                                                           " | grep = ", shell=True).decode("utf-8")
-        StepWise_Vol_UpperFrac = float(StepWise_Vol_UpperFrac.split('=')[1].strip())
+        data['stepwise']['volume_fraction_upper'] = float(data['stepwise']['volume_fraction_upper'].split('=')[1].strip())
     except subprocess.CalledProcessError as grepexc:
-        StepWise_Vol_UpperFrac = 1.02
+        pass
 
     try:
-        Gruneisen_Vol_FracStep = subprocess.check_output("less " + str(args.Input_file) + " | grep "
+        data['gruneisen']['volume_fraction_stepsize'] = subprocess.check_output("less " + str(Input_file) + " | grep "
                                                                                           "Gruneisen_Vol_FracStep"
                                                                                           " | grep = ", shell=True).decode("utf-8")
-        Gruneisen_Vol_FracStep = float(Gruneisen_Vol_FracStep.split('=')[1].strip())
+        data['gruneisen']['volume_fraction_stepsize'] = float(data['gruneisen']['volume_fraction_stepsize'].split('=')[1].strip())
     except subprocess.CalledProcessError as grepexc:
-        Gruneisen_Vol_FracStep = 1.5e-03
+        pass
 
     try:
-        Gruneisen_Lat_FracStep = subprocess.check_output("less " + str(args.Input_file) + " | grep "
+        data['gruneisen']['matrix_strain_stepsize'] = subprocess.check_output("less " + str(Input_file) + " | grep "
                                                                                           "Gruneisen_Lat_FracStep"
                                                                                           " | grep = ", shell=True).decode("utf-8")
-        Gruneisen_Lat_FracStep = float(Gruneisen_Lat_FracStep.split('=')[1].strip())
+        data['gruneisen']['matrix_strain_stepsize'] = float(data['gruneisen']['matrix_strain_stepsize'].split('=')[1].strip())
     except subprocess.CalledProcessError as grepexc:
-        Gruneisen_Lat_FracStep = 1.5e-03
+        pass
 
     try:
-        Wavenum_Tol = subprocess.check_output("less " + str(args.Input_file) + " | grep Wavenum_Tol"
+        data['wavenumber_tolerance'] = subprocess.check_output("less " + str(Input_file) + " | grep Wavenum_Tol"
                                                                                " | grep = ", shell=True).decode("utf-8")
-        Wavenum_Tol = float(Wavenum_Tol.split('=')[1].strip())
+        data['wavenumber_tolerance'] = float(data['wavenumber_tolerance'].split('=')[1].strip())
     except subprocess.CalledProcessError as grepexc:
-        Wavenum_Tol = -1.
+        data['wavenumber_tolerance'] = -1.
 
     try:
-        Gradient_MaxTemp = subprocess.check_output("less " + str(args.Input_file) + " | grep Gradient_MaxTemp"
+        data['gradient']['max_temperature'] = subprocess.check_output("less " + str(Input_file) + " | grep Gradient_MaxTemp"
                                                                                     " | grep = ", shell=True).decode("utf-8")
-        Gradient_MaxTemp = float(Gradient_MaxTemp.split('=')[1].strip())
+        data['gradient']['max_temperature'] = float(data['gradient']['max_temperature'].split('=')[1].strip())
     except subprocess.CalledProcessError as grepexc:
-        Gradient_MaxTemp = 300.
+        pass
 
     try:
-        Aniso_LocGrad_Type = subprocess.check_output("less " + str(args.Input_file) + " | grep Aniso_LocGrad_Type"
+        data['gradient']['anisotropic_type'] = subprocess.check_output("less " + str(Input_file) + " | grep Aniso_LocGrad_Type"
                                                                                       " | grep = ", shell=True).decode("utf-8")
-        Aniso_LocGrad_Type = Aniso_LocGrad_Type.split('=')[1].strip()
+        data['gradient']['anisotropic_type'] = data['gradient']['anisotropic_type'].split('=')[1].strip()
     except subprocess.CalledProcessError as grepexc:
-        Aniso_LocGrad_Type = '6D'
+        pass
 
     try:
-        min_RMS_gradient = subprocess.check_output("less " + str(args.Input_file) + " | grep min_RMS_gradient"
+        data['min_rms_gradient'] = subprocess.check_output("less " + str(Input_file) + " | grep min_RMS_gradient"
                                                                                     " | grep = ", shell=True).decode("utf-8")
-        min_RMS_gradient = float(min_RMS_gradient.split('=')[1].strip())
+        data['min_rms_gradient'] = float(data['min_rms_gradient'].split('=')[1].strip())
     except subprocess.CalledProcessError as grepexc:
-        min_RMS_gradient = 0.01
+        pass
 
     try:
-        cp2kroot =  subprocess.check_output("less " + str(args.Input_file) + " | grep cp2kroot"
+        data['cp2k']['root'] = subprocess.check_output("less " + str(Input_file) + " | grep cp2kroot"
                                                                                       " | grep = ", shell=True).decode("utf-8")
-        cp2kroot = (cp2kroot.split('=')[1].strip())
+        data['cp2k']['root'] = (data['cp2k']['root'].split('=')[1].strip())
     except subprocess.CalledProcessError as grepexc:
-        cp2kroot = 'BNZ_NMA_p2'
+        pass
 
     try:
-        eq_of_state = subprocess.check_output("less " + str(args.Input_file) + " | grep eq_of_state | grep = ", shell=True).decode("utf-8")
-        eq_of_state = str(eq_of_state).split('=')[1].strip()
-        if eq_of_state not in ['None', 'Murnaghan', 'Birch-Murnaghan', 'Rose-Vinet']:
+        data['eq_of_state'] = subprocess.check_output("less " + str(Input_file) + " | grep eq_of_state | grep = ", shell=True).decode("utf-8")
+        data['eq_of_state'] = str(data['eq_of_state']).split('=')[1].strip()
+        if data['eq_of_state'] not in ['None', 'Murnaghan', 'Birch-Murnaghan', 'Rose-Vinet']:
             print("Input eq_of_state is not supported. Please select from the following:")
             print("   None, Murnaghan, Birch-Murnaghan, Rose-Vinet")
             print("Exiting code")
             sys.exit()
     except subprocess.CalledProcessError as grepexc:
-        print("No method was selected, will continue using no EOS")
-        eq_of_state = 'None'
+        pass
+    return data
 
-    if pressure_scan == False: 
-        Temperature_Lattice_Dynamics(Temperature=Temperature,
-                                     Pressure=Pressure,
-                                     Method=Method,
-                                     Program=Program,
-                                     Output=Output,
-                                     Coordinate_file=Coordinate_file,
-                                     Parameter_file=Parameter_file,
-                                     molecules_in_coord=molecules_in_coord,
-                                     properties_to_save=properties_to_save,
-                                     NumAnalysis_method=NumAnalysis_method,
-                                     NumAnalysis_step=NumAnalysis_step,
-                                     LocGrd_Vol_FracStep=LocGrd_Vol_FracStep,
-                                     LocGrd_CMatrix_FracStep=LocGrd_CMatrix_FracStep,
-                                     StepWise_Vol_StepFrac=StepWise_Vol_StepFrac,
-                                     StepWise_Vol_LowerFrac=StepWise_Vol_LowerFrac,
-                                     StepWise_Vol_UpperFrac=StepWise_Vol_UpperFrac,
-                                     Statistical_mechanics=Statistical_mechanics,
-                                     Gruneisen_Vol_FracStep=Gruneisen_Vol_FracStep,
-                                     Gruneisen_Lat_FracStep=Gruneisen_Lat_FracStep,
-                                     Wavenum_Tol=Wavenum_Tol,
-                                     Gradient_MaxTemp=Gradient_MaxTemp,
-                                     Aniso_LocGrad_Type=Aniso_LocGrad_Type,
-                                     min_RMS_gradient=min_RMS_gradient,
-                                     cp2kroot=cp2kroot,
-                                     eq_of_state=eq_of_state)
-    
-    else:
-        try:
-            gru_from_0T_0P = subprocess.check_output("less " + str(args.Input_file) + " | grep gru_from_0T_0P"
-                                                                                      " | grep = ", shell=True).decode("utf-8")
-            gru_from_0T_0P = str(gru_from_0T_0P).split('=')[1].strip()
-            if gru_from_0T_0P == 'True':
-                gru_from_0T_0P = True
-            elif gru_from_0T_0P == 'False':
-                gru_from_0T_0P = False
-            else:
-                print("Input option of ", gru_from_0T_0P, " for gru_from_0T_0P is not supported. Will use True.")
-                gru_from_0T_0P = True
-        except subprocess.CalledProcessError as grepexc:
-            gru_from_0T_0P = True
-
-
-        if Statistical_mechanics == 'Quantum':
-            print("Warning! The scanning of multiple pressures is not yet supported in this code for Qunantum Mechanics.")
-            print("... Please contact Nate Abraham (nate.abraham@colorado.edu) with ways to perform this.")
+def setdefault(input_data, default_values):
+    # Function to fill in the input_data if the default values are not set
+    for k in default_values:
+        if isinstance(default_values[k], dict):
+            setdefault(input_data.setdefault(k, {}), default_values[k])
         else:
-            ps.pressure_setup(Temperature=Temperature,
-                              Pressure=Pressure,
-                              Method=Method,
-                              Program=Program,
-                              Output=Output,
-                              Coordinate_file=Coordinate_file,
-                              Parameter_file=Parameter_file,
-                              molecules_in_coord=molecules_in_coord,
-                              properties_to_save=properties_to_save,
-                              NumAnalysis_method=NumAnalysis_method,
-                              NumAnalysis_step=NumAnalysis_step,
-                              LocGrd_Vol_FracStep=LocGrd_Vol_FracStep,
-                              LocGrd_CMatrix_FracStep=LocGrd_CMatrix_FracStep,
-                              StepWise_Vol_StepFrac=StepWise_Vol_StepFrac,
-                              StepWise_Vol_LowerFrac=StepWise_Vol_LowerFrac,
-                              StepWise_Vol_UpperFrac=StepWise_Vol_UpperFrac,
-                              Statistical_mechanics=Statistical_mechanics,
-                              Gruneisen_Vol_FracStep=Gruneisen_Vol_FracStep,
-                              Gruneisen_Lat_FracStep=Gruneisen_Lat_FracStep,
-                              Wavenum_Tol=Wavenum_Tol,
-                              Gradient_MaxTemp=Gradient_MaxTemp,
-                              Aniso_LocGrad_Type=Aniso_LocGrad_Type,
-                              min_RMS_gradient=min_RMS_gradient,
-                              eq_of_state=eq_of_state,
-                              gru_from_0T_0P=gru_from_0T_0P,
-                              cp2kroot=cp2kroot)
+            input_data.setdefault(k, default_values[k])
 
+def yaml_loader(file_path):
+    # Load in the default values
+    with open(path + 'default.yaml', "r") as default_file:
+        default_input = yaml.load(default_file)
+
+    if file_path.split('.')[1] == 'inp':
+        data = old_input_file(file_path, default_input)
+    else:
+        # Loads in a ymal file
+        with open(file_path, "r") as input_file:
+            data = yaml.load(input_file)
+        # Setting the default values if not specified
+        setdefault(data, default_input)
+    return data
+
+class Inputs:
+    def __init__(self, data):
+        self.temperature = np.array(data['temperature'].split(',')).astype(float)
+        if len(str(data['pressure']).split(',')) == 1:
+            self.pressure = data['pressure']
+            self.pressure_scan = False
+        else:
+            self.pressure = np.array(data['pressure'].split(',')).astype(float)
+            self.pressure_scan = True
+        self.method = data['method']
+        self.output = data['output']
+        self.statistical_mechanics = data['statistical_mechanics']
+        self.coordinate_file = data['coordinate_file']
+        self.number_of_molecules = data['number_of_molecules']
+        self.program = data['program']
+        self.tinker_parameter_file = data['tinker']['parameter_file']
+        self.cp2k_root = data['cp2k']['root']
+        self.properties_to_save = data['properties_to_save']
+        self.gradient_numerical_method = data['gradient']['numerical_method']
+        self.gradient_numerical_step = data['gradient']['numerical_step']
+        self.gradient_max_temperature = data['gradient']['max_temperature']
+        self.gradient_vol_fraction = data['gradient']['vol_fraction']
+        if data['gradient']['matrix_fractions'] is None:
+            self.gradient_matrix_fractions = np.zeros(6)
+        elif len(data['gradient']['matrix_fractions']) == 6:
+            self.gradient_matrix_fractions = np.array(data['gradient']['matrix_fractions'])
+        else:
+            self.gradient_matrix_fractions = np.zeros(6)
+        self.anisotropic_type = data['gradient']['anisotropic_type']
+        self.stepwise_volume_fraction_stepsize = data['stepwise']['volume_fraction_stepsize']
+        self.stepwise_volume_fraction_lower = data['stepwise']['volume_fraction_lower']
+        self.stepwise_volume_fraction_upper = data['stepwise']['volume_fraction_upper']
+        self.gruneisen_volume_fraction_stepsize = data['gruneisen']['volume_fraction_stepsize']
+        self.gruneisen_matrix_strain_stepsize = data['gruneisen']['matrix_strain_stepsize']
+        self.wavenumber_tolerance = np.absolute(float(data['wavenumber_tolerance']))
+        self.min_rms_gradient = data['min_rms_gradient']
+        self.eq_of_state = data['eq_of_state']
+        self.poly_order = data['poly_order']
+
+
+if __name__ == '__main__':
+    import argparse
+    parser = argparse.ArgumentParser(description='Calculate free energies as a function of T using lattice dynamics')
+    parser.add_argument('-i', '--input_file', dest='Input_file', default='input_test.py',
+                        help='Input file containing all parameters for the run')
+    parser.add_argument('-D', '--Start_Fresh', action='store_true',
+                        help='Removes any files from previous runs')
+    args = parser.parse_args()
+
+    # Removing all old files if flagged
+    if args.Start_Fresh:
+        subprocess.call(['rm -rf Cords numerical_checks.out minimization.out out_*'], shell=True)
+
+    # Importing user specified inputs from yaml file
+    data = yaml_loader(args.Input_file)
+    inputs = Inputs(data)
+    if not inputs.pressure_scan:
+        temperature_lattice_dynamics(inputs)
+    else:
+        print("Nate needs to re-setup pressure capabilities")
 

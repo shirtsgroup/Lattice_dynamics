@@ -1,0 +1,33 @@
+##Input file
+temperature: 0.,10.,20.,30.,40.,50.,60.,70.,80.,90.,100.,110.,120.,130.,140.,150.,160.,170.,180.,190.,200.,210.,220.,230.,240.,250.,260.,270.,280.,290.,300.
+pressure: 1.
+method: HA
+output: out
+statistical_mechanics: Classical
+coordinate_file: molecule.xyz
+number_of_molecules: 4
+program: Tinker
+tinker:
+   parameter_file: keyfile.key
+cp2k:
+   root: BNZ_NMA_p1
+properties_to_save: G,h,V,T
+gradient:
+   numerical_method: RK4
+   numerical_step: 150.0
+   max_temperature: 300.0
+   vol_fraction: 0.
+   matrix_fractions:
+   anisotropic_type: 1D
+stepwise:
+   volume_fraction_stepsize: 0.01
+   volume_fraction_lower: 0.99
+   volume_fraction_upper: 1.08
+gruneisen:
+   volume_fraction_stepsize: 1.5e-3
+   matrix_strain_stepsize: 1.5e-03
+wavenumber_tolerance: 1.0
+min_rms_gradient: 0.0001
+eq_of_state: None
+poly_order: 3
+
