@@ -127,9 +127,9 @@ def program_wavenumbers(inputs, Coordinate_file):
             wavenumbers = Test_Wavenumber(Coordinate_file, True)
 
     # Determining if the wavenumbers computed fit witihin the user specified tolerance
-    if not np.all(inputs.wavenumber_tolerance > wavenumbers[:3] > -1 * inputs.wavenumber_tolerance):
-        print("WARNING: Wavenumbers did not fall between necessary tolerance of: " +str(inputs.wavenumber_tolerance) +
-              " cm^-1")
+#    if np.all(inputs.wavenumber_tolerance > wavenumbers[:3] > -1 * inputs.wavenumber_tolerance):
+#        print("WARNING: Wavenumbers did not fall between necessary tolerance of: " +str(inputs.wavenumber_tolerance) +
+#              " cm^-1")
     return wavenumbers
 
 ##########################################
@@ -372,15 +372,15 @@ def Setup_Isotropic_Gruneisen(inputs):
     Volume_Reference = Pr.Volume(lattice_parameters=lattice_parameters)
     Volume_expand = Volume_Reference + inputs.gruneisen_volume_fraction_stepsize * Volume_Reference
 
-    # Calculating the Gruneisen parameter and zeroing out the parameters for the translational modes
-    if not (np.all(inputs.wavenumber_tolerance > Wavenumber_Reference[:3] > -1 * inputs.wavenumber_tolerance) or
-            np.all(inputs.wavenumber_tolerance > Wavenumber_expand[:3] > -1 * inputs.wavenumber_tolerance)):
-        print("WARNING: Wavenumbers did not fall between necessary tolerance of: " +str(inputs.wavenumber_tolerance) +
-              " cm^-1")
-        print('Lattice Minimum Wavenumbers: ', Wavenumber_Reference)
-        print('Expanded Wavenumber: ', Wavenumber_expand)
-        print('Exiting code')
-        sys.exit()
+#    # Calculating the Gruneisen parameter and zeroing out the parameters for the translational modes
+#    if not (np.all(inputs.wavenumber_tolerance > Wavenumber_Reference[:3] > -1 * inputs.wavenumber_tolerance) or
+#            np.all(inputs.wavenumber_tolerance > Wavenumber_expand[:3] > -1 * inputs.wavenumber_tolerance)):
+#        print("WARNING: Wavenumbers did not fall between necessary tolerance of: " +str(inputs.wavenumber_tolerance) +
+#              " cm^-1")
+#        print('Lattice Minimum Wavenumbers: ', Wavenumber_Reference)
+#        print('Expanded Wavenumber: ', Wavenumber_expand)
+#        print('Exiting code')
+#        sys.exit()
 
     Gruneisen = np.zeros(len(Wavenumber_Reference))
     Gruneisen[3:] = -(np.log(Wavenumber_Reference[3:]) - np.log(Wavenumber_expand[3:]))/(np.log(Volume_Reference) -
@@ -418,7 +418,7 @@ def Setup_Anisotropic_Gruneisen(inputs):
         # Making expanded structures in th direction of the six principal strains
         applied_strain = np.zeros(6)
         applied_strain[i] = inputs.gruneisen_matrix_strain_stepsize
-        Ex.Expand_Structure(inputs.oordinate_file, inputs.program, 'strain', inputs.number_of_molecules,
+        Ex.Expand_Structure(inputs.coordinate_file, inputs.program, 'strain', inputs.number_of_molecules,
                             'temp_' + str(i), inputs.min_rms_gradient, strain=Ex.strain_matrix(applied_strain),
                             crystal_matrix=
                             Ex.Lattice_parameters_to_Crystal_matrix(Pr.Lattice_parameters(inputs.program,
@@ -451,13 +451,13 @@ def Setup_Anisotropic_Gruneisen(inputs):
     elif inputs.program == 'Test':
         file_ending = '.npy'
         Wavenumber_Reference = Test_Wavenumber(inputs.coordinate_file, False)
-        if not np.all(inputs.wavenumber_tolerance > Wavenumber_Reference[:3] > -1 * inputs.wavenumber_tolerance):
-            print("WARNING: Wavenumbers did not fall between necessary tolerance of: " +
-                  str(inputs.wavenumber_tolerance) + " cm^-1")
-            print('Lattice Minimum Wavenumbers: ', Wavenumber_Reference[:3])
-            print('Exiting code')
-            sys.exit()
-
+#        if not np.all(inputs.wavenumber_tolerance > Wavenumber_Reference[:3] > -1 * inputs.wavenumber_tolerance):
+#            print("WARNING: Wavenumbers did not fall between necessary tolerance of: " +
+#                  str(inputs.wavenumber_tolerance) + " cm^-1")
+#            print('Lattice Minimum Wavenumbers: ', Wavenumber_Reference[:3])
+#            print('Exiting code')
+#            sys.exit()
+#
         Gruneisen = np.zeros((len(Wavenumber_Reference), 6))
 #        Gruneisen = np.load('wvnChange_test.npy')
         for i in range(6):
@@ -466,13 +466,13 @@ def Setup_Anisotropic_Gruneisen(inputs):
             Wavenumber_expand = Test_Wavenumber(expanded_coordinates[i] + file_ending,
                                                 Ex.Lattice_parameters_to_Crystal_matrix(Pr.Test_Lattice_Parameters(
                                                     inputs.coordinate_file)), Gru=True)
-            if not np.all(inputs.wavenumber_tolerance > Wavenumber_Reference[:3] > -1 * inputs.wavenumber_tolerance):
-                print("WARNING: Wavenumbers did not fall between necessary tolerance of: " +
-                      str(inputs.wavenumber_tolerance) + " cm^-1")
-                print('Strain ' + str(i) + ' Minimum Wavenumbers: ', Wavenumber_expand[:10])
-                print('Exiting code')
-                sys.exit()
-
+#            if not np.all(inputs.wavenumber_tolerance > Wavenumber_Reference[:3] > -1 * inputs.wavenumber_tolerance):
+#                print("WARNING: Wavenumbers did not fall between necessary tolerance of: " +
+#                      str(inputs.wavenumber_tolerance) + " cm^-1")
+#                print('Strain ' + str(i) + ' Minimum Wavenumbers: ', Wavenumber_expand[:10])
+#                print('Exiting code')
+#                sys.exit()
+#
             Gruneisen[3:, i] = -(np.log(Wavenumber_expand[3:]) - np.log(Wavenumber_Reference[3:])) \
                                / inputs.gruneisen_matrix_strain_stepsize
             subprocess.call(['rm', expanded_coordinates[i] + file_ending])
