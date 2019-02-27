@@ -884,7 +884,7 @@ def Anisotropic_Local_Gradient(inputs, coordinate_file, temperature, LocGrd_dC, 
             subprocess.call(['rm', d + file_ending])
 
     # Calculating deta/dT for all strains
-    dC_dT = np.linalg.lstsq(ddG_ddC, dS_dC, rcond=None)[0]
+    dC_dT = np.linalg.lstsq(ddG_ddC, dS_dC)[0] 
 
     # Saving numerical outputs
     NO.raw_energies(np.array([U_0]), np.array([Av_0]), U, Av)

@@ -16,7 +16,7 @@ gradient:
    numerical_method: RK4
    numerical_step: 150.0
    max_temperature: 300.0
-   vol_fraction: 0.
+   vol_fraction: 
    matrix_fractions:
    anisotropic_type: 1D
 stepwise:

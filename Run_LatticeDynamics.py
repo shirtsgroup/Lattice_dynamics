@@ -30,7 +30,7 @@ def temperature_lattice_dynamics(inputs):
                                                Parameter_file=inputs.tinker_parameter_file)
             np.save(inputs.output + '_' + inputs.method + '_WVN', wavenumbers)
 
-        if all(wavenumbers > inputs.wavenumber_tolerance):
+        if all(wavenumbers[:3] < inputs.wavenumber_tolerance) and all(wavenumbers[:3] > -1. * inputs.wavenumber_tolerance):
             print("   All wavenumbers are greater than tolerance of: " + str(inputs.wavenumber_tolerance) + " cm^-1")
             properties = Pr.Properties_with_Temperature(inputs, inputs.coordinate_file, wavenumbers)
             print("   All properties have been saved in " + inputs.output + "_raw.npy")
@@ -54,7 +54,6 @@ def temperature_lattice_dynamics(inputs):
     elif (inputs.method == 'GiQ') or (inputs.method == 'GiQg'):
         if inputs.gradient_vol_fraction == (0. or None):
             LocGrd_dV = Ss.isotropic_gradient_settings(inputs)
-
         else:
             V_0 = Pr.Volume(Program=inputs.program, Coordinate_file=inputs.coordinate_file)
             LocGrd_dV = inputs.gradient_vol_fraction * V_0
