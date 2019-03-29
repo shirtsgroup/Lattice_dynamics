@@ -5,7 +5,7 @@ method: HA
 output: out
 statistical_mechanics: Classical
 coordinate_file: molecule.xyz
-number_of_molecules: 4
+number_of_molecules: NNNN
 program: Tinker
 tinker:
    parameter_file: keyfile.key
