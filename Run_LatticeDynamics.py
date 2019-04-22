@@ -18,7 +18,6 @@ path = os.path.realpath(__file__).strip('Run_LatticeDynamics.py')
 
 
 def temperature_lattice_dynamics(inputs, data, input_file='input.yaml'):
-    print('HERE')
     if inputs.method == 'HA':
         print("Performing Harmonic Approximation")
         # Running the Harmonic Approximation
@@ -44,7 +43,6 @@ def temperature_lattice_dynamics(inputs, data, input_file='input.yaml'):
             print("Creating directory 'Cords/' to store structures along Gibbs free energy path")
             subprocess.call(['mkdir', 'Cords'])
 
-    print('HERE')
     if (inputs.method == 'SiQ') or (inputs.method == 'SiQg'):
         # Stepwise Isotropic QHA
         print("Performing Stepwise Isotropic Quasi-Harmonic Approximation")
