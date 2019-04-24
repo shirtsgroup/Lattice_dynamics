@@ -402,14 +402,14 @@ def Isotropic_Stepwise_Expansion(inputs):
             np.save(inputs.output + '_WVN_' + inputs.method, wavenumbers[~np.all(wavenumbers == 0, axis=1)])
 
         # Calculating properties of systems with wavenumbers above user specified tollerance
-        if all(wavenumbers[i, 1:] > inputs.wavenumber_tolerance):
+        if all(wavenumbers[i, 1:4] < inputs.wavenumber_tolerance) and all(wavenumbers[i, 1:4] > -1. * inputs.wavenumber_tolerance): 
             print("   ... Wavenumbers are greater than tolerance of: " + str(inputs.wavenumber_tolerance) + " cm^-1")
             properties[i, :, :] = Pr.Properties_with_Temperature(inputs, inputs.output + '_' + inputs.method +
                                                                  str(volume_fraction[i]) + file_ending,
                                                                  wavenumbers[i, 1:])
 
         else:
-            print(wavenumbers[i, :], "   ... WARNING: wavenumbers are lower than tolerance of: " +
+            print("   ... WARNING: wavenumbers are lower than tolerance of: " +
                   str(inputs.wavenumber_tolerance) + " cm^-1")
             print("      ... Properties will be bypassed for this paricular strucutre.")
             properties[i, :, :] = np.nan

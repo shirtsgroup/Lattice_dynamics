@@ -6,6 +6,7 @@ import Expand as Ex
 import ThermodynamicProperties as Pr
 import numpy as np
 import matplotlib
+import yaml
 matplotlib.use('Agg')
 import pylab as plt
 
@@ -84,9 +85,20 @@ def isotropic_gradient_settings(inputs):
     # returning the value of dV
     return LocGrd_Vol_FracStep * V_0
 
+def exp_fit(x, a, b):
+    return a * np.exp(b * x)
+
+def exp_fit_minimize(x, a, b, cutoff):
+    return np.absolute(a * np.exp(b * x) - cutoff)
+
+def exp_fit4step(steps, U, cutoff):
+    from scipy.optimize import curve_fit, minimize
+    popt, pcov = curve_fit(exp_fit, steps, U, [1, 1])
+    step = minimize(exp_fit_minimize, 0.01, args=(popt[0], popt[1], cutoff))
+    return step.x
 
 
-def anisotropic_gradient_settings(inputs):
+def anisotropic_gradient_settings(inputs, data, input_file):
     # Determining the file ending based on the program
     file_ending = Ex.assign_file_ending(inputs.program)
 
@@ -124,10 +136,13 @@ def anisotropic_gradient_settings(inputs):
             U[j, i] = Pr.Potential_energy(inputs.output + file_ending, inputs.program,
                                           Parameter_file=inputs.tinker_parameter_file) / inputs.number_of_molecules
             subprocess.call(['rm', inputs.output + file_ending])
-            if (U[j, i] - U_0) > cutoff:
-                LocGrd_CMatrix_FracStep[j] = steps[i]
-                LocGrd_CMatrix_Step[j] = np.absolute(dlattice_matrix_array[j])
+            if (U[j, i] - U_0) > cutoff: 
+                LocGrd_CMatrix_FracStep[j] = 10 ** np.interp(cutoff, U[j, i - 1: i + 1] - U_0, np.log10(steps[i - 1: i + 1]))
+                LocGrd_CMatrix_Step[j] = np.absolute(crystal_matrix_array[j] * LocGrd_CMatrix_FracStep[j])
+                if np.absolute(crystal_matrix_array[j]) < 1e-4:
+                    LocGrd_CMatrix_Step[j] = LocGrd_CMatrix_FracStep[j]
                 break
+        plt.scatter(np.log10(LocGrd_CMatrix_FracStep[j]), cutoff, marker='x', color='r')
         plt.plot(np.log10(steps[:i + 1]), U[j, :i + 1] - U_0, linestyle='--', marker='o', label='C' + str(j + 1))
 
     # Plotting the results
@@ -142,7 +157,9 @@ def anisotropic_gradient_settings(inputs):
 
     # Printing step size
     print("After analysis, LocGrd_CMatrix_FracStep = ", LocGrd_CMatrix_FracStep)
-
+    data['gradient']['matrix_fractions'] = LocGrd_CMatrix_FracStep.tolist()
+    with open(input_file, 'w') as yaml_file:
+        yaml.dump(data, yaml_file, default_flow_style=False) 
     # returning the value of dV
     return LocGrd_CMatrix_Step
 
@@ -191,3 +208,5 @@ def anisotropic_gradient_settings_1D(inputs, dC_dLambda):
     print('dLambda used: ', LocGrd_dLambda)
     # returning the value of dV
     return LocGrd_dLambda
+
+

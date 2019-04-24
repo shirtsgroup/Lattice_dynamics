@@ -17,7 +17,7 @@ import yaml
 path = os.path.realpath(__file__).strip('Run_LatticeDynamics.py')
 
 
-def temperature_lattice_dynamics(inputs):
+def temperature_lattice_dynamics(inputs, data, input_file='input.yaml'):
     if inputs.method == 'HA':
         print("Performing Harmonic Approximation")
         # Running the Harmonic Approximation
@@ -63,8 +63,34 @@ def temperature_lattice_dynamics(inputs):
 
         print("   Saving user specified properties in indipendent files:")
         Pr.Save_Properties(inputs, properties)
-
-    elif ((inputs.method == 'GaQ') or (inputs.method == 'GaQg')) and (inputs.anisotropic_type != '1D'):
+#    elif ((inputs.method == 'GaQ') or (inputs.method == 'GaQg')) and (inputs.anisotropic_type != '1D'):
+#        if any(inputs.gradient_matrix_fractions != 0.):
+#            crystal_matrix_array = Ex.triangle_crystal_matrix_to_array(Ex.Lattice_parameters_to_Crystal_matrix(
+#                Pr.Lattice_parameters(inputs.program, inputs.coordinate_file)))
+#            LocGrd_dC = np.absolute(inputs.gradient_matrix_fractions * crystal_matrix_array)
+#            for i in range(len(LocGrd_dC)):
+#                if LocGrd_dC[i] == 0.:
+#                    LocGrd_dC[i] = inputs.gradient_matrix_fractions[i]
+#        else:
+#            LocGrd_dC = Ss.anisotropic_gradient_settings(inputs)
+#        print("Performing Gradient Anisotropic Quasi-Harmonic Approximation")
+#        properties = TNA.Anisotropic_Gradient_Expansion(inputs, LocGrd_dC)
+#        print("   Saving user specified properties in independent files:")
+#        Pr.Save_Properties(inputs, properties)
+#
+#    elif (inputs.method == 'GaQ') or (inputs.method == 'GaQg') and (inputs.anisotropic_type == '1D'):
+#        if np.any(inputs.gradient_matrix_fractions != 0.):
+#            crystal_matrix_array = Ex.triangle_crystal_matrix_to_array(Ex.Lattice_parameters_to_Crystal_matrix(
+#                Pr.Lattice_parameters(inputs.program, inputs.coordinate_file)))
+#
+#            LocGrd_dC = np.absolute(inputs.gradient_matrix_fractions * crystal_matrix_array)
+#        else:
+#            LocGrd_dC = Ss.anisotropic_gradient_settings(inputs)
+#        print("Performing 1D-Gradient Anisotropic Quasi-Harmonic Approximation")
+#        properties = TNA.Anisotropic_Gradient_Expansion_1D(inputs, LocGrd_dC)
+#        print("   Saving user specified properties in independent files:")
+#        Pr.Save_Properties(inputs, properties)
+    elif (inputs.method == 'GaQ') or (inputs.method == 'GaQg'):
         if any(inputs.gradient_matrix_fractions != 0.):
             crystal_matrix_array = Ex.triangle_crystal_matrix_to_array(Ex.Lattice_parameters_to_Crystal_matrix(
                 Pr.Lattice_parameters(inputs.program, inputs.coordinate_file)))
@@ -73,25 +99,19 @@ def temperature_lattice_dynamics(inputs):
                 if LocGrd_dC[i] == 0.:
                     LocGrd_dC[i] = inputs.gradient_matrix_fractions[i]
         else:
-            LocGrd_dC = Ss.anisotropic_gradient_settings(inputs)
-        print("Performing Gradient Anisotropic Quasi-Harmonic Approximation")
-        properties = TNA.Anisotropic_Gradient_Expansion(inputs, LocGrd_dC)
-        print("   Saving user specified properties in independent files:")
-        Pr.Save_Properties(inputs, properties)
+            LocGrd_dC = Ss.anisotropic_gradient_settings(inputs, data, input_file)
 
-    elif (inputs.method == 'GaQ') or (inputs.method == 'GaQg') and (inputs.anisotropic_type == '1D'):
-        if np.any(inputs.gradient_matrix_fractions != 0.):
-            crystal_matrix_array = Ex.triangle_crystal_matrix_to_array(Ex.Lattice_parameters_to_Crystal_matrix(
-                Pr.Lattice_parameters(inputs.program, inputs.coordinate_file)))
-
-            LocGrd_dC = np.absolute(inputs.gradient_matrix_fractions * crystal_matrix_array)
+        if inputs.anisotropic_type != '1D':
+            print("Performing Gradient Anisotropic Quasi-Harmonic Approximation")
+            properties = TNA.Anisotropic_Gradient_Expansion(inputs, LocGrd_dC)
+            print("   Saving user specified properties in independent files:")
+            Pr.Save_Properties(inputs, properties)
         else:
-            LocGrd_dC = Ss.anisotropic_gradient_settings(inputs)
-        print("Performing 1D-Gradient Anisotropic Quasi-Harmonic Approximation")
-        properties = TNA.Anisotropic_Gradient_Expansion_1D(inputs, LocGrd_dC)
-        print("   Saving user specified properties in independent files:")
-        Pr.Save_Properties(inputs, properties)
-
+            print("Performing 1D-Gradient Anisotropic Quasi-Harmonic Approximation")
+            properties = TNA.Anisotropic_Gradient_Expansion_1D(inputs, LocGrd_dC)
+            print("   Saving user specified properties in independent files:")
+            Pr.Save_Properties(inputs, properties)
+        
     elif inputs.method == 'SaQply':
         print("Performing Quasi-Anisotropic Quasi-Harmonic Approximation")
         properties = TNA.stepwise_expansion(inputs)
@@ -420,7 +440,7 @@ if __name__ == '__main__':
     data = yaml_loader(args.Input_file)
     inputs = Inputs(data)
     if not inputs.pressure_scan:
-        temperature_lattice_dynamics(inputs)
+        temperature_lattice_dynamics(inputs, data, input_file=args.Input_file)
     else:
         print("Nate needs to re-setup pressure capabilities")
 
