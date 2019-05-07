@@ -31,7 +31,7 @@ classical approach.
 .. math::
    A_v(V,T) = \sum_{k} \frac{1}{\beta} \ln({\beta \hbar \omega_k(V)})
 
-For both cases, we are summing the energy contribution from all 3:math:`\times N`
+For both cases, we are summing the energy contribution from all :math:`3N`
 vibrational frequencies (:math:`\omega_{k}`) where :math:`N` is the number of atoms.
 In this case :math:`\beta = \frac{1}{k_{B} T}`, :math:`\hbar` is reduced Planck's
 constant.

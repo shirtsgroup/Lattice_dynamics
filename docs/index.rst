@@ -12,6 +12,8 @@ Welcome to Lattice Dynamics's documentation!
 
    introduction
    theory 
+   submission
+
 
 
 Indices and tables
