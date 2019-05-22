@@ -414,16 +414,24 @@ def Get_Iso_Gruneisen_Wavenumbers(Gruneisen, Wavenumber_Reference, Volume_Refere
 ##########################################
 def Setup_Anisotropic_Gruneisen(inputs):
     # Starting by straining the crystal in the six principal directions
+    re_run = False
+    if os.path.isfile('GRU_wvn.npy'):
+        hold_wvn = np.load('GRU_wvn.npy')
+        re_run = True
+
     for i in range(6):
-        # Making expanded structures in th direction of the six principal strains
-        applied_strain = np.zeros(6)
-        applied_strain[i] = inputs.gruneisen_matrix_strain_stepsize
-        Ex.Expand_Structure(inputs.coordinate_file, inputs.program, 'strain', inputs.number_of_molecules,
-                            'temp_' + str(i), inputs.min_rms_gradient, strain=Ex.strain_matrix(applied_strain),
-                            crystal_matrix=
-                            Ex.Lattice_parameters_to_Crystal_matrix(Pr.Lattice_parameters(inputs.program,
-                                                                                          inputs.coordinate_file)),
-                            Parameter_file=inputs.tinker_parameter_file)
+        if (re_run == True) and (hold_wvn[i + 1, 3] != 0.):
+            pass
+        else:
+            # Making expanded structures in th direction of the six principal strains
+            applied_strain = np.zeros(6)
+            applied_strain[i] = inputs.gruneisen_matrix_strain_stepsize
+            Ex.Expand_Structure(inputs.coordinate_file, inputs.program, 'strain', inputs.number_of_molecules,
+                                'temp_' + str(i), inputs.min_rms_gradient, strain=Ex.strain_matrix(applied_strain),
+                                crystal_matrix=
+                                Ex.Lattice_parameters_to_Crystal_matrix(Pr.Lattice_parameters(inputs.program,
+                                                                                              inputs.coordinate_file)),
+                                Parameter_file=inputs.tinker_parameter_file)
 
     # Setting an array of the names of expanded strucutres
     expanded_coordinates = ['temp_0', 'temp_1', 'temp_2', 'temp_3', 'temp_4', 'temp_5']
@@ -501,7 +509,6 @@ def Tinker_Gru_organized_wavenumbers(Expansion_type, Coordinate_file, Expanded_C
     if os.path.isfile('GRU_eigen.npy') and os.path.isfile('GRU_wvn.npy'):
         wavenumbers = np.load('GRU_wvn.npy')
         eigenvectors = np.load('GRU_eigen.npy')
-        #weight = np.load('GRU_ModesWeights')
     else:
         if Expansion_type == 'Isotropic':
             wavenumbers = np.zeros((2, number_of_modes))
