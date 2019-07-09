@@ -121,37 +121,37 @@ def Save_Properties(inputs, properties):#properties, Properties_to_save, Output,
     Statistical_mechanics = 'Classical' Classical mechanics
                             'Quantum' Quantum mechanics
     """
-    for i in inputs.properties_to_save:
-        if i == 'T':  # Temperature
-            print("   ... Saving temperature in: " + inputs.output + "_T_" + inputs.method + ".npy")
-            np.save(inputs.output + '_T_' + inputs.method, properties[:, 0])
-        if i == 'P':  # Pressure
-            print("   ... Saving Pressure in: " + inputs.output + "_P_" + inputs.method + ".npy")
-            np.save(inputs.output + '_P_' + inputs.method, properties[:, 1])
-        if i == 'G':  # Gibbs free energy
-            print("   ... Saving Gibbs free energy in: " + inputs.output + "_G" + inputs.statistical_mechanics + "_" +
-                  inputs.method + ".npy")
-            np.save(inputs.output + '_G' + inputs.statistical_mechanics + '_' + inputs.method, properties[:, 2])
-        if i == 'U':  # Potential energy
-            print("   ... Saving potential energy in: " + inputs.output + "_U" + inputs.statistical_mechanics + "_" +
-                  inputs.method + ".npy")
-            np.save(inputs.output + '_U' + inputs.statistical_mechanics + '_' + inputs.method, properties[:, 3])
-        if i == 'Av':  # Helmholtz vibrational energy
-            print("   ... Saving vibrational Helmholtz free energy in: " + inputs.output + "_Av" +
-                  inputs.statistical_mechanics + "_" + inputs.method + ".npy")
-            np.save(inputs.output + '_Av' + inputs.statistical_mechanics + '_' + inputs.method, properties[:, 4])
-        if i == 'V':  # Volume
-            print("   ... Saving volume in: " + inputs.output + "_V" + inputs.statistical_mechanics + "_" +
-                  inputs.method + ".npy")
-            np.save(inputs.output + '_V' + inputs.statistical_mechanics + '_' + inputs.method, properties[:, 6])
-        if i == 'h':  # Lattice parameters
-            print("   ... Saving lattice parameters in: " + inputs.output + "_h" + inputs.statistical_mechanics +
-                  "_" + inputs.method + ".npy")
-            np.save(inputs.output + '_h' + inputs.statistical_mechanics + '_' + inputs.method, properties[:, 7:13])
-        if i == 'S':  # Entropy
-            print("   ... Saving entropy in: " + inputs.output + "_S" + inputs.statistical_mechanics + "_" +
-                  inputs.method + ".npy")
-            np.save(inputs.output + '_S' + inputs.statistical_mechanics + '_' + inputs.method, properties[:, 13])
+    if 'T' in inputs.properties_to_save:  # Temperature
+        print("   ... Saving temperature in: " + inputs.output + "_T_" + inputs.method + ".npy")
+        np.save(inputs.output + '_T_' + inputs.method, properties[:, 0])
+    if 'P' in inputs.properties_to_save:  # Pressure
+        print("   ... Saving Pressure in: " + inputs.output + "_P_" + inputs.method + ".npy")
+        np.save(inputs.output + '_P_' + inputs.method, properties[:, 1])
+    if 'G' in inputs.properties_to_save:  # Gibbs free energy
+        print("   ... Saving Gibbs free energy in: " + inputs.output + "_G" + inputs.statistical_mechanics + "_" +
+              inputs.method + ".npy")
+        np.save(inputs.output + '_G' + inputs.statistical_mechanics + '_' + inputs.method, properties[:, 2])
+    if 'U' in inputs.properties_to_save:  # Potential energy
+        print("   ... Saving potential energy in: " + inputs.output + "_U" + inputs.statistical_mechanics + "_" +
+              inputs.method + ".npy")
+        np.save(inputs.output + '_U' + inputs.statistical_mechanics + '_' + inputs.method, properties[:, 3])
+    if 'Av' in inputs.properties_to_save:  # Helmholtz vibrational energy
+        print("   ... Saving vibrational Helmholtz free energy in: " + inputs.output + "_Av" +
+              inputs.statistical_mechanics + "_" + inputs.method + ".npy")
+        np.save(inputs.output + '_Av' + inputs.statistical_mechanics + '_' + inputs.method, properties[:, 4])
+    if 'V' in inputs.properties_to_save:  # Volume
+        print("   ... Saving volume in: " + inputs.output + "_V" + inputs.statistical_mechanics + "_" +
+              inputs.method + ".npy")
+        np.save(inputs.output + '_V' + inputs.statistical_mechanics + '_' + inputs.method, properties[:, 6])
+    if 'h' in inputs.properties_to_save:  # Lattice parameters
+        print("   ... Saving lattice parameters in: " + inputs.output + "_h" + inputs.statistical_mechanics +
+              "_" + inputs.method + ".npy")
+        np.save(inputs.output + '_h' + inputs.statistical_mechanics + '_' + inputs.method, properties[:, 7:13])
+    if 'S' in inputs.properties_to_save:  # Entropy
+        print("   ... Saving entropy in: " + inputs.output + "_S" + inputs.statistical_mechanics + "_" +
+              inputs.method + ".npy")
+        np.save(inputs.output + '_S' + inputs.statistical_mechanics + '_' + inputs.method, properties[:, 13])
+
 
 def polynomial_properties_optimize(volumes, V0, wavenumbers, eigenvectors, molecules_in_coord, Statistical_mechanics,
                                    Temperature, Pressure, eq_of_state, poly_order, prop_0K, Output, Program):
