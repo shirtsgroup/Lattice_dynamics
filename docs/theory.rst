@@ -108,6 +108,34 @@ Full anisotropic minimization of the crystal lattice for the Gibbs free energy
 becomes increasingly expensive since we have to perform the minimization in
 six dimensions.
 
+3D-Anisotropic Expansion
+________________________
+3D-anisotropic expansion assumes that off-diagonal elements in the crystal
+tensor (:math:`C_{4}, C_{5}, C_{6}`) remain fixed.
+
+
+1D-Anisotropic Expansion
+________________________
+Full anisotropic expansion is pretty expensive and requires minimization over
+a large parameter space. An alternative method is our 1D-anisotropic approach,
+where we assume that the anisotropic thermal expansion rates are proportional
+to one another at all temperatures. We can compute the anisotorpic thermal
+expansion rate at 0 K as:
+
+.. math::
+   \kappa_{i} = \left(\frac{\partial C_{i}}{\partial T}\right)_{T=0K}
+
+Using the gradients at 0 K, we can compute the change in the lattice parameter
+by using some scaling factor :math:`\lambda`.
+
+.. math::
+   C_i(\lambda) = C_i(\lambda=0) + \kappa_i \lambda(T)
+
+Where the lattice parameter :math:`C_i` is a function of the variable :math:`\lambda` 
+and :math:`\kappa_i`. In this case, :math:`\lambda` is just a degree of expansion to 
+minimize the Gibbs free energy at each temperature and pressure.
+
+
 Gruneisen Parameter
 +++++++++++++++++++
 The most expensive part of performing QHA is computing the mass-weighted Hessian

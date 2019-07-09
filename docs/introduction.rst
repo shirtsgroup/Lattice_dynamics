@@ -27,13 +27,8 @@ In addition to our code you will need to install any simulation package that you
 to work in conjunction with.
 
 Our code also requires the installation of additional python packages. To install run:
+
 .. code-block::
+
    pip install -r requirements.txt
-
-
-
-
-
-
-
 
