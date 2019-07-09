@@ -400,7 +400,10 @@ class Inputs:
         self.program = data['program']
         self.tinker_parameter_file = data['tinker']['parameter_file']
         self.cp2k_root = data['cp2k']['root']
-        self.properties_to_save = data['properties_to_save']
+        if type(data['properties_to_save']) != type(None):
+            self.properties_to_save = data['properties_to_save']
+        else:
+            self.properties_to_save = []
         self.gradient_numerical_method = data['gradient']['numerical_method']
         self.gradient_numerical_step = data['gradient']['numerical_step']
         self.gradient_max_temperature = data['gradient']['max_temperature']
