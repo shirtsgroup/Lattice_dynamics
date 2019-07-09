@@ -123,9 +123,7 @@ def Output_Tinker_New_Coordinate_File(Coordinate_file, Parameter_file, coordinat
     Output = file name of new .xyz file
     """   
     Ouput_Tinker_Coordinate_File(Coordinate_file, Parameter_file, coordinates, lattice_parameters, Output)
-    
-    Tinker_minimization(Parameter_file, Output + '.xyz', Output, min_RMS_gradient)
-
+    Tinker_optimization(Parameter_file, Output + '.xyz', Output, min_RMS_gradient)
 
 def Ouput_Tinker_Coordinate_File(Coordinate_file, Parameter_file, coordinates, lattice_parameters, Output):
     """
@@ -154,56 +152,14 @@ def Ouput_Tinker_Coordinate_File(Coordinate_file, Parameter_file, coordinates, l
     with open(Output + '.xyz', 'w') as file_out:
         file_out.write(string_coordinates)
 
-
-def Tinker_minimization(Parameter_file, Coordinate_file, Output, min_RMS_gradient):
+def Tinker_optimization(Parameter_file, Coordinate_file, Ouptu, min_RMS_gradient):
     with open('minimization.out', 'a') as myfile:
         myfile.write("======================== New Minimization ========================\n")
-    run_min = True
-    count = 0
-    subprocess.call(['cp', Coordinate_file, 'Temp_min_0.xyz'])
-    while run_min == True:
-        # Running minimization
-        output = subprocess.check_output(['minimize', 'Temp_min_' + str(count) + '.xyz', '-k', Parameter_file, 
+    output = subprocess.check_output(['optimize', Coordinate_file, '-k', Parameter_file,
                                           str(min_RMS_gradient)]).decode("utf-8")
-        count = count + 1
-
-        # Moving minimized structure to the next temporary file
-        subprocess.call(['mv', 'Temp_min_' + str(count - 1) + '.xyz_2', 'Temp_min_' + str(count) + '.xyz'])
-
-        # Writing minimization to output file
-        with open('minimization.out', 'a') as myfile:
-            myfile.write(output)
-
-        # Checking output of minimization
-        output = output.split('\n')
-#        if count == 1:
-#            # Having a standard to prevent minimization into a new well
-#            U_hold = float(output[-4].split()[-1])
-#        U = float(output[-4].split()[-1])
-
-        if output[-6] == ' LBFGS  --  Normal Termination due to SmallGrad':
-            run_min = False
-            subprocess.call(['mv', 'Temp_min_' + str(count) + '.xyz', Output + '.xyz'])
-        elif count == 10:
-            run_min = False
-            subprocess.call(['mv', 'Temp_min_10.xyz', Output + '.xyz'])
-            print("      Could not minimize strucutre to tolerance after 10 shake cycles")
-#        elif np.absolute(U_hold- U) > 0.01:
-#            run_min = False
-#            subprocess.call(['mv', 'Temp_min_' + str(count - 1) + '.xyz', Output + '.xyz'])
-#            print "      Structure minimized into a different well, stopping minimization"
-        else:
-            if count == 1:
-                print("   ... Structure did not minimze to tolerance, shaking molecule and re-minimizing")
-            coordinates = Return_Tinker_Coordinates('Temp_min_' + str(count) + '.xyz')
-            coordinates = coordinates + np.random.randint(0, 10, size=(len(coordinates), 3)) * 10 ** (-7)
-            lattice_parameters = Pr.Tinker_Lattice_Parameters('Temp_min_' + str(count) + '.xyz')
-            Ouput_Tinker_Coordinate_File('Temp_min_' + str(count) + '.xyz', Parameter_file, coordinates, 
-                                         lattice_parameters, 'Temp_min_' + str(count))
-    for i in range(11):
-        if os.path.isfile('Temp_min_' + str(i) + '.xyz'):
-            subprocess.call(['rm', 'Temp_min_' + str(i) + '.xyz'])
-
+    subprocess.call(['mv', Coordinate_file + '_2', Coordinate_file])
+    with open('minimization.out', 'a') as myfile:
+        myfile.write(output)
 
 ##########################################
 #                  TEST                  #

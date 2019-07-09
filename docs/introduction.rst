@@ -21,17 +21,14 @@ nate.abraham@colorado.edu.
 Set-up
 ------
 We suggest downloading the latest release (.zip or .tar.gz), which can be found on 
-GitHub under the 'release' tab. 
+GitHub (https://github.com/shirtsgroup/Lattice_dynamics) under the 'release' tab. 
 
 In addition to our code you will need to install any simulation package that you wish
 to work in conjunction with.
 
-Our code also requires installation of the python package 
-`munkres <http://software.clapper.org/munkres/>`_.
+Our code also requires the installation of additional python packages. To install run:
 
+.. code-block::
 
-
-
-
-
+   pip install -r requirements.txt
 
