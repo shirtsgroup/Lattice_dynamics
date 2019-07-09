@@ -3,24 +3,48 @@
 import numpy as np
 import pylab as plt
 from optparse import OptionParser
+import ThermodynamicProperties as Pr
+
+def find_dVvT(hvT, dhvT):
+    dVvT = np.zeros(len(hvT[:,0]))
+    for i in range(len(dVvT)):
+        V0 = Pr.Volume(lattice_parameters=hvT[i])
+        change = [-1,0,1]
+        min_volume = Pr.Volume(lattice_parameters=hvT[i])
+        for alpha in change:
+            for beta in change:
+                for gamma in change:
+                    if Pr.Volume(lattice_parameters=hvT[i] + dhvT[i] * [-1, -1, -1, alpha, beta, gamma]) < min_volume:
+                        dVvT[i] = V0 - Pr.Volume(lattice_parameters=hvT[i] + dhvT[i] * [-1, -1, -1, alpha, beta, gamma])
+    return dVvT
+
 
 # Plotting lattice parameters
 def plot_lattice_parameters_multiple_methods(lattice_parameters, temperature, color, line_style, 
                                              lattice_parameters_error, label, Tmax=False, percent=True, save_loc=False, 
-                                             correction=False):
-    fig, ax = plt.subplots(figsize=(12,6.5))
-    v1 = plt.subplot(231)
-    v2 = plt.subplot(232, sharex=v1)
-    v3 = plt.subplot(233, sharex=v1)
-    a1 = plt.subplot(234, sharex=v1)
-    a2 = plt.subplot(235, sharex=v1)
-    a3 = plt.subplot(236, sharex=v1)
+                                             correction=False, unit_vectors_per_super=[],
+                                             exp_added=False, exp_labels=[], exp_values=[]):
+#    fig, ax = plt.subplots(1,figsize=(12,6.5))
+    fig = plt.figure(figsize=(14,7))
+    #fig_V = plt.figure(figsize=(6,5.5))
+    v1 = fig.add_subplot(241)
+    v2 = fig.add_subplot(242, sharex=v1)
+    v3 = fig.add_subplot(243, sharex=v1)
+    a1 = fig.add_subplot(245, sharex=v1)
+    a2 = fig.add_subplot(246, sharex=v1)
+    a3 = fig.add_subplot(247, sharex=v1)
+    ax_V = fig.add_subplot(144)
     if percent == True:
         v1.axhline(y=0, color='black')
         v2.axhline(y=0, color='black')
         v3.axhline(y=0, color='black')
     for i in range(len(lattice_parameters)):
         lp = np.load(lattice_parameters[i])
+#        V = Pr.Volume(lattice_parameters=lp)
+        V = np.zeros(len(lp[:,0]))
+        for j in range(len(V)):
+            V[j] = Pr.Volume(lattice_parameters = lp[j]) / np.prod(unit_vectors_per_super[i])
+
         if percent == True:
             if lattice_parameters_error[i] == '':
                 lp[:, :3] = (lp[:, :3] - lp[0, :3]) / lp[0, :3] * 100.
@@ -28,14 +52,16 @@ def plot_lattice_parameters_multiple_methods(lattice_parameters, temperature, co
                 base = np.load(lattice_parameters[0])
                 lp[:, :3] = (lp[:, :3] - base[0, :3]) / base[0, :3] * 100.
         else:
+            lp[:, :3] = lp[:, :3] / unit_vectors_per_super[i]
             pass
 
         T = np.load(temperature[i])
         if not np.all(Tmax == False):
-            Tp = np.where(T <= Tmax[i])[0][-1]
+            Tp = np.where(T <= Tmax[i])[0][-1] + 1
         else:
             Tp = -1
         if lattice_parameters_error[i] == '':
+            ax_V.plot(T[:Tp], V[:Tp], c=color[i], linestyle=line_style[i], label=label[i])
             v1.plot(T[:Tp], lp[:Tp, 0], c=color[i], linestyle=line_style[i], label=label[i])
             v2.plot(T[:Tp], lp[:Tp, 1], c=color[i], linestyle=line_style[i])
             v3.plot(T[:Tp], lp[:Tp, 2], c=color[i], linestyle=line_style[i])
@@ -44,6 +70,12 @@ def plot_lattice_parameters_multiple_methods(lattice_parameters, temperature, co
             a3.plot(T[:Tp], lp[:Tp, 5], c=color[i], linestyle=line_style[i])
         else:
             error = np.load(lattice_parameters_error[i])
+            if percent == False:
+                error[:, :3] = error[:, :3] / unit_vectors_per_super[i]
+            error_V = find_dVvT(lp, error)
+            ax_V.plot(T[:Tp], V[:Tp], c=color[i], linestyle=line_style[i], label=label[i])
+            ax_V.fill_between(T[2:Tp], V[2:Tp] - error_V[2:Tp], V[2:Tp] + error_V[2:Tp], color=color[i], linestyle=line_style[i], zorder=0, alpha=0.3)
+
             v1.plot(T[2:Tp], lp[2:Tp, 0], c=color[i], linestyle=line_style[i], zorder=0, label=label[i])
             v2.plot(T[2:Tp], lp[2:Tp, 1], c=color[i], linestyle=line_style[i], zorder=0)
             v3.plot(T[2:Tp], lp[2:Tp, 2], c=color[i], linestyle=line_style[i], zorder=0)
@@ -67,25 +99,58 @@ def plot_lattice_parameters_multiple_methods(lattice_parameters, temperature, co
             a3.fill_between(T[2:Tp], lp[2:Tp, 5] - error[2:Tp, 5], lp[2:Tp, 5] + error[2:Tp, 5], color=color[i], 
                             linestyle=line_style[i], zorder=0, alpha=0.3)
 
+    # Adding in experimental data
+    if exp_added == True:
+        colors = ['r','g','b','c','m', 'y', 'k']
+        shapes = ["," , "o" , "v" , "^" , "<", ">"]
+        for i, l in enumerate(np.unique(exp_labels)):
+            loc = np.where(exp_labels == l)[0]
+            V = np.zeros(len(loc))
+            for j, placement in enumerate(loc):
+                V[j] = Pr.Volume(lattice_parameters=np.squeeze(exp_values[placement, 1:]))
+            v1.scatter(exp_values[loc, 0], exp_values[loc, 1], marker=shapes[i],  edgecolors=colors[i], label=l, facecolor='none')  
+            v2.scatter(exp_values[loc, 0], exp_values[loc, 2], marker=shapes[i],  edgecolors=colors[i], facecolor='none')  
+            v3.scatter(exp_values[loc, 0], exp_values[loc, 3], marker=shapes[i],  edgecolors=colors[i], facecolor='none')  
+            a1.scatter(exp_values[loc, 0], exp_values[loc, 4], marker=shapes[i],  edgecolors=colors[i], facecolor='none')  
+            a2.scatter(exp_values[loc, 0], exp_values[loc, 5], marker=shapes[i],  edgecolors=colors[i], facecolor='none')  
+            a3.scatter(exp_values[loc, 0], exp_values[loc, 6], marker=shapes[i],  edgecolors=colors[i], facecolor='none')
+            ax_V.scatter(exp_values[loc, 0], V, marker=shapes[i],  edgecolors=colors[i], label=l, facecolor='none')
+
     v1.title.set_text('a-Vector')
     v2.title.set_text('b-Vector')
     v3.title.set_text('c-Vector')
     a1.title.set_text(r'$\alpha$-Angle')
     a2.title.set_text(r'$\beta$-Angle')
     a3.title.set_text(r'$\gamma$-Angle')
-    fig.text(0.54,0.08,'Temperature [K]', fontsize=20, ha='center')
-    v1.set_ylabel('% Expansion\n from 0 K', fontsize=20, rotation='vertical')
+    fig.text(0.4,0.12,'Temperature [K]', fontsize=20, ha='center')
+    if percent == True:
+        v1.set_ylabel('% Expansion\n from 0 K', fontsize=20, rotation='vertical')
+    else:
+        v1.set_ylabel('Lattice Vector [$\AA$]', fontsize=20, rotation='vertical')
     a1.set_ylabel('Angle [Deg.]', fontsize=20, rotation='vertical')
-    v1.legend(loc='upper center', bbox_to_anchor=(1.8, -1.52), ncol=len(label), fontsize=14)
+    v1.legend(loc='upper center', bbox_to_anchor=(2.4, -1.52), ncol=5, fontsize=14)
+    ax_V.set_xlabel('Temperature [K]', fontsize=20)
+    ax_V.set_ylabel('Volume [$\AA^{3}$]', fontsize=20)
+    #ax_V.legend(loc='upper left', fontsize=14)
+ 
+    a1_lim = a1.get_ylim()
+    a2_lim = a2.get_ylim()
+    a3_lim = a3.get_ylim()
+    if np.absolute(a1_lim[0] - a1_lim[1]) < 2:
+        a1.set_ylim((np.ceil(a1_lim[0]) - 1, np.ceil(a1_lim[0]) + 1))
+    if np.absolute(a2_lim[0] - a2_lim[1]) < 2:
+        a2.set_ylim((np.ceil(a2_lim[0]) - 1, np.ceil(a2_lim[0]) + 1))
+    if np.absolute(a3_lim[0] - a3_lim[1]) < 2:
+        a3.set_ylim((np.ceil(a3_lim[0]) - 1, np.ceil(a3_lim[0]) + 1))
+
     plt.xlim(0., max(Tmax))
     plt.tight_layout()
-    plt.subplots_adjust(top=0.941, bottom=0.172, left=0.091, right=0.985)
+    fig.subplots_adjust(top=0.956, bottom=0.212, left=0.066, right=0.985)
     if not save_loc == False:
         plt.savefig(save_loc)
         plt.close()
     else:
-        plt.show()
-             
+        plt.show() 
 
 def plot_lattice_parameters_one_method():
     label = ['a','b','c',r'$\alpha$',r'$\beta$',r'$\gamma$']
