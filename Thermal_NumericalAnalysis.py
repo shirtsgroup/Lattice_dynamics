@@ -87,7 +87,7 @@ def Runge_Kutta_Fourth_Order(inputs, coordinate_file, temperature, **keyword_par
         print("   + Performing Runge-Kutta step " + str(i + 1))
         if (inputs.method == 'GiQ') or (inputs.method == 'GiQg'):
             # Determining the slope at the current RK step
-            RK_grad[i], wavenumbers_hold, volume_hold = \
+            RK_grad[i], wavenumbers_hold, volume_hold, left_minimum = \
                 Ex.Call_Expansion(inputs, 'local_gradient', 'RK4' + file_ending, Temperature=temperature +
                                                                                              temperature_steps[i],
                                   LocGrd_dV=keyword_parameters['LocGrd_dV'], Gruneisen=keyword_parameters['Gruneisen'],
@@ -97,7 +97,7 @@ def Runge_Kutta_Fourth_Order(inputs, coordinate_file, temperature, **keyword_par
         elif (inputs.method == 'GaQ') or (inputs.method == 'GaQg'):
             if inputs.anisotropic_type != '1D':
                 # Determining the slope at the current RK step
-                RK_grad[i], wavenumbers_hold = \
+                RK_grad[i], wavenumbers_hold, left_minimum = \
                     Ex.Call_Expansion(inputs, 'local_gradient', 'RK4' + file_ending, Temperature=temperature +
                                                                                                  temperature_steps[i],
                                       LocGrd_dC=keyword_parameters['LocGrd_dC'],
@@ -106,7 +106,7 @@ def Runge_Kutta_Fourth_Order(inputs, coordinate_file, temperature, **keyword_par
                                       ref_crystal_matrix=keyword_parameters['ref_crystal_matrix'])
             else:
                 # Determining the slope at the current RK step
-                RK_grad[i], wavenumbers_hold = \
+                RK_grad[i], wavenumbers_hold, left_minimum = \
                     Ex.Call_Expansion(inputs, 'local_gradient', 'RK4' + file_ending, Temperature=temperature +
                                                                                                  temperature_steps[i],
                                       LocGrd_dLambda=keyword_parameters['LocGrd_dLambda'],
@@ -121,6 +121,8 @@ def Runge_Kutta_Fourth_Order(inputs, coordinate_file, temperature, **keyword_par
             wavenumbers = 1. * wavenumbers_hold
             volume = 1. * volume_hold
             k1 = 1. * RK_grad[0]
+            if left_minimum == True:
+                return np.nan, np.nan, np.nan, np.nan
 
         if i != 3:
             if (inputs.method == 'GiQ') or (inputs.method == 'GiQg'):
@@ -594,6 +596,7 @@ def Isotropic_Gradient_Expansion(inputs, LocGrd_dV):
 
     # Finding structures at higher temperatures
     for i in range(len(temperature) - 1):
+        left_minimum = False
         print("   Determining local gradient and thermal properties at: " + str(temperature[i]) + " K")
         if any(wavenumbers[i, 4:] != 0.) or inputs.method == 'GiQg' and (volume_gradient[i, 1] != 0.):
             print("   ... Using expansion gradient and wavenumbers previously found")
@@ -611,17 +614,30 @@ def Isotropic_Gradient_Expansion(inputs, LocGrd_dV):
                                              file_ending, temperature[i], Gruneisen=gruneisen,
                                              Wavenumber_Reference=wavenumber_reference,
                                              Volume_Reference=volume_reference, LocGrd_dV=LocGrd_dV)
-
+                if np.isnan(volume_gradient[i, 1]):
+                    left_minimum = True
             elif inputs.gradient_numerical_method == 'Euler':
                 NO.gradient_output(temperature[i], inputs.program,  inputs.output + '_' + inputs.method + 'T' +
                                    str(temperature[i]) + file_ending)
-                volume_gradient[i, 1], wavenumbers[i, 1:], volume = \
+                volume_gradient[i, 1], wavenumbers[i, 1:], volume, left_minimum = \
                     Ex.Call_Expansion(inputs, 'local_gradient', inputs.output + '_' + inputs.method + 'T' +
                                       str(temperature[i]) + file_ending, Temperature=temperature[i],
                                       LocGrd_dV=LocGrd_dV, Gruneisen=gruneisen,
                                       Wavenumber_Reference=wavenumber_reference, Volume_Reference=volume_reference)
+                if left_minimum == True:
+                    volume_gradient[i, 1:] = np.nan 
+                    wavenumbers[i, 1:] = np.nan 
+                    volume = np.nan
+                else:
+                    volume_gradient[i, 2] = volume_gradient[i, 1]
 
-                volume_gradient[i, 2] = volume_gradient[i, 1]
+        # Exiting if the structure has left the minimum
+        if left_minimum == True:
+            inputs.gradient_max_temperature -= inputs.gradient_numerical_step
+            inputs.temperature = inputs.temperature[np.where(inputs.temperature <= inputs.gradient_max_temperature)]
+            print("Warning: system left minimum, stoping integration at: ", temperature[i], " K")
+            properties = properties[:i]
+            break
 
         # Saving wavenumbers and local gradient information
         if inputs.method == 'GiQ':
@@ -658,11 +674,17 @@ def Isotropic_Gradient_Expansion(inputs, LocGrd_dV):
                 print("   Determining local gradient and thermal properties at: " + str(temperature[i + 1]) + " K")
                 NO.gradient_output(temperature[i + 1], inputs.program, inputs.output + '_' + inputs.method + 'T' +
                                    str(temperature[i + 1]) + file_ending)
-                volume_gradient[i + 1, 2], wavenumbers[i+1, 1:], volume = \
+                volume_gradient[i + 1, 2], wavenumbers[i+1, 1:], volume, left_minimum = \
                     Ex.Call_Expansion(inputs, 'local_gradient', inputs.output + '_' + inputs.method + 'T' +
                                       str(temperature[i + 1]) + file_ending, Temperature=temperature[i + 1],
                                       LocGrd_dV=LocGrd_dV, Gruneisen=gruneisen,
                                       Wavenumber_Reference=wavenumber_reference, Volume_Reference=volume_reference)
+                if left_minimum == True:
+                    inputs.gradient_max_temperature -= inputs.gradient_numerical_step
+                    inputs.temperature = inputs.temperature[np.where(inputs.temperature <= inputs.gradient_max_temperature)]
+                    print("Warning: system left minimum, stoping integration at: ", temperature[i], " K")
+                    properties = properties[:i+1]
+                    break
 
             properties[i+1, :] = Pr.Properties(inputs, inputs.output + '_' + inputs.method + 'T' +
                                                str(temperature[i + 1]) + file_ending, wavenumbers[i + 1, 1:],
@@ -741,6 +763,7 @@ def Anisotropic_Gradient_Expansion(inputs, LocGrd_dC):
 
     # Finding structures at higher temperatures
     for i in range(len(temperature) - 1):
+        left_minimum = False
         if (any(wavenumbers[i, 4:] != 0.) or (inputs.method == 'GaQg')) and \
                 any(crystal_matrix_gradient[i, 0, 1:] != 0.):
             print("   Using previous data for the local gradient at: " + str(temperature[i]) + " K")
@@ -760,19 +783,28 @@ def Anisotropic_Gradient_Expansion(inputs, LocGrd_dC):
                                                  str(temperature[i]) + file_ending, temperature[i], LocGrd_dC=LocGrd_dC,
                                                  Gruneisen=gruneisen, Wavenumber_Reference=wavenumber_reference,
                                                  ref_crystal_matrix=ref_crystal_matrix)
-
+                if np.isnan(ignore):
+                    left_minimum = True
             elif inputs.gradient_numerical_method == 'Euler':
                 NO.gradient_output(temperature[i], inputs.program, inputs.output + '_' + inputs.method + 'T' +
                                    str(temperature[i]) + file_ending)
-                crystal_matrix_gradient[i, 0, 1:], wavenumbers[i, 1:] = \
+                crystal_matrix_gradient[i, 0, 1:], wavenumbers[i, 1:], left_minimum = \
                         Ex.Call_Expansion(inputs, 'local_gradient', inputs.output + '_' + inputs.method + 'T' +
                                           str(temperature[i]) + file_ending, Temperature=temperature[i],
                                           LocGrd_dC=LocGrd_dC, Gruneisen=gruneisen,
                                           Wavenumber_Reference=wavenumber_reference,
                                           ref_crystal_matrix=ref_crystal_matrix)
-
+                if left_minimum == True:
+                    crystal_matrix_gradient[i, :, 1:] = np.nan
+                    wavenumbers[i, 1:] = np.nan
                 # Setting the local gradient equal to the step gradient
-                crystal_matrix_gradient[i, 1, 1:] = crystal_matrix_gradient[i, 0, 1:]
+                else:
+                    crystal_matrix_gradient[i, 1, 1:] = crystal_matrix_gradient[i, 0, 1:]
+
+            # Exiting if the structure has left the minimum
+            if left_minimum == True:
+                properties = properties[:i]
+                break
 
             # Saving wavenumbers for non-Gruneisen methods
             if inputs.method == 'GaQ':
@@ -820,11 +852,19 @@ def Anisotropic_Gradient_Expansion(inputs, LocGrd_dC):
                 NO.gradient_output(temperature[i + 1], inputs.program, inputs.output + '_' + inputs.method + 'T'
                                    + str(temperature[i + 1]) + file_ending)
                 # Determining the local gradient at the final structure (Used for finding intermediate temperatures)
-                crystal_matrix_gradient[i + 1, 1, 1:], wavenumbers[i + 1, 1:] = \
+                crystal_matrix_gradient[i + 1, 1, 1:], wavenumbers[i + 1, 1:], left_minimum = \
                     Ex.Call_Expansion(inputs, 'local_gradient', inputs.output + '_' + inputs.method + 'T' +
                                       str(temperature[i + 1]) + file_ending, Temperature=temperature[i + 1],
                                       LocGrd_dC=LocGrd_dC, Gruneisen=gruneisen,
                                       Wavenumber_Reference=wavenumber_reference, ref_crystal_matrix=ref_crystal_matrix)
+
+                if left_minimum == True:
+                    inputs.gradient_max_temperature -= inputs.gradient_numerical_step
+                    inputs.temperature = inputs.temperature[np.where(inputs.temperature <= inputs.gradient_max_temperature)]
+                    print("Warning: system left minimum, stoping integration at: ", temperature[i], " K")
+                    properties = properties[:i+1]
+                    break
+
 
             # Computing the properties at the final temperature
             properties[i + 1, :] = Pr.Properties(inputs, inputs.output + '_' + inputs.method + 'T'
@@ -894,10 +934,14 @@ def Anisotropic_Gradient_Expansion_1D(inputs, LocGrd_dC):
     else:
         NO.gradient_output(temperature[0], inputs.program, inputs.coordinate_file)
         
-        dC_dLambda, wavenumbers[0, 1:] = Ex.Anisotropic_Local_Gradient(inputs, inputs.coordinate_file, 0., LocGrd_dC,
+        dC_dLambda, wavenumbers[0, 1:], left_minimum = Ex.Anisotropic_Local_Gradient(inputs, inputs.coordinate_file, 0., LocGrd_dC,
                                                                        Gruneisen=gruneisen,
                                                                        Wavenumber_Reference=wavenumber_reference,
                                                                        ref_crystal_matrix=ref_crystal_matrix)
+        if left_minimum == True:
+            print("ERROR: Starting structure is no longer at a minimum")
+            sys.exit()
+
         np.save(inputs.output + '_dC_' + inputs.method, dC_dLambda)
 
     # Setting up an array to store the properties
@@ -922,6 +966,7 @@ def Anisotropic_Gradient_Expansion_1D(inputs, LocGrd_dC):
 
     # Finding structures at higher temperatures
     for i in range(len(temperature) - 1):
+        left_minimum = False
         print("   Determining local gradient and thermal properties at: " + str(temperature[i]) + " K")
         if (any(wavenumbers[i, 4:] != 0.) or inputs.method == 'GaQg') and (dLambda_dT[i, 1] != 0.):
             print("   ... Using expansion gradient and wavenumbers previously found")
@@ -940,18 +985,30 @@ def Anisotropic_Gradient_Expansion_1D(inputs, LocGrd_dC):
                                              Wavenumber_Reference=wavenumber_reference,
                                              ref_crystal_matrix=ref_crystal_matrix, LocGrd_dLambda=LocGrd_dLambda,
                                              dC_dLambda=dC_dLambda)
-
+                if np.isnan(ignore):
+                    left_minimum = True
             elif inputs.gradient_numerical_method == 'Euler':
                 NO.gradient_output(temperature[i], inputs.program,  inputs.output + '_' + inputs.method + 'T'
                                    + str(temperature[i]) + file_ending)
-                dLambda_dT[i, 1], wavenumbers[i, 1:] = \
+                dLambda_dT[i, 1], wavenumbers[i, 1:], left_minimum = \
                     Ex.Call_Expansion(inputs, 'local_gradient', inputs.output + '_' + inputs.method + 'T'
                                       + str(temperature[i]) + file_ending, Temperature=temperature[i],
                                       LocGrd_dLambda=LocGrd_dLambda, dC_dLambda=dC_dLambda,
                                       Gruneisen=gruneisen, Wavenumber_Reference=wavenumber_reference,
                                       ref_crystal_matrix=ref_crystal_matrix)
+                if left_minimum == True:
+                    dLambda_dT[i, 1:] = np.nan
+                    wavenumbers[i, 1:] = np.nan
+                else:
+                    dLambda_dT[i, 2] = dLambda_dT[i, 1]
 
-                dLambda_dT[i, 2] = dLambda_dT[i, 1]
+        # Exiting if the structure has left the minimum
+        if left_minimum == True:
+            inputs.gradient_max_temperature -= inputs.gradient_numerical_step
+            inputs.temperature = inputs.temperature[np.where(inputs.temperature <= inputs.gradient_max_temperature)]
+            print("Warning: system left minimum, stoping integration at: ", temperature[i], " K")
+            properties = properties[:i]
+            break
 
         # Saving wavenumbers and local gradient information
         if inputs.method == 'GaQ':
@@ -990,13 +1047,18 @@ def Anisotropic_Gradient_Expansion_1D(inputs, LocGrd_dC):
                 print("   Determining local gradient and thermal properties at: " + str(temperature[i+1]) + " K")
                 NO.gradient_output(temperature[i + 1], inputs.program, inputs.output + '_' + inputs.method + 'T'
                                    + str(temperature[i + 1]) + file_ending)
-                dLambda_dT[i + 1, 2], wavenumbers[i+1, 1:] = \
+                dLambda_dT[i + 1, 2], wavenumbers[i+1, 1:], left_minimum = \
                     Ex.Call_Expansion(inputs, 'local_gradient', inputs.output + '_' + inputs.method + 'T'
                                       + str(temperature[i + 1]) + file_ending, Temperature=temperature[i + 1],
                                       LocGrd_dLambda=LocGrd_dLambda, dC_dLambda=dC_dLambda,
                                       Gruneisen=gruneisen, Wavenumber_Reference=wavenumber_reference,
                                       ref_crystal_matrix=ref_crystal_matrix)
-
+                if left_minimum == True:
+                    inputs.gradient_max_temperature -= inputs.gradient_numerical_step
+                    inputs.temperature = inputs.temperature[np.where(inputs.temperature <= inputs.gradient_max_temperature)]
+                    print("Warning: system left minimum, stoping integration at: ", temperature[i], " K")
+                    properties = properties[:i+1]
+                    break
             properties[i+1, :] = Pr.Properties(inputs, inputs.output + '_' + inputs.method + 'T'
                                                + str(temperature[i + 1]) + file_ending, wavenumbers[i + 1, 1:],
                                                temperature[i + 1])
