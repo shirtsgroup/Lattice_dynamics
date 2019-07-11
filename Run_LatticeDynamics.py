@@ -136,6 +136,10 @@ class Inputs:
         self.gradient_numerical_method = data['gradient']['numerical_method']
         self.gradient_numerical_step = data['gradient']['numerical_step']
         self.gradient_max_temperature = data['gradient']['max_temperature']
+        if self.method in ['GiQ', 'GiQg', 'GaQ', 'GaQg']:
+            if any(self.temperature > self.gradient_max_temperature):
+                self.temperature = self.temperature[np.where(self.temperature <= self.gradient_max_temperature)]
+
         self.gradient_vol_fraction = data['gradient']['vol_fraction']
         if data['gradient']['matrix_fractions'] is None:
             self.gradient_matrix_fractions = np.zeros(6)
