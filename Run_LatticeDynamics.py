@@ -63,33 +63,6 @@ def temperature_lattice_dynamics(inputs, data, input_file='input.yaml'):
 
         print("   Saving user specified properties in indipendent files:")
         Pr.Save_Properties(inputs, properties)
-#    elif ((inputs.method == 'GaQ') or (inputs.method == 'GaQg')) and (inputs.anisotropic_type != '1D'):
-#        if any(inputs.gradient_matrix_fractions != 0.):
-#            crystal_matrix_array = Ex.triangle_crystal_matrix_to_array(Ex.Lattice_parameters_to_Crystal_matrix(
-#                Pr.Lattice_parameters(inputs.program, inputs.coordinate_file)))
-#            LocGrd_dC = np.absolute(inputs.gradient_matrix_fractions * crystal_matrix_array)
-#            for i in range(len(LocGrd_dC)):
-#                if LocGrd_dC[i] == 0.:
-#                    LocGrd_dC[i] = inputs.gradient_matrix_fractions[i]
-#        else:
-#            LocGrd_dC = Ss.anisotropic_gradient_settings(inputs)
-#        print("Performing Gradient Anisotropic Quasi-Harmonic Approximation")
-#        properties = TNA.Anisotropic_Gradient_Expansion(inputs, LocGrd_dC)
-#        print("   Saving user specified properties in independent files:")
-#        Pr.Save_Properties(inputs, properties)
-#
-#    elif (inputs.method == 'GaQ') or (inputs.method == 'GaQg') and (inputs.anisotropic_type == '1D'):
-#        if np.any(inputs.gradient_matrix_fractions != 0.):
-#            crystal_matrix_array = Ex.triangle_crystal_matrix_to_array(Ex.Lattice_parameters_to_Crystal_matrix(
-#                Pr.Lattice_parameters(inputs.program, inputs.coordinate_file)))
-#
-#            LocGrd_dC = np.absolute(inputs.gradient_matrix_fractions * crystal_matrix_array)
-#        else:
-#            LocGrd_dC = Ss.anisotropic_gradient_settings(inputs)
-#        print("Performing 1D-Gradient Anisotropic Quasi-Harmonic Approximation")
-#        properties = TNA.Anisotropic_Gradient_Expansion_1D(inputs, LocGrd_dC)
-#        print("   Saving user specified properties in independent files:")
-#        Pr.Save_Properties(inputs, properties)
     elif (inputs.method == 'GaQ') or (inputs.method == 'GaQg'):
         if any(inputs.gradient_matrix_fractions != 0.):
             crystal_matrix_array = Ex.triangle_crystal_matrix_to_array(Ex.Lattice_parameters_to_Crystal_matrix(
@@ -120,42 +93,43 @@ def temperature_lattice_dynamics(inputs, data, input_file='input.yaml'):
     print("Lattice dynamic calculation is complete!")
 
 
-"""
-def write_input_file(Temperature, Pressure, Method, Program, Output, Coordinate_file, Parameter_file, 
-                     molecules_in_coord, properties_to_save, NumAnalysis_method, NumAnalysis_step, LocGrd_Vol_FracStep,
-                     LocGrd_CMatrix_FracStep, StepWise_Vol_StepFrac, StepWise_Vol_LowerFrac, 
-                     StepWise_Vol_UpperFrac, Statistical_mechanics, Gruneisen_Vol_FracStep, Gruneisen_Lat_FracStep,
-                     Wavenum_Tol, Gradient_MaxTemp, Aniso_LocGrad_Type, min_RMS_gradient, input_file_location_and_name):
-    properties_out = ''
-    for i in range(len(properties_to_save) - 1):
-        properties_out = properties_out + properties_to_save[i] + ','
-    properties_out = properties_out + properties_to_save[-1]
 
-    with open(input_file_location_and_name, 'a') as myfile:
-        myfile.write('Temperature = ' + ','.join('{:,}'.format(x) for x in Temperature) + '\n')
-        myfile.write('Pressure = ' + str(Pressure) + '\n')
-        myfile.write('Method = ' + Method + '\n')
-        myfile.write('Program = ' + Program + '\n')
-        myfile.write('Output = ' + Output + '\n')
-        myfile.write('Coordinate_file = ' + Coordinate_file + '\n')
-        myfile.write('Parameter_file = ' + Parameter_file + '\n')
-        myfile.write('molecules_in_coord = ' + str(molecules_in_coord) + '\n')
-        myfile.write('properties_to_save = ' + properties_out + '\n')
-        myfile.write('NumAnalysis_method = ' + NumAnalysis_method + '\n')
-        myfile.write('NumAnalysis_step = ' + str(NumAnalysis_step) + '\n')
-        myfile.write('LocGrd_Vol_FracStep = ' + str(LocGrd_Vol_FracStep) + '\n')
-        myfile.write('LocGrd_CMatrix_FracStep = ' + np.array2string(LocGrd_CMatrix_FracStep,separator=',').strip('[').strip(']').replace(' ','') + '\n')
-        myfile.write('StepWise_Vol_StepFrac = ' + str(StepWise_Vol_StepFrac) + '\n')
-        myfile.write('StepWise_Vol_LowerFrac = ' + str(StepWise_Vol_LowerFrac) + '\n')
-        myfile.write('StepWise_Vol_UpperFrac = ' + str(StepWise_Vol_UpperFrac) + '\n')
-        myfile.write('Statistical_mechanics = ' + Statistical_mechanics + '\n')
-        myfile.write('Gruneisen_Vol_FracStep = ' + str(Gruneisen_Vol_FracStep) + '\n')
-        myfile.write('Gruneisen_Lat_FracStep = ' + str(Gruneisen_Lat_FracStep) + '\n')
-        myfile.write('Wavenum_Tol = ' + str(Wavenum_Tol) + '\n')
-        myfile.write('Gradient_MaxTemp = ' + str(Gradient_MaxTemp) + '\n')
-        myfile.write('Aniso_LocGrad_Type = ' + str(Aniso_LocGrad_Type) + '\n')
-        myfile.write('min_RMS_gradient = ' + str(min_RMS_gradient) + '\n')
-"""
+#def write_input_file(Temperature, Pressure, Method, Program, Output, Coordinate_file, Parameter_file, 
+#                     molecules_in_coord, properties_to_save, NumAnalysis_method, NumAnalysis_step, LocGrd_Vol_FracStep,
+#                     LocGrd_CMatrix_FracStep, StepWise_Vol_StepFrac, StepWise_Vol_LowerFrac, 
+#                     StepWise_Vol_UpperFrac, Statistical_mechanics, Gruneisen_Vol_FracStep, Gruneisen_Lat_FracStep,
+#                     Wavenum_Tol, Gradient_MaxTemp, Aniso_LocGrad_Type, min_RMS_gradient, input_file_location_and_name):
+#    properties_out = ''
+#    for i in range(len(properties_to_save) - 1):
+#        properties_out = properties_out + properties_to_save[i] + ','
+#    properties_out = properties_out + properties_to_save[-1]
+#
+#    with open(input_file_location_and_name, 'a') as myfile:
+#        myfile.write('Temperature = ' + ','.join('{:,}'.format(x) for x in Temperature) + '\n')
+#        myfile.write('Pressure = ' + str(Pressure) + '\n')
+#        myfile.write('Method = ' + Method + '\n')
+#        myfile.write('Program = ' + Program + '\n')
+#        myfile.write('Output = ' + Output + '\n')
+#        myfile.write('Coordinate_file = ' + Coordinate_file + '\n')
+#        myfile.write('Parameter_file = ' + Parameter_file + '\n')
+#        myfile.write('molecules_in_coord = ' + str(molecules_in_coord) + '\n')
+#        myfile.write('properties_to_save = ' + properties_out + '\n')
+#        myfile.write('NumAnalysis_method = ' + NumAnalysis_method + '\n')
+#        myfile.write('NumAnalysis_step = ' + str(NumAnalysis_step) + '\n')
+#        myfile.write('LocGrd_Vol_FracStep = ' + str(LocGrd_Vol_FracStep) + '\n')
+#        myfile.write('LocGrd_CMatrix_FracStep = ' + np.array2string(LocGrd_CMatrix_FracStep,separator=',').strip('[').strip(']').replace(' ','') + '\n')
+#        myfile.write('StepWise_Vol_StepFrac = ' + str(StepWise_Vol_StepFrac) + '\n')
+#        myfile.write('StepWise_Vol_LowerFrac = ' + str(StepWise_Vol_LowerFrac) + '\n')
+#        myfile.write('StepWise_Vol_UpperFrac = ' + str(StepWise_Vol_UpperFrac) + '\n')
+#        myfile.write('Statistical_mechanics = ' + Statistical_mechanics + '\n')
+#        myfile.write('Gruneisen_Vol_FracStep = ' + str(Gruneisen_Vol_FracStep) + '\n')
+#        myfile.write('Gruneisen_Lat_FracStep = ' + str(Gruneisen_Lat_FracStep) + '\n')
+#        myfile.write('Wavenum_Tol = ' + str(Wavenum_Tol) + '\n')
+#        myfile.write('Gradient_MaxTemp = ' + str(Gradient_MaxTemp) + '\n')
+#        myfile.write('Aniso_LocGrad_Type = ' + str(Aniso_LocGrad_Type) + '\n')
+#        myfile.write('min_RMS_gradient = ' + str(min_RMS_gradient) + '\n')
+
+
 
 def setdefault(input_data, default_values):
     # Function to fill in the input_data if the default values are not set
@@ -170,14 +144,11 @@ def yaml_loader(file_path):
     with open(path + 'default.yaml', "r") as default_file:
         default_input = yaml.load(default_file)
 
-    if file_path.split('.')[1] == 'inp':
-        data = old_input_file(file_path, default_input)
-    else:
-        # Loads in a ymal file
-        with open(file_path, "r") as input_file:
-            data = yaml.load(input_file)
-        # Setting the default values if not specified
-        setdefault(data, default_input)
+    # Loads in a ymal file
+    with open(file_path, "r") as input_file:
+        data = yaml.load(input_file)
+    # Setting the default values if not specified
+    setdefault(data, default_input)
     return data
 
 class Inputs:
