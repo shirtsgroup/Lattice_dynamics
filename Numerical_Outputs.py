@@ -140,6 +140,7 @@ def iso_gradient(dG, ddG, dS, dV):
     write_out('dV/dT [Ang.^3/K] = \n')
     numpy_write_out_precision(np.matrix(dV))
     write_out('\n')
+    return warning
 
 
 #######################################################################################################################
@@ -179,7 +180,7 @@ def aniso_gradient(dG, ddG, dS, dC):
     write_out('dC/dT [Ang./K] = \n')
     numpy_write_out_precision(dC)
     write_out('\n')
-
+    return warning
 
 def aniso_gradient_1D(dG, ddG, dS, dLambda):
     # Setting output for dG/dLambda: the current structure should be at a minima. Therefore, dG/dLambda should be zero
@@ -213,7 +214,7 @@ def aniso_gradient_1D(dG, ddG, dS, dLambda):
     write_out('dLambda/dT [1/K] = \n')
     numpy_write_out_precision(np.matrix(dLambda))
     write_out('\n')
-
+    return warning
 
 
 

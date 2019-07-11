@@ -67,30 +67,30 @@ def Call_Expansion(inputs, purpose, coordinate_file, **keyword_parameters):
     # Fining the local gradient of expansion for inputted strucutre
     elif purpose == 'local_gradient':
         if (inputs.method == 'GiQg') or (inputs.method == 'GiQ'):
-            isotropic_local_gradient, wavenumbers, volume = \
+            isotropic_local_gradient, wavenumbers, volume, left_minimum = \
                 Isotropic_Local_Gradient(inputs, coordinate_file, keyword_parameters['Temperature'],
                                          keyword_parameters['LocGrd_dV'], Gruneisen=keyword_parameters['Gruneisen'],
                                          Wavenumber_Reference=keyword_parameters['Wavenumber_Reference'],
                                          Volume_Reference=keyword_parameters['Volume_Reference'])
-            return isotropic_local_gradient, wavenumbers, volume
+            return isotropic_local_gradient, wavenumbers, volume, left_minimum
 
         elif (inputs.method == 'GaQ') or (inputs.method == 'GaQg'):
             if inputs.anisotropic_type != '1D':
-                strain_local_gradient, wavenumbers = \
+                strain_local_gradient, wavenumbers, left_minimum = \
                     Anisotropic_Local_Gradient(inputs, coordinate_file, keyword_parameters['Temperature'],
                                                keyword_parameters['LocGrd_dC'],
                                                ref_crystal_matrix=keyword_parameters['ref_crystal_matrix'],
                                                Gruneisen=keyword_parameters['Gruneisen'],
                                                Wavenumber_Reference=keyword_parameters['Wavenumber_Reference'])
             else:
-                strain_local_gradient, wavenumbers = \
+                strain_local_gradient, wavenumbers, left_minimum = \
                     Anisotropic_Local_Gradient_1D(inputs, coordinate_file, keyword_parameters['Temperature'],
                                                   keyword_parameters['LocGrd_dLambda'],
                                                   keyword_parameters['dC_dLambda'],
                                                   ref_crystal_matrix=keyword_parameters['ref_crystal_matrix'],
                                                   Gruneisen=keyword_parameters['Gruneisen'],
                                                   Wavenumber_Reference=keyword_parameters['Wavenumber_Reference'])
-            return strain_local_gradient, wavenumbers
+            return strain_local_gradient, wavenumbers, left_minimum
 
 ##########################################
 #       TINKER MOLECULAR MODELING        #
@@ -655,11 +655,11 @@ def Isotropic_Local_Gradient(inputs, coordinate_file, temperature, LocGrd_dV, **
 
 
     # Saving numerical outputs
-    NO.iso_gradient(dG, ddG, dS, dS/ddG)
+    left_minimum = NO.iso_gradient(dG, ddG, dS, dS/ddG)
 
     # Removing excess files
     subprocess.call(['rm', coordinate_plus, coordinate_minus])
-    return dS/ddG, wavenumbers, volume
+    return dS/ddG, wavenumbers, volume, left_minimum
 
 
 def Anisotropic_Local_Gradient(inputs, coordinate_file, temperature, LocGrd_dC, **keyword_parameters):
@@ -840,12 +840,12 @@ def Anisotropic_Local_Gradient(inputs, coordinate_file, temperature, LocGrd_dC, 
             subprocess.call(['rm', d + file_ending])
 
     # Calculating deta/dT for all strains
-    dC_dT = np.linalg.lstsq(ddG_ddC, dS_dC)[0] 
+    dC_dT = np.linalg.lstsq(ddG_ddC, dS_dC, rcond=None)[0] 
 
     # Saving numerical outputs
     NO.raw_energies(np.array([U_0]), np.array([Av_0]), U, Av)
-    NO.aniso_gradient(dG_dC, ddG_ddC, dS_dC, dC_dT)
-    return dC_dT, wavenumbers
+    left_minimum = NO.aniso_gradient(dG_dC, ddG_ddC, dS_dC, dC_dT)
+    return dC_dT, wavenumbers, left_minimum
 
 
 def Anisotropic_Local_Gradient_1D(inputs, coordinate_file, temperature, LocGrd_dLambda, dC_dLambda,
@@ -908,6 +908,6 @@ def Anisotropic_Local_Gradient_1D(inputs, coordinate_file, temperature, LocGrd_d
     ddG_ddLambda = (G[2] - 2 * G[1] + G[0]) / (LocGrd_dLambda ** 2)
 
     dLambda_dT = dS_dLambda / ddG_ddLambda
-    NO.aniso_gradient_1D(dG_dLambda, ddG_ddLambda, dS_dLambda, dLambda_dT)
-    return dLambda_dT, wavenumbers
+    left_minimum = NO.aniso_gradient_1D(dG_dLambda, ddG_ddLambda, dS_dLambda, dLambda_dT)
+    return dLambda_dT, wavenumbers, left_minimum
 
