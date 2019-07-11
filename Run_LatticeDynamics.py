@@ -133,12 +133,21 @@ class Inputs:
             self.properties_to_save = data['properties_to_save']
         else:
             self.properties_to_save = []
+
         self.gradient_numerical_method = data['gradient']['numerical_method']
-        self.gradient_numerical_step = data['gradient']['numerical_step']
+
         self.gradient_max_temperature = data['gradient']['max_temperature']
+        self.gradient_numerical_step = data['gradient']['numerical_step']
         if self.method in ['GiQ', 'GiQg', 'GaQ', 'GaQg']:
+            # Making sure all temperature outputs are less than the max temperature sampled during integration
             if any(self.temperature > self.gradient_max_temperature):
                 self.temperature = self.temperature[np.where(self.temperature <= self.gradient_max_temperature)]
+                print("WARNING: Any 'temperature' exceeding 'gradient,max_temperature' will be ignored")
+
+            # Making sure the numerical step size is a factor of the max temperature for numerical integration
+            if self.gradient_max_temperature % self.gradient_numerical_step != 0:
+                print("ERROR: the 'gradient,numerical_step' must be a factor of 'gradient,max_temperature'")
+                sys.exit()
 
         self.gradient_vol_fraction = data['gradient']['vol_fraction']
         if data['gradient']['matrix_fractions'] is None:
