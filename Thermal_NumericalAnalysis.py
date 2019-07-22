@@ -122,6 +122,7 @@ def Runge_Kutta_Fourth_Order(inputs, coordinate_file, temperature, **keyword_par
             volume = 1. * volume_hold
             k1 = 1. * RK_grad[0]
             if left_minimum == True:
+                subprocess.call(['rm', 'RK4' + file_ending])
                 return np.nan, np.nan, np.nan, np.nan
 
         if i != 3:
@@ -633,10 +634,12 @@ def Isotropic_Gradient_Expansion(inputs, LocGrd_dV):
 
         # Exiting if the structure has left the minimum
         if left_minimum == True:
-            inputs.gradient_max_temperature -= inputs.gradient_numerical_step
+            inputs.gradient_max_temperature = temperature[i] - inputs.gradient_numerical_step
             inputs.temperature = inputs.temperature[np.where(inputs.temperature <= inputs.gradient_max_temperature)]
             print("Warning: system left minimum, stoping integration at: ", temperature[i], " K")
             properties = properties[:i]
+            subprocess.call(['mv', inputs.output + '_' + inputs.method + 'T' + str(temperature[i]) + file_ending, 
+                             'Cords/' + inputs.output + '_' + inputs.method + 'T' + str(temperature[i]) + "_NotAMin" + file_ending])
             break
 
         # Saving wavenumbers and local gradient information
@@ -680,10 +683,12 @@ def Isotropic_Gradient_Expansion(inputs, LocGrd_dV):
                                       LocGrd_dV=LocGrd_dV, Gruneisen=gruneisen,
                                       Wavenumber_Reference=wavenumber_reference, Volume_Reference=volume_reference)
                 if left_minimum == True:
-                    inputs.gradient_max_temperature -= inputs.gradient_numerical_step
+                    inputs.gradient_max_temperature = temperature[i + 1] - inputs.gradient_numerical_step
                     inputs.temperature = inputs.temperature[np.where(inputs.temperature <= inputs.gradient_max_temperature)]
-                    print("Warning: system left minimum, stoping integration at: ", temperature[i], " K")
+                    print("Warning: system left minimum, stoping integration at: ", temperature[i+1], " K")
                     properties = properties[:i+1]
+                    subprocess.call(['mv', inputs.output + '_' + inputs.method + 'T' + str(temperature[i + 1]) + file_ending,
+                                     'Cords/' + inputs.output + '_' + inputs.method + 'T' + str(temperature[i + 1]) + "_NotAMin"+ file_ending])
                     break
 
             properties[i+1, :] = Pr.Properties(inputs, inputs.output + '_' + inputs.method + 'T' +
@@ -803,7 +808,12 @@ def Anisotropic_Gradient_Expansion(inputs, LocGrd_dC):
 
             # Exiting if the structure has left the minimum
             if left_minimum == True:
+                nputs.gradient_max_temperature = temperature[i] - inputs.gradient_numerical_step
+                inputs.temperature = inputs.temperature[np.where(inputs.temperature <= inputs.gradient_max_temperature)]
+                print("Warning: system left minimum, stoping integration at: ", temperature[i], " K")
                 properties = properties[:i]
+                subprocess.call(['mv', inputs.output + '_' + inputs.method + 'T' + str(temperature[i]) + file_ending,
+                                 'Cords/' + inputs.output + '_' + inputs.method + 'T' + str(temperature[i]) + "_NotAMin"+ file_ending])
                 break
 
             # Saving wavenumbers for non-Gruneisen methods
@@ -859,10 +869,12 @@ def Anisotropic_Gradient_Expansion(inputs, LocGrd_dC):
                                       Wavenumber_Reference=wavenumber_reference, ref_crystal_matrix=ref_crystal_matrix)
 
                 if left_minimum == True:
-                    inputs.gradient_max_temperature -= inputs.gradient_numerical_step
+                    inputs.gradient_max_temperature = temperature[i+1] - inputs.gradient_numerical_step
                     inputs.temperature = inputs.temperature[np.where(inputs.temperature <= inputs.gradient_max_temperature)]
-                    print("Warning: system left minimum, stoping integration at: ", temperature[i], " K")
+                    print("Warning: system left minimum, stoping integration at: ", temperature[i+1], " K")
                     properties = properties[:i+1]
+                    subprocess.call(['mv', inputs.output + '_' + inputs.method + 'T' + str(temperature[i + 1]) + file_ending,
+                                     'Cords/' + inputs.output + '_' + inputs.method + 'T' + str(temperature[i + 1]) + "_NotAMin"+ file_ending])
                     break
 
 
@@ -1004,10 +1016,12 @@ def Anisotropic_Gradient_Expansion_1D(inputs, LocGrd_dC):
 
         # Exiting if the structure has left the minimum
         if left_minimum == True:
-            inputs.gradient_max_temperature -= inputs.gradient_numerical_step
+            inputs.gradient_max_temperature = temperature[i] - inputs.gradient_numerical_step
             inputs.temperature = inputs.temperature[np.where(inputs.temperature <= inputs.gradient_max_temperature)]
             print("Warning: system left minimum, stoping integration at: ", temperature[i], " K")
             properties = properties[:i]
+            subprocess.call(['mv', inputs.output + '_' + inputs.method + 'T' + str(temperature[i]) + file_ending,
+                             'Cords/' + inputs.output + '_' + inputs.method + 'T' + str(temperature[i]) + "_NotAMin"+ file_ending])
             break
 
         # Saving wavenumbers and local gradient information
@@ -1054,10 +1068,12 @@ def Anisotropic_Gradient_Expansion_1D(inputs, LocGrd_dC):
                                       Gruneisen=gruneisen, Wavenumber_Reference=wavenumber_reference,
                                       ref_crystal_matrix=ref_crystal_matrix)
                 if left_minimum == True:
-                    inputs.gradient_max_temperature -= inputs.gradient_numerical_step
+                    inputs.gradient_max_temperature = temperature[i+1] - inputs.gradient_numerical_step
                     inputs.temperature = inputs.temperature[np.where(inputs.temperature <= inputs.gradient_max_temperature)]
-                    print("Warning: system left minimum, stoping integration at: ", temperature[i], " K")
+                    print("Warning: system left minimum, stoping integration at: ", temperature[i+1], " K")
                     properties = properties[:i+1]
+                    subprocess.call(['mv', inputs.output + '_' + inputs.method + 'T' + str(temperature[i + 1]) + file_ending,
+                                     'Cords/' + inputs.output + '_' + inputs.method + 'T' + str(temperature[i + 1]) + "_NotAMin"+ file_ending])
                     break
             properties[i+1, :] = Pr.Properties(inputs, inputs.output + '_' + inputs.method + 'T'
                                                + str(temperature[i + 1]) + file_ending, wavenumbers[i + 1, 1:],
