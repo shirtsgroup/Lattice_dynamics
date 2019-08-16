@@ -18,6 +18,10 @@ path = os.path.realpath(__file__).strip('Run_LatticeDynamics.py')
 
 
 def temperature_lattice_dynamics(inputs, data, input_file='input.yaml'):
+    # Geometry and lattice optimizing the input structure
+    if (inputs.tinker_xtalmin == True) and (inputs.program == 'Tinker'):
+        Ex.tinker_xtalmin(inputs)
+
     if inputs.method == 'HA':
         print("Performing Harmonic Approximation")
         # Running the Harmonic Approximation
@@ -128,6 +132,8 @@ class Inputs:
         self.number_of_molecules = data['number_of_molecules']
         self.program = data['program']
         self.tinker_parameter_file = data['tinker']['parameter_file']
+        self.tinker_xtalmin = bool(data['tinker']['xtalmin'])
+        self.tinker_xtalmin_tol = data['tinker']['xtalmin_tol']
         self.cp2k_root = data['cp2k']['root']
         if type(data['properties_to_save']) != type(None):
             self.properties_to_save = data['properties_to_save']

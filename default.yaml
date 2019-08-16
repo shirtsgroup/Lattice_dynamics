@@ -9,6 +9,8 @@ number_of_molecules: NNNN
 program: Tinker
 tinker:
    parameter_file: keyfile.key
+   xtalmin: False
+   xtalmin_tol: 0.00001
 cp2k:
    root: BNZ_NMA_p1
 properties_to_save: G,h,V,T
