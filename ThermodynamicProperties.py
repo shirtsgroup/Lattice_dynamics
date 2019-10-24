@@ -17,23 +17,6 @@ import matplotlib.pyplot as plt
 #           Export PROPERTIES            #
 ##########################################
 def Properties(inputs, Coordinate_file, wavenumbers, Temperature):
-    """
-    Function to calculate all properties for a single temperature and pressure
-
-    **Required Inputs
-    Temperature = single temperature in Kelvin to determine the vibrational entropy (does not work at 0 K)
-    Pressure = single Pressure in atm
-    Program = 'Tinker' for Tinker Molecular Modeling
-              'Test' for a test run
-    wavenumbers = array of wavenumber (in order with the first three being 0 cm**-1 for the translational modes)
-    Coordinate_file = File containing lattice parameters and atom coordinates
-    Statistical_mechanics = 'Classical' Classical mechanics
-                            'Quantum' Quantum mechanics
-    molecules_in_coord = number of molecules in coordinate file
-
-    **Optional Inputs
-    Parameter_file = Optional input for program
-    """
     properties = np.zeros(14)
     properties[0] = Temperature  # Temperature
     properties[1] = inputs.pressure  # Pressure
