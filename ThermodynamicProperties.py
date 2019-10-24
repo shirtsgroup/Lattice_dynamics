@@ -556,13 +556,13 @@ def Quantum_Vibrational_A(Temperature, wavenumbers):
     for i in wavenumbers[3:]:  # Skipping translational modes
         if i > 0:  # Skipping negative wavenumbers
             if Temperature == 0:
-                a = ((h * i * c / (4 * np.pi)) )
+                a = (h * i * c / 2) * Na
             else:
-                a = ((h * i * c / (4 *np.pi)) + (k * Temperature) * np.log(1 - np.exp(-beta * h * i * c / (2 * np.pi))))
+                a = (h * i * c / 2 + (1 / beta) * np.log(1 - np.exp(- beta * h * i * c ))) * Na
             A.append(a)
         else:
             pass
-    A = sum(A)*Na
+    A = sum(A)
     return A
 
 def Vibrational_Entropy(Temperature, wavenumbers, Statistical_mechanics):
@@ -635,11 +635,11 @@ def Quantum_Vibrational_S(Temperature, wavenumbers):
     S = []
     for i in wavenumbers[3:]:
         if i > 0:
-            s = ((h * i * c / (2 * np.pi))/(Temperature*(np.exp(h * i * c * beta / (2* np.pi))-1))) - (k*Temperature*np.log(1-np.exp(-h * i * c * beta / (2 *np.pi))))
+            s = (k * h * i * c / (Temperature * (np.exp(h * i * c * beta) - 1)) - k * np.log(1 - np.exp(-h * i * c * beta))) * Na
             S.append(s)
         else:
             pass
-    S = sum(S)*Na
+    S = sum(S)
     return S
 
 
