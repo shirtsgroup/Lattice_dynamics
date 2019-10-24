@@ -161,6 +161,26 @@ def Tinker_optimization(Parameter_file, Coordinate_file, Ouptu, min_RMS_gradient
     with open('minimization.out', 'a') as myfile:
         myfile.write(output)
 
+def tinker_xtalmin(inputs):
+    with open('minimization.out', 'a') as myfile:
+        myfile.write("==================== Geo. & Lat. Optimization ====================\n")
+
+    G_RMS = 1000000.0
+    for i in range(5):
+        output = subprocess.check_output(['xtalmin', inputs.coordinate_file, '-k', inputs.tinker_parameter_file,
+                                              str(inputs.tinker_xtalmin_tol)]).decode("utf-8")
+        subprocess.call(['mv', inputs.coordinate_file + '_2', inputs.coordinate_file])
+        with open('minimization.out', 'a') as myfile:
+            myfile.write(output)
+        if (output.split('\n')[-15].split()[0] == 'OCVM') and (float(output.split('\n')[-17].split()[2]) <= G_RMS):
+            G_RMS = float(output.split('\n')[-17].split()[2])
+            pass
+        else:
+            break
+
+
+
+
 ##########################################
 #                  TEST                  #
 ##########################################
