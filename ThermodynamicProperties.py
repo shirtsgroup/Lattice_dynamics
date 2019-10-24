@@ -16,13 +16,38 @@ import matplotlib.pyplot as plt
 ##########################################
 #           Export PROPERTIES            #
 ##########################################
-def Properties(inputs, Coordinate_file, wavenumbers, Temperature):
-    properties = np.zeros(14)
+def Properties(inputs: list, Coordinate_file: int, wavenumbers: list, Temperature: [float, int]) -> list:
+    """
+    Computes all harmonic properties of a crystal structure at the specified temperature.
+
+    Paramaeters
+    -----------
+    inputs : list with all inputs from the yaml file
+    Coordinate_file : coordinate file corresponding with program selected
+    wavenumbers : wavenumbers [cm^-1]
+    Temperature : system temperature [K]
+
+    Returns
+    -------
+    :return: length 14 array of thermodynamic properties in the following order
+      0 - Temperature[K]
+      1 - Pressure [atm]
+      2 - Gibbs free energy [kcal/mol]
+      3 - Potential energy [kcal/mol]
+      4 - Harmonic Helmholtz free energy [kcal/mol]
+      5 - Pressure-volume energy contribution [kcal/mol]
+      6 - Volume [Ang.^3]
+      7,8,9 - a, b, and c lattice vectors [Ang.]
+      10,11,12 - alpha, beta, and gamma lattice angles [Deg.]
+      13 - Harmonic entropy [kcal/(mol*K)]
+    """
+
+    properties = np.zeros(14)  # list to save properties to be returned
+
     properties[0] = Temperature  # Temperature
     properties[1] = inputs.pressure  # Pressure
     if inputs.program == 'Tinker':
-        properties[3] = Tinker_U(Coordinate_file, inputs.tinker_parameter_file) / inputs.number_of_molecules
-        # Potential energy
+        properties[3] = Tinker_U(Coordinate_file, inputs.tinker_parameter_file) / inputs.number_of_molecules  # Potential energy
         properties[7:13] = Tinker_Lattice_Parameters(Coordinate_file)  # Lattice parameters
     elif inputs.program == 'CP2K':
         properties[3] = CP2K_U(Coordinate_file) / inputs.number_of_molecules  # Potential energy
@@ -35,75 +60,66 @@ def Properties(inputs, Coordinate_file, wavenumbers, Temperature):
         properties[7:13] = Test_Lattice_Parameters(Coordinate_file)  # Lattice parameters
     properties[6] = Volume(lattice_parameters=properties[7:13])  # Volume
     properties[4] = Vibrational_Helmholtz(Temperature, wavenumbers, inputs.statistical_mechanics) / \
-                    inputs.number_of_molecules
+                    inputs.number_of_molecules  # Computing the Helmholtz vibrational free energy
     properties[13] = Vibrational_Entropy(Temperature, wavenumbers, inputs.statistical_mechanics) / \
-                     inputs.number_of_molecules
-    properties[5] = PV_energy(inputs.pressure, properties[6]) / inputs.number_of_molecules  # PV
+                     inputs.number_of_molecules  # Computing the vibrational entropy
+    properties[5] = PV_energy(inputs.pressure, properties[6]) / inputs.number_of_molecules  # Pressure-Volume energy contribution
     properties[2] = sum(properties[3:6])  # Gibbs free energy
     return properties
 
 
-def Properties_with_Temperature(inputs, Coordinate_file, wavenumbers):
+def Properties_with_Temperature(inputs: list, Coordinate_file: int, wavenumbers: list) -> list:
     """
-    This function collects the properties for a specific coordinate file over a temperature range
+    Computes all harmonic properties of a crystal structure at all temperatures.
 
-    **Required Inputs
-    Temperature = single temperature in Kelvin to determine the vibrational entropy (does not work at 0 K)
-    Pressure = single Pressure in atm
-    Program = 'Tinker' for Tinker Molecular Modeling
-              'Test' for a test run
-    wavenumbers = array of wavenumber (in order with the first three being 0 cm**-1 for the translational modes)
-    Coordinate_file = File containing lattice parameters and atom coordinates
-    Statistical_mechanics = 'Classical' Classical mechanics
-                            'Quantum' Quantum mechanics
-    molecules_in_coord = number of molecules in coordinate file
+    Paramaeters
+    -----------
+    inputs : list with all inputs from the yaml file
+    Coordinate_file : coordinate file corresponding with program selected
+    wavenumbers : wavenumbers [cm^-1]
+    Temperature : system temperatures [K]
 
-    **Optional Inputs
-    Parameter_file = Optional input for program
+    Returns
+    -------
+    :return: length 14 array of thermodynamic properties in the following order
+      0 - Temperature[K]
+      1 - Pressure [atm]
+      2 - Gibbs free energy [kcal/mol]
+      3 - Potential energy [kcal/mol]
+      4 - Harmonic Helmholtz free energy [kcal/mol]
+      5 - Pressure-volume energy contribution [kcal/mol]
+      6 - Volume [Ang.^3]
+      7,8,9 - a, b, and c lattice vectors [Ang.]
+      10,11,12 - alpha, beta, and gamma lattice angles [Deg.]
+      13 - Harmonic entropy [kcal/(mol*K)]
     """
-    properties = np.zeros((len(inputs.temperature), 14))
-    properties[0, :] = Properties(inputs, Coordinate_file, wavenumbers, inputs.temperature[0])
-    properties[:, 0] = inputs.temperature
-    properties[:, 1] = properties[0, 1]
-    properties[:, 3] = properties[0, 3]
-    properties[:, 7:13] = properties[0, 7:13]
-    properties[:, 6] = properties[0, 6]
-    properties[:, 5] = properties[0, 5]
+    properties = np.zeros((len(inputs.temperature), 14))  # list to save properties to be returned
+    properties[0, :] = Properties(inputs, Coordinate_file, wavenumbers, inputs.temperature[0]) # Computing all properties for the first temperature
+    properties[:, 0] = inputs.temperature  # Temperature
+    properties[:, 1] = properties[0, 1]  # Pressure
+    properties[:, 3] = properties[0, 3]  # Potential energy
+    properties[:, 7:13] = properties[0, 7:13]  # Lattice parameters
+    properties[:, 6] = properties[0, 6]  # Volume
+    properties[:, 5] = properties[0, 5]  # Pressure-volume energy
     for i in range(1, len(inputs.temperature)):
         properties[i, 4] = Vibrational_Helmholtz(inputs.temperature[i], wavenumbers, inputs.statistical_mechanics) / \
-                           inputs.number_of_molecules
+                           inputs.number_of_molecules  # Harmonic Helmholtz free energy
         properties[i, 13] = Vibrational_Entropy(inputs.temperature[i], wavenumbers, inputs.statistical_mechanics) / \
-                            inputs.number_of_molecules
-        properties[i, 2] = sum(properties[i, 3:6])
+                            inputs.number_of_molecules  # Harmonic entropy
+        properties[i, 2] = sum(properties[i, 3:6])  # Gibbs free energy
     return properties
 
 
-def Save_Properties(inputs, properties):#properties, Properties_to_save, Output, Method, Statistical_mechanics):
+def Save_Properties(inputs: list, properties: list):
     """
-    Function for saving user specified properties
+    Goes through the user specified properties to save to individual numpy files.
 
-    **Required Inputs
-    properties = matrix of properties to be input over a temperature range [Temperature_i,property]
-    Properties_to_save = Array of properties to save ex. 'T,U,G'
-                         'T' Temperature
-                         'P' Pressure
-                         'G' Gibbs free energy
-                         'U' Potential energy
-                         'Av' Helmholtz vibrational energy
-                         'V' Volume
-                         'h' Lattice parameters
-                         'S' Entropy
-    Output = string to start the output of each file
-    Method = Harmonic approximation ('HA');
-             Stepwise Isotropic QHA ('SiQ');
-             Stepwise Isotropic QHA w/ Gruneisen Parameter ('SiQg');
-             Gradient Isotropic QHA ('GiQ');
-             Gradient Isotropic QHA w/ Gruneisen Parameter ('GiQg');
-             Gradient Anisotropic QHA ('GaQ');
-             Gradient Anistoropic QHA w/ Gruneisen Parameter ('GaQg');
-    Statistical_mechanics = 'Classical' Classical mechanics
-                            'Quantum' Quantum mechanics
+    Paramaeters
+    -----------
+    inputs : list with all inputs from the yaml file
+    properties : computed properties at all temperature of interest
     """
+
     if 'T' in inputs.properties_to_save:  # Temperature
         print("   ... Saving temperature in: " + inputs.output + "_T_" + inputs.method + ".npy")
         np.save(inputs.output + '_T_' + inputs.method, properties[:, 0])
@@ -233,14 +249,19 @@ def atoms_count(Program, Coordinate_file, molecules_in_coord=1):
 ##########################################
 #       TINKER MOLECULAR MODELING        #
 ##########################################
-def Tinker_U(Coordinate_file, Parameter_file):
+def Tinker_U(Coordinate_file: str, Parameter_file: str) -> float:
     """
-    Calls the Tinker analyze executable and extracts the total potential energy
-    ******Eventually! I want to also be able to extract individual potential energy terms
- 
-    **Required Inputs
-    Coordinate_file = Tinker .xyz file for crystal structure
-    Parameter_file = Tinker .key file specifying the force field parameter
+    Computes the crystal potential energy using Tinker.
+
+    Paramaeters
+    -----------
+    Coordinate_file : Tinker .xyz file
+    Parameter_file : Tinker .prm or .key file
+
+    Returns
+    -------
+    :return: Potential energy [kcal/mol]
+
     """
     U = float(subprocess.check_output(
         "analyze %s -k %s E | grep 'Total'| grep -oP '[-+]*[0-9]*\.[0-9]*'" % (Coordinate_file, Parameter_file),
@@ -248,29 +269,42 @@ def Tinker_U(Coordinate_file, Parameter_file):
     return U
 
 
-def Tinker_atoms_per_molecule(Coordinate_file, molecules_in_coord):
+def Tinker_atoms_per_molecule(Coordinate_file:str, molecules_in_coord:[int, float]) -> [float, int]:
     """
-    This function determines the number of atoms per molecule
+    Determines the number of atoms per molecule.
 
-    **Required Inputs
-    Coordinate_file = Tinker .xyz file for crystal structure
-    molecules_in_coord = number of molecules in Coordinate_file
+    Paramaeters
+    -----------
+    Coordinate_file : Tinker .xyz file
+    molecules_in_coord : number of molecules in the coordinate file
+
+    Returns
+    -------
+    :return: the number of atoms per molecule
+
     """
-    with open('%s' % Coordinate_file, 'r') as l:
+    with open('%s' % Coordinate_file, 'r') as l:  # Opening the coordinate file
         coordinates = [lines.split() for lines in l]
         coordinates = np.array(list(it.zip_longest(*coordinates, fillvalue=' '))).T
     atoms_per_molecule = int(coordinates[0, 0]) / molecules_in_coord
     return atoms_per_molecule
 
 
-def Tinker_Lattice_Parameters(Coordinate_file):
+def Tinker_Lattice_Parameters(Coordinate_file: str) -> list:
     """
-    This function extracts the lattice parameters from within the Tinker coordinate file 
+    Getting the lattice parameters of the Tinker coordinate file
 
-    **Required Inputs
-    Coordinate_file = Tinker .xyz file for crystal structure
+    Paramaeters
+    -----------
+    Coorindate_file : Tinker .xyz file
+
+
+    Returns
+    -------
+    :return: list of lattice parameters
+
     """
-    with open('%s' % Coordinate_file, 'r') as l:
+    with open('%s' % Coordinate_file, 'r') as l:  # Opening coordinate file
         lattice_parameters = [lines.split() for lines in l]
         lattice_parameters = np.array(list(it.zip_longest(*lattice_parameters, fillvalue=' '))).T
         lattice_parameters = lattice_parameters[1, :6].astype(float)
