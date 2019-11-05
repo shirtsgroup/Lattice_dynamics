@@ -708,7 +708,8 @@ def Isotropic_Gradient_Expansion(inputs, LocGrd_dV):
     print("   All properties have been saved in " + inputs.output + "_raw.npy")
     np.save(inputs.output + '_raw', properties)
     return properties
-        
+
+
 ########################################################
 #     Gradient Anisotropic Expansion Due to Strain     #
 ########################################################
