@@ -9,6 +9,7 @@ import Wavenumbers as Wvn
 import ThermodynamicProperties as Pr
 import numpy as np
 import scipy.optimize
+import program_specific_functions as psf
 
 # Setting a general starting point to run minimization of Test potential energy function
               # Lattice Vectors [Ang.]
@@ -22,7 +23,7 @@ n = 4.
 # PV + U energy
 def U_PV(lp):
     V = Pr.Volume(lattice_parameters=lp)
-    return (Pr.Test_U_poly(lp)) #+ Pr.PV_energy(P, V))/ n
+    return (psf.Test_U_poly(lp)) #+ Pr.PV_energy(P, V))/ n
 
 # Running the minimization
 def run_minimization(X0):

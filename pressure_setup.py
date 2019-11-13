@@ -13,6 +13,7 @@ import Expand as Ex
 import System_sensitivity as Ss
 import matplotlib.pyplot as plt
 import equations_of_state as eos
+import program_specific_functions as psf
 
 def pressure_setup(Temperature=[0.0, 25.0, 50.0, 75.0, 100.0], Pressure=1., Method='HA', Program='Test',
                    Output='out', Coordinate_file='molecule.xyz', Parameter_file='keyfile.key',
@@ -35,7 +36,7 @@ def pressure_setup(Temperature=[0.0, 25.0, 50.0, 75.0, 100.0], Pressure=1., Meth
         print("Pressure vs. Temperature methods have not been implimented for anisotropic expansion")
         sys.exit()
 
-    file_ending = Ex.assign_file_ending(Program)
+    file_ending = psf.assign_coordinate_file_ending(Program)
 
     # Making an array of volume fractions
     V_frac = np.arange(StepWise_Vol_LowerFrac, 1.0, StepWise_Vol_StepFrac)
@@ -52,12 +53,12 @@ def pressure_setup(Temperature=[0.0, 25.0, 50.0, 75.0, 100.0], Pressure=1., Meth
         # Expanding the structures and saving the required data
         Ex.Call_Expansion(Method, 'expand', Program, Coordinate_file, molecules_in_coord, min_RMS_gradient,
                           volume_fraction_change=V_frac[i], Output='temporary', Parameter_file=Parameter_file)
-        U[i] = Pr.Potential_energy('temporary' + file_ending, Program, Parameter_file=Parameter_file)
+        U[i] = psf.Potential_energy('temporary' + file_ending, Program, Parameter_file=Parameter_file)
         V[i] = Pr.Volume(Program=Program, Coordinate_file='temporary' + file_ending)
         subprocess.call(['rm', 'temporary' + file_ending])
 
     V0 = Pr.Volume(Program=Program, Coordinate_file=Coordinate_file)
-    E0 = Pr.Potential_energy(Coordinate_file, Program, Parameter_file=Parameter_file)
+    E0 = psf.Potential_energy(Coordinate_file, Program, Parameter_file=Parameter_file)
 
     if eq_of_state != 'None':
         [B, dB],_ = scipy.optimize.curve_fit(lambda V, B, dB: eos.EV_EOS(V, V0, B, dB, E0, eq_of_state), V, U, p0=[2.,2.])
@@ -174,8 +175,7 @@ def EOS_TvP_Gru_0T_0P(Method, Temperature, Pressure, Program, Output, Coordinate
 
     # Setting up an array to store the properties
     properties = np.zeros((len(Pressure), len(Temperature), 14))
-    if Program == 'Tinker':
-        properties[:, :, 7:13] = Pr.Tinker_Lattice_Parameters(Coordinate_file)
+    properties[:, :, 7:13] = psf.Lattice_parameters(Program, Coordinate_file)
 
     for i in range(len(Pressure)):
         for j in range(len(Temperature)):

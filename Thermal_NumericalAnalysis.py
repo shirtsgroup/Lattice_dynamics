@@ -11,6 +11,7 @@ import Numerical_Outputs as NO
 import System_sensitivity as Ss
 import shutil
 import volume_constrained_minimization as vcm
+import program_specific_functions as psf
 
 ##########################################
 #           Numerical Methods            #
@@ -49,7 +50,7 @@ def Runge_Kutta_Fourth_Order(inputs, coordinate_file, temperature, **keyword_par
     Crystal_matrix_Reference:
     """
     # Setting up program specific file endings and giving parameter files blank names to avoid errors
-    file_ending = Ex.assign_file_ending(inputs.program)
+    file_ending = psf.assign_coordinate_file_ending(inputs.program)
 
     # Output of numerical analysis
     NO.start_RK(temperature, inputs.gradient_numerical_step)
@@ -190,7 +191,7 @@ def Spline_Intermediate_Points(inputs, properties, **keyword_parameters):
     """
     print("Using cubic spline to determine intermediate temperature steps.")
     # Setting file endings
-    file_ending = Ex.assign_file_ending(inputs.program)
+    file_ending = psf.assign_coordinate_file_ending(inputs.program)
 
     # Making temperature array for wanted output values (user specified)
 #NSA: This should probably be done when read in
@@ -323,8 +324,8 @@ def Isotropic_Stepwise_Expansion(inputs):
     runeisen_Vol_FracStep: volume fraction step used to determine the Gruneisen parameter 
     """
     # Setting file endings and determining how many wavenumbers there will be
-    file_ending = Ex.assign_file_ending(inputs.program)
-    number_of_modes = int(Pr.atoms_count(inputs.program, inputs.coordinate_file) * 3)
+    file_ending = psf.assign_coordinate_file_ending(inputs.program)
+    number_of_modes = int(psf.atoms_count(inputs.program, inputs.coordinate_file) * 3)
 
     # Setting up array of volume fractions from the lattice structure
     lower_volume_fraction = np.arange(inputs.stepwise_volume_fraction_lower, 1.0,
@@ -438,8 +439,8 @@ def Isotropic_Stepwise_Expansion(inputs):
 ##########################################
 def stepwise_expansion(inputs):
     # Setting file endings and determining how many wavenumbers there will be
-    file_ending = Ex.assign_file_ending(inputs.program)
-    number_of_modes = int(Pr.atoms_count(inputs.program, inputs.coordinate_file) * 3)
+    file_ending = psf.assign_coordinate_file_ending(inputs.program)
+    number_of_modes = int(psf.atoms_count(inputs.program, inputs.coordinate_file) * 3)
 
     # Setting up array of volume fractions from the lattice structure
     V0 = Pr.Volume(Program=inputs.program, Coordinate_file=inputs.coordinate_file)
@@ -547,8 +548,8 @@ def Isotropic_Gradient_Expansion(inputs, LocGrd_dV):
     Gruneisen_Vol_FracStep: volume fraction step used to determine the Gruneisen parameter 
     """
     # Setting file endings and determining how many wavenumbers there will be
-    file_ending = Ex.assign_file_ending(inputs.program)
-    number_of_modes = int(Pr.atoms_count(inputs.program, inputs.coordinate_file) * 3)
+    file_ending = psf.assign_coordinate_file_ending(inputs.program)
+    number_of_modes = int(psf.atoms_count(inputs.program, inputs.coordinate_file) * 3)
 
     # Setting the temperature array
     temperature = np.arange(0, inputs.gradient_max_temperature + 1., inputs.gradient_numerical_step)
@@ -715,8 +716,8 @@ def Isotropic_Gradient_Expansion(inputs, LocGrd_dV):
 ########################################################
 def Anisotropic_Gradient_Expansion(inputs, LocGrd_dC):
     # Setting file endings and determining how many wavenumbers there will be
-    file_ending = Ex.assign_file_ending(inputs.program)
-    number_of_modes = int(Pr.atoms_count(inputs.program, inputs.coordinate_file) * 3)
+    file_ending = psf.assign_coordinate_file_ending(inputs.program)
+    number_of_modes = int(psf.atoms_count(inputs.program, inputs.coordinate_file) * 3)
 
     # Setting the temperature array
     temperature = np.arange(0, inputs.gradient_max_temperature + 1, inputs.gradient_numerical_step)
@@ -908,8 +909,8 @@ def Anisotropic_Gradient_Expansion(inputs, LocGrd_dC):
 
 def Anisotropic_Gradient_Expansion_1D(inputs, LocGrd_dC):
     # Setting file endings and determining how many wavenumbers there will be
-    file_ending = Ex.assign_file_ending(inputs.program)
-    number_of_modes = int(Pr.atoms_count(inputs.program, inputs.coordinate_file) * 3)
+    file_ending = psf.assign_coordinate_file_ending(inputs.program)
+    number_of_modes = int(psf.atoms_count(inputs.program, inputs.coordinate_file) * 3)
 
     # Setting the temperature array
     temperature = np.arange(0, inputs.gradient_max_temperature + 1, inputs.gradient_numerical_step)

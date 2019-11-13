@@ -8,6 +8,7 @@ import Expand as Ex
 import Wavenumbers as Wvn
 import ThermodynamicProperties as Pr
 import numpy as np
+import program_specific_functions as psf
 import pylab as plt
 import scipy.optimize
 
@@ -22,7 +23,7 @@ Output = 'out'
 
 n_samples = 200
 
-file_ending = Ex.assign_file_ending(Program)
+file_ending = psf.assign_coordinate_file_ending(Program)
 
 
 lattice_parameters = Pr.Lattice_parameters(Program, Coordinate_file)

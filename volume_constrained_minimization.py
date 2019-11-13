@@ -8,11 +8,13 @@ import scipy.optimize
 import numpy as np
 import ThermodynamicProperties as Pr
 import Expand as Ex
+import program_specific_functions as psf
+
 
 def constrained_minimization(Coordinate_file, Program, molecules_in_coord=1, min_RMS_gradient=1e-04,
                                       Parameter_file=''):
     # Determining the file ending of the coordinate file
-    file_ending = Ex.assign_file_ending(Program)
+    file_ending = psf.assign_coordinate_file_ending(Program)
 
     # Determining the lattice parameters and volume of the input coordinate file
     lp_0 = Pr.Lattice_parameters(Program, Coordinate_file)
@@ -153,7 +155,7 @@ def Return_U_from_Aniso_Expand(new_crystal_matrix, coordinate_file, Parameter_fi
         Ex.array_to_triangle_crystal_matrix(new_crystal_matrix))
 
     # Determining the file ending of the coordinate file
-    file_ending = Ex.assign_file_ending(Program)
+    file_ending = psf.assign_coordinate_file_ending(Program)
 
     # Determine the input coordinate files lattice parameters
     old_lattice_parameters = Pr.Lattice_parameters(Program, coordinate_file)
@@ -163,7 +165,7 @@ def Return_U_from_Aniso_Expand(new_crystal_matrix, coordinate_file, Parameter_fi
                         min_RMS_gradient, dlattice_parameters=new_lattice_parameters[:6] - old_lattice_parameters,
                         Parameter_file=Parameter_file)
     # Computing the potential energy of the new expanded structure
-    U = Pr.Potential_energy(output_file_name + file_ending, Program, Parameter_file=Parameter_file) / molecules_in_coord
+    U = psf.Potential_energy(output_file_name + file_ending, Program, Parameter_file=Parameter_file) / molecules_in_coord
     return U
 
 #def dfunc(coordinate_file, Parameter_file, Program, molecules_in_coord, min_RMS_gradient, V0):
