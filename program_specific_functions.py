@@ -42,7 +42,7 @@ def atoms_count(Program, Coordinate_file, molecules_in_coord=1):
     if Program == 'Tinker':
         atoms_in_coord = len(Return_Tinker_Coordinates(Coordinate_file)[:, 0])
     elif Program == 'Test':
-        atoms_in_coord = len(Wvn.Test_Wavenumber(Coordinate_file, True)) / 3
+        atoms_in_coord = len(Test_Wavenumber(Coordinate_file, True)) / 3
     elif Program == 'CP2K':
         atoms_in_coord = len(Return_CP2K_Coordinates(Coordinate_file)[:, 0])
     elif Program == 'QE':

@@ -140,7 +140,7 @@ def Setup_Isotropic_Gruneisen(inputs):
 
     # Determining wavenumbers of lattice strucutre and expanded strucutre
     # Also, assigning a file ending name for the nex coordinate file (program dependent)
-    lattice_parameters = psf.Lattice_parameters(inputs.Program, inputs.coordinate_file)
+    lattice_parameters = psf.Lattice_parameters(inputs.program, inputs.coordinate_file)
     if inputs.program == 'Tinker':
         Ex.Expand_Structure(inputs.coordinate_file, inputs.program, 'lattice_parameters', inputs.number_of_molecules,
                             'temp', inputs.min_rms_gradient, dlattice_parameters=dLattice_Parameters,
