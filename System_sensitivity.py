@@ -6,6 +6,7 @@ import Expand as Ex
 import ThermodynamicProperties as Pr
 import numpy as np
 import matplotlib
+import program_specific_functions as psf
 import yaml
 matplotlib.use('Agg')
 import pylab as plt
@@ -25,7 +26,7 @@ def isotropic_gradient_settings(inputs):
         #Coordinate_file, Program, Parameter_file, molecules_in_coord, min_RMS_gradient, Output,
          #                       Pressure):
     # Determining the file ending based on the program
-    file_ending = Ex.assign_file_ending(inputs.program)
+    file_ending = psf.assign_coordinate_file_ending(inputs.program)
 
     # Setting the energy cutoff
     cutoff = program_cutoff(inputs.program)
@@ -37,7 +38,7 @@ def isotropic_gradient_settings(inputs):
     n_steps = len(steps)
 
     # Potential energy of input file and a place to store the expanded structures potential energy
-    U_0 = (Pr.Potential_energy(inputs.coordinate_file, inputs.program, Parameter_file=inputs.tinker_parameter_file) \
+    U_0 = (psf.Potential_energy(inputs.coordinate_file, inputs.program, Parameter_file=inputs.tinker_parameter_file) \
            + Pr.PV_energy(inputs.pressure, Pr.Volume(Program=inputs.program, Coordinate_file=inputs.coordinate_file))) / \
           inputs.number_of_molecules
     U = np.zeros((n_steps))
@@ -53,7 +54,7 @@ def isotropic_gradient_settings(inputs):
                             dlattice_parameters=dlattice_parameters)
 
         # Computing the potential energy
-        U[i] = (Pr.Potential_energy(inputs.output + file_ending, inputs.program,
+        U[i] = (psf.Potential_energy(inputs.output + file_ending, inputs.program,
                                     Parameter_file=inputs.tinker_parameter_file) \
                 + Pr.PV_energy(inputs.pressure, Pr.Volume(Program=inputs.program, Coordinate_file=inputs.output + file_ending))) / \
                 inputs.number_of_molecules
@@ -100,7 +101,7 @@ def exp_fit4step(steps, U, cutoff):
 
 def anisotropic_gradient_settings(inputs, data, input_file):
     # Determining the file ending based on the program
-    file_ending = Ex.assign_file_ending(inputs.program)
+    file_ending = psf.assign_coordinate_file_ending(inputs.program)
 
     # Setting the energy cutoff
     cutoff = program_cutoff(inputs.program)
@@ -113,7 +114,7 @@ def anisotropic_gradient_settings(inputs, data, input_file):
     n_steps = len(steps)
 
     # Potential energy of input file and a place to store the expanded structures potential energy
-    U_0 = Pr.Potential_energy(inputs.coordinate_file, inputs.program, Parameter_file=inputs.tinker_parameter_file) / \
+    U_0 = psf.Potential_energy(inputs.coordinate_file, inputs.program, Parameter_file=inputs.tinker_parameter_file) / \
           inputs.number_of_molecules
     U = np.zeros((6, n_steps))
 
@@ -134,7 +135,7 @@ def anisotropic_gradient_settings(inputs, data, input_file):
             Ex.Expand_Structure(inputs.coordinate_file, inputs.program, 'crystal_matrix', inputs.number_of_molecules,
                                 inputs.output, inputs.min_rms_gradient, Parameter_file=inputs.tinker_parameter_file,
                                 dcrystal_matrix=dlattice_matrix)
-            U[j, i] = Pr.Potential_energy(inputs.output + file_ending, inputs.program,
+            U[j, i] = psf.Potential_energy(inputs.output + file_ending, inputs.program,
                                           Parameter_file=inputs.tinker_parameter_file) / inputs.number_of_molecules
             subprocess.call(['rm', inputs.output + file_ending])
             if (U[j, i] - U_0) > cutoff: 
@@ -167,7 +168,7 @@ def anisotropic_gradient_settings(inputs, data, input_file):
 
 def anisotropic_gradient_settings_1D(inputs, dC_dLambda):
     # Determining the file ending based on the program
-    file_ending = Ex.assign_file_ending(inputs.program)
+    file_ending = psf.assign_coordinate_file_ending(inputs.program)
 
     # Setting the energy cutoff
     cutoff = program_cutoff(inputs.program)
@@ -179,7 +180,7 @@ def anisotropic_gradient_settings_1D(inputs, dC_dLambda):
     n_steps = len(steps)
 
     # Potential energy of input file and a place to store the expanded structures potential energy
-    U_0 = Pr.Potential_energy(inputs.coordinate_file, inputs.program, Parameter_file=inputs.tinker_parameter_file) / \
+    U_0 = psf.Potential_energy(inputs.coordinate_file, inputs.program, Parameter_file=inputs.tinker_parameter_file) / \
           inputs.number_of_molecules
     U = np.zeros(n_steps)
 
@@ -188,7 +189,7 @@ def anisotropic_gradient_settings_1D(inputs, dC_dLambda):
         Ex.Expand_Structure(inputs.coordinate_file, inputs.program, 'crystal_matrix', inputs.number_of_molecules,
                             inputs.output, inputs.min_rms_gradient, Parameter_file=inputs.tinker_parameter_file,
                             dcrystal_matrix=dlattice_matrix)
-        U[i] = Pr.Potential_energy(inputs.output + file_ending, inputs.program,
+        U[i] = psf.Potential_energy(inputs.output + file_ending, inputs.program,
                                    Parameter_file=inputs.tinker_parameter_file) / inputs.number_of_molecules
         subprocess.call(['rm', inputs.output + file_ending])
         if (U[i] - U_0) > cutoff:

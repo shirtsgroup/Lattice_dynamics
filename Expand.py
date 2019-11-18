@@ -2,14 +2,12 @@
 from __future__ import print_function
 import os
 import sys
-import itertools as it
 import numpy as np
 import ThermodynamicProperties as Pr
 import Wavenumbers as Wvn
 import Numerical_Outputs as NO
 import subprocess
-import scipy.optimize
-import fileinput
+import program_specific_functions as psf
 
 ##########################################
 #                 Input                  #
@@ -93,261 +91,9 @@ def Call_Expansion(inputs, purpose, coordinate_file, zeta=-1., **keyword_paramet
             return strain_local_gradient, wavenumbers, left_minimum
 
 ##########################################
-#       TINKER MOLECULAR MODELING        #
-##########################################
-def Return_Tinker_Coordinates(Coordinate_file):
-    """
-    This function opens a Tinker .xyz for a crystal and returns the 3x(number of atoms) matrix
-
-    **Required Inputs
-    Coordinate_file = Tinker .xyz file for a crystal
-    """
-    with open(Coordinate_file) as f:
-        # Opening xyz coordinate file to expand
-        coordinates = np.array(list(it.zip_longest(*[lines.split() for lines in f], fillvalue=' '))).T
-    coordinates = coordinates[2:, 2:5].astype(float)
-    return coordinates
-
-
-def Output_Tinker_New_Coordinate_File(Coordinate_file, Parameter_file, coordinates, lattice_parameters, Output, min_RMS_gradient):
-    """
-    This function takes a new set of coordinates and utilizes a previous coordinate file as a template to produce a new
-    Tinker .xyz crystal file
-    The structure is also minimized
-
-    **Required Inputs
-    Coordinate_file = Tinker .xyz file for a crystal
-    Parameter_file = Tinker .key file with force field parameters
-    coordinates = New coordinates in a 3x(number of atoms) matrix
-    lattice_parameters = lattice parameters as an array ([a,b,c,alpha,beta,gamma])
-    Output = file name of new .xyz file
-    """   
-    Ouput_Tinker_Coordinate_File(Coordinate_file, Parameter_file, coordinates, lattice_parameters, Output)
-    Tinker_optimization(Parameter_file, Output + '.xyz', Output, min_RMS_gradient)
-
-def Ouput_Tinker_Coordinate_File(Coordinate_file, Parameter_file, coordinates, lattice_parameters, Output):
-    """
-    This function takes a new set of coordinates and utilizes a previous coordinate file as a template to produce a new
-    Tinker .xyz crystal file
-
-    **Required Inputs
-    Coordinate_file = Tinker .xyz file for a crystal
-    Parameter_file = Tinker .key file with force field parameters
-    coordinates = New coordinates in a 3x(number of atoms) matrix
-    lattice_parameters = lattice parameters as an array ([a,b,c,alpha,beta,gamma])
-    Output = file name of new .xyz file
-    """
-    with open(Coordinate_file) as f:
-        # Opening xyz coordinate file to expand
-        coordinates_template = np.array(list(it.zip_longest(*[lines.split() for lines in f], fillvalue=' '))).T
-
-    coordinates_template[2:, 2:5] = np.around(coordinates, decimals=8).astype('str')
-    coordinates_template[1, :6] = lattice_parameters.astype(str)
-    string_coordinates = ''
-    for i in range(len(coordinates_template[:, 0])):
-        for j in range(len(coordinates_template[i, :])):
-            string_coordinates = string_coordinates + '    ' + coordinates_template[i, j]
-        string_coordinates = string_coordinates + '\n'
-
-    with open(Output + '.xyz', 'w') as file_out:
-        file_out.write(string_coordinates)
-
-def Tinker_optimization(Parameter_file, Coordinate_file, Ouptu, min_RMS_gradient):
-    with open('minimization.out', 'a') as myfile:
-        myfile.write("======================== New Minimization ========================\n")
-    output = subprocess.check_output(['optimize', Coordinate_file, '-k', Parameter_file,
-                                          str(min_RMS_gradient)]).decode("utf-8")
-    subprocess.call(['mv', Coordinate_file + '_2', Coordinate_file])
-    with open('minimization.out', 'a') as myfile:
-        myfile.write(output)
-
-def tinker_xtalmin(inputs):
-    with open('minimization.out', 'a') as myfile:
-        myfile.write("==================== Geo. & Lat. Optimization ====================\n")
-
-    G_RMS = 1000000.0
-    for i in range(5):
-        output = subprocess.check_output(['xtalmin', inputs.coordinate_file, '-k', inputs.tinker_parameter_file,
-                                              str(inputs.tinker_xtalmin_tol)]).decode("utf-8")
-        subprocess.call(['mv', inputs.coordinate_file + '_2', inputs.coordinate_file])
-        with open('minimization.out', 'a') as myfile:
-            myfile.write(output)
-        if (output.split('\n')[-15].split()[0] == 'OCVM') and (float(output.split('\n')[-17].split()[2]) <= G_RMS):
-            G_RMS = float(output.split('\n')[-17].split()[2])
-            pass
-        else:
-            break
-
-
-
-
-##########################################
-#                  TEST                  #
-##########################################
-def Return_Test_Coordinates():
-    """
-    This funciton returns coordinates for the test system
-    Because there are no real coordiantes, it just returns a matrix of ones as a holder for the coordinates
-    """
-    coordinates = np.ones((1, 3))
-    return coordinates
-
-
-def Output_Test_New_Coordinate_File(lattice_parameters, Output):
-    """
-    This function saves the lattice parameters in a .npy file for the test Program
-    """
-    np.save(Output, lattice_parameters)
-    
-##########################################
-#       CP2K MOLECULAR MODELING        #
-##########################################
-
-def Return_CP2K_Coordinates(Coordinate_file):
-    """
-    This function opens a Tinker .xyz for a crystal and returns the 3x(number of atoms) matrix
-
-    **Required Inputs
-    Coordinate_file = Tinker .xyz file for a crystal
-    """
-    with open(Coordinate_file) as f:
-        coordlines = f.readlines()[2:-1]
-    coords = np.zeros((len(coordlines),3))
-    for x in range(0,len(coordlines)):
-        coords[x,:] = coordlines[x].split()[3:6]
-        # Opening xyz coordinate file to expand
-    return coords
-
-
-def Output_CP2K_New_Coordinate_File(Coordinate_file, Parameter_file, coordinates, lattice_parameters, Output, min_RMS_gradient):
-    """
-    This function takes a new set of coordinates and utilizes a previous coordinate file as a template to produce a new
-    Tinker .xyz crystal file
-    The structure is also minimized
-
-    **Required Inputs
-    Coordinate_file = Tinker .xyz file for a crystal
-    Parameter_file = Tinker .key file with force field parameters
-    coordinates = New coordinates in a 3x(number of atoms) matrix
-    lattice_parameters = lattice parameters as an array ([a,b,c,alpha,beta,gamma])
-    Output = file name of new .xyz file
-    """   
-    Ouput_CP2K_Coordinate_File(Coordinate_file, Parameter_file, coordinates, lattice_parameters, Output)
-    CP2K_minimization(Parameter_file, Output + '.pdb', Output, min_RMS_gradient)
-
-def Ouput_CP2K_Coordinate_File(Coordinate_file, Parameter_file, coordinates, lattice_parameters, Output):
-    """
-    This function takes a new set of coordinates and utilizes a previous coordinate file as a template to produce a new
-    .pdb crystal file
-
-    **Required Inputs
-    Coordinate_file = Tinker .xyz file for a crystal
-    Parameter_file = Tinker .key file with force field parameters
-    coordinates = New coordinates in a 3x(number of atoms) matrix
-    lattice_parameters = lattice parameters as an array ([a,b,c,alpha,beta,gamma])
-    Output = file name of new .xyz file
-    """
-    coordlines = open(Coordinate_file, 'r').readlines()
-    xstr = []
-    numatoms = np.shape(coordinates)[0]
-    for d in range(3):                  
-        xstr.append("%9.3f" % (lattice_parameters[d]))
-    for d in range(3,6):                  
-        xstr.append("%7.2f" % (lattice_parameters[d]))
-    with open(Output + '.pdb', 'w') as file_out:
-        file_out.write('REMARK'+ '\n')
-        file_out.write('CRYST1'+str(xstr[0])+xstr[1]+xstr[2]+xstr[3]+xstr[4]+xstr[5]+'\n')
-        for x in range(numatoms):
-            linenum = coordlines[x+2].split()
-            mol = str(linenum[2])
-            ty = str(linenum[8])
-            line =  '{:6s}{:5d} {:^4s}{:1s}{:3s} {:1s}{:4s}{:1s}   {:8.3f}{:8.3f}{:8.3f}{:6.2f}{:6.2f}          {:>2s}{:2s}'.format('ATOM',x+1, mol,'','','','','',coordinates[x,0],coordinates[x,1],coordinates[x,2], 0.0,0.0,ty,'')
-            file_out.write(line+'\n')
-        file_out.write('END')
-
-
-def CP2K_minimization(Parameter_file, Coordinate_file, Output, min_RMS_gradient):
-    print(Output)
-    subprocess.call(['setup_wavenumber','-t','geoopt','-h',Output])
-    subprocess.call(['mpirun', '-np','112','cp2k.popt','-i',Output+'.inp' ])
-    subprocess.call(['pulllastframe', '-f', 'GEOOPT-GEOOPT.pdb-pos-1.pdb' ,'-n', Output+'.pdb'])
-
-def Return_QE_Coordinates(Coordinate_file, lattice_parameters):
-
-    with open(Coordinate_file) as f:
-        coordlines = f.readlines()
-    coords = np.zeros((len(coordlines)-4,3))
-    for x in range(0,len(coordlines)-4):
-        coords[x,:] = coordlines[x+4].split()[1:4]
-        # Opening xyz coordinate file to expand
-    for x in range(0,len(coordlines)):
-        if '(crystal)' in coordlines[x].split():
-            crystal=True
-        else:
-            crystal=False
-    if crystal == True:
-        for x in range(0,len(coordlines)-3):
-            coords[x,:] = crystal_coord_to_cartesian(coords[x,:],lattice_parameters)
-
-    return coords
-    
-
-def Output_QE_New_Coordinate_File(Coordinate_file, Parameter_file, coordinates, lattice_parameters, Output, min_RMS_gradient):
-    
-    Output_QE_Coordinate_File(Coordinate_file, Parameter_file, coordinates, lattice_parameters, Output)
-
-    QE_minimization(Parameter_file, Output + '.qe', Output, min_RMS_gradient)
-
-
-def Output_QE_Coordinate_File(Coordinate_file, Parameter_file, coordinates, lattice_parameters, Output):
-    coordlines = open(Coordinate_file, 'r').readlines()
-    struct = open(Output+'.pw', 'w')
-    latt = open(Output+'.pwbv','w') 
-    print(coordlines)   
-    numatoms = np.shape(coordinates)[0]
-    print(numatoms)
-    
-    
-    for x in range(0,3):
-        struct.write(coordlines[x])
-    struct.write('ATOMIC_POSITIONS angstrom'+'\n')
-    for x in range(4,4+numatoms):
-        atomtype = coordlines[x].split()[0]
-        struct.write(atomtype+'    '+str(coordinates[x-4,0])+'   '+str(coordinates[x-4,1])+'    '+str(coordinates[x-4,2])+'\n')
-    latt.write('CELL_PARAMETERS angstrom'+'\n')
-    lattice_parameters = np.transpose(Lattice_parameters_to_Crystal_matrix(lattice_parameters))
-    for x in range(0,3):
-        latt.write(str(lattice_parameters[x,0])+'   '+str(lattice_parameters[x,1])+'   '+str(lattice_parameters[x,2])+'\n')
-
-
-def QE_minimization(Parameter_file, Coordinate_file, Output, min_RMS_gradient):
-    print(Coordinate_file)
-    subprocess.call(['setup_wavenumberQE','-t','geoopt','-h',Output])
-    #subprocess.call(['mpirun', '-np','112','pw.x','-i',Output+'.qe' ,'>',Output+'.out'])
-    #os.system('mpirun -np 112 pw.x -i '+Output+'.qe > '+Output+'.out')
-    #if os.path.exists(Coordinate_file[0:-3]+'.out') == False:
-    if 'D3' in os.getcwd(): 
-        os.system('mpirun -np 112 /home/schieber/q-e/bin/pw.x -i '+Output+'.qe > '+Output+'.out')
-    else: 
-        os.system('mpirun -np 112 pw.x -i '+Output+'.qe > '+Output+'.out')
-    subprocess.call(['pulllastframeQE', '-f', Output+'.out' ,'-n', Output+'.pw'])
-
-
-##########################################
 #          Assistant Functions           #
 ##########################################
-def assign_file_ending(program):
-    if program == 'Tinker':
-        return '.xyz'
-    elif program == 'Test':
-        return '.npy'
-    elif program == 'CP2K':
-        return '.pdb'
-    elif program == 'QE':
-        return '.pw'
-    else:
-        print('ERROR: Program is not supported!')
-        sys.exit()
+
 
 #NSA: Why is this here? This is just a duplicate of something already written
 def crystal_coord_to_cartesian(coord, lattice_parameters):
@@ -368,8 +114,6 @@ def crystal_coord_to_cartesian(coord, lattice_parameters):
     coordm = np.transpose(coord)
     cartcoord = np.transpose(np.matmul(convert,coordm))
     return cartcoord
-    
-
 
 def Lattice_parameters_to_Crystal_matrix(lattice_parameters):
     """
@@ -434,14 +178,8 @@ def Isotropic_Change_Lattice_Parameters(volume_fraction_change, Program, Coordin
     Coordinate_file = file containing lattice parameters of the previous strucuture
     """
     # Calling the lattice parameters
-    if Program == 'Tinker':
-        lattice_parameters = Pr.Tinker_Lattice_Parameters(Coordinate_file)
-    elif Program == 'Test':
-        lattice_parameters = Pr.Test_Lattice_Parameters(Coordinate_file)
-    elif Program == 'CP2K':
-        lattice_parameters = Pr.CP2K_Lattice_Parameters(Coordinate_file)
-    elif Program == 'QE':
-        lattice_parameters, matrix = Pr.QE_Lattice_Parameters(Coordinate_file)
+    lattice_parameters = psf.Lattice_parameters(Program, Coordinate_file)
+
     # Calculating the new isotropic lattice parameters
     dlattice_parameters = lattice_parameters*volume_fraction_change**(1/3.) - lattice_parameters
 
@@ -473,7 +211,6 @@ def array_to_triangle_crystal_matrix(array):
                       [0.,       array[1], array[5]],
                       [0.,       0.,       array[2]]])
 
-
 ##########################################
 #            General Expansion           #
 ##########################################
@@ -498,7 +235,7 @@ def Expand_Structure(Coordinate_file, Program, Expansion_type, molecules_in_coor
     Parameter_file = program specific file containingforce field parameters
     """
     if Program == 'Test':
-        lattice_parameters = Pr.Test_Lattice_Parameters(Coordinate_file)
+        lattice_parameters = psf.Lattice_parameters(Program, Coordinate_file)
         crystal_matrix = Lattice_parameters_to_Crystal_matrix(lattice_parameters)
         if Expansion_type == 'lattice_parameters':
             lattice_parameters = lattice_parameters + keyword_parameters['dlattice_parameters']
@@ -508,19 +245,10 @@ def Expand_Structure(Coordinate_file, Program, Expansion_type, molecules_in_coor
         elif Expansion_type == 'crystal_matrix':
             crystal_matrix = crystal_matrix + keyword_parameters['dcrystal_matrix']
             lattice_parameters = crystal_matrix_to_lattice_parameters(crystal_matrix)
-        Output_Test_New_Coordinate_File(lattice_parameters, Output)
 
     else:
-        if Program == 'Tinker':
-            coordinates = Return_Tinker_Coordinates(Coordinate_file)
-            lattice_parameters = Pr.Tinker_Lattice_Parameters(Coordinate_file)
-        elif Program == 'CP2K':
-            coordinates = Return_CP2K_Coordinates(Coordinate_file)
-            lattice_parameters = Pr.CP2K_Lattice_Parameters(Coordinate_file)
-        elif Program == 'QE':
-            lattice_parameters, matrix = Pr.QE_Lattice_Parameters(Coordinate_file)
-            coordinates = Return_QE_Coordinates(Coordinate_file, lattice_parameters)
-           
+        lattice_parameters = psf.Lattice_parameters(Program, Coordinate_file)
+        coordinates = psf.return_coordinates(Program, Coordinate_file, lattice_parameters)
 
         crystal_matrix = Lattice_parameters_to_Crystal_matrix(lattice_parameters)
 
@@ -551,15 +279,10 @@ def Expand_Structure(Coordinate_file, Program, Expansion_type, molecules_in_coor
                 np.subtract(coordinates[i*atoms_per_molecule:(i+1)*atoms_per_molecule],
                             -1*coordinate_center_of_mass[i, :])
 
-        if Program == 'Tinker':
-            Output_Tinker_New_Coordinate_File(Coordinate_file, keyword_parameters['Parameter_file'], coordinates,
-                                              lattice_parameters, Output, min_RMS_gradient)
-        elif Program == 'CP2K':
-            Output_CP2K_New_Coordinate_File(Coordinate_file, keyword_parameters['Parameter_file'], coordinates,
-                                              lattice_parameters, Output, min_RMS_gradient)
-        elif Program == 'QE':
-            Output_QE_New_Coordinate_File(Coordinate_file, keyword_parameters['Parameter_file'], coordinates,
-                                              lattice_parameters, Output, min_RMS_gradient)
+    # Outputing the new coordinate file
+    psf.output_new_coordinate_file(Program, Coordinate_file, keyword_parameters['Parameter_file'], coordinates,
+                                   lattice_parameters, Output, min_RMS_gradient)
+
 
 ###################################################
 #       Local Gradient of Thermal  Expansion      #
@@ -588,7 +311,7 @@ def Isotropic_Local_Gradient(inputs, coordinate_file, temperature, LocGrd_dV, **
     Volume_reference: reference volume for the Gruneisen parameter
     """
     # Assigning general names for expanded and compressed structures
-    file_ending = assign_file_ending(inputs.program)
+    file_ending = psf.assign_coordinate_file_ending(inputs.program)
 
     coordinate_plus = 'plus' + file_ending
     coordinate_minus = 'minus' + file_ending
@@ -716,7 +439,7 @@ def Anisotropic_Local_Gradient(inputs, coordinate_file, temperature, LocGrd_dC, 
     min_numerical_crystal_matrix = 1.0e-7
 
     # Determining the file ending of the coordinate files
-    file_ending = assign_file_ending(inputs.program)
+    file_ending = psf.assign_coordinate_file_ending(inputs.program)
 
     # Preparing the matrix with each entry as d**2G/(dC*dC)
     ddG_ddC = np.zeros((6, 6))
@@ -890,7 +613,7 @@ def Anisotropic_Local_Gradient(inputs, coordinate_file, temperature, LocGrd_dC, 
 def Anisotropic_Local_Gradient_1D(inputs, coordinate_file, temperature, LocGrd_dLambda, dC_dLambda, 
                                   **keyword_parameters):
     # Determining the file ending of the coordinate files
-    file_ending = assign_file_ending(inputs.program)
+    file_ending = psf.assign_coordinate_file_ending(inputs.program)
 
     if temperature == 0.:
         # If temperature is zero, we assume that the local gradient is the same at 0.1K

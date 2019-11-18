@@ -10,6 +10,7 @@ import ThermodynamicProperties as Pr
 import numpy as np
 import scipy.optimize
 from argparse import ArgumentParser
+import program_specific_functions as psf
 
 parser = ArgumentParser()
 parser.add_argument('-p', dest='program', default='Tinker', help="Prgorams to use: Tinker (default), test, cp2k")
@@ -21,8 +22,7 @@ number_of_modes = np.zeros(len(args.input_files))
 
 # Determining the number of vibrational modes for each coordinate file
 for i in range(len(args.input_files)):
-    if args.program == 'Tinker':
-        number_of_modes[i] = 3*Pr.Tinker_atoms_per_molecule(args.input_files[i], 1)
+    number_of_modes[i] = 3*psf.atoms_count(args.program, args.input_file[i])
 
 # Making sure all coordinate files have the same number of modes
 if np.all(number_of_modes == number_of_modes[0]):
@@ -38,7 +38,7 @@ wavenumbers = np.zeros((len(args.input_files), number_of_modes))
 for i in range(len(args.input_files)):
     # If the wavenumbers/eigenvalues have already been computed, opening those 
     if args.program == 'Tinker':
-        wavenumbers[i], eigenvectors[i] = Wvn.Tinker_Wavenumber_and_Vectors(args.input_files[i], args.parameter_file)
+        wavenumbers[i], eigenvectors[i] = psf.Wavenumber_and_Vectors('Tinker', args.input_files[i], args.parameter_file)
 
 # Matching the modes with each other
 wavenumbers_matched = np.zeros(np.shape(wavenumbers))
