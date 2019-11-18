@@ -125,11 +125,11 @@ def setdefault(input_data, default_values):
 def yaml_loader(file_path):
     # Load in the default values
     with open(path + 'default.yaml', "r") as default_file:
-        default_input = yaml.load(default_file)
+        default_input = yaml.load(default_file, Loader=yaml.FullLoader)
 
     # Loads in a ymal file
     with open(file_path, "r") as input_file:
-        data = yaml.load(input_file)
+        data = yaml.load(input_file, Loader=yaml.FullLoader)
     # Setting the default values if not specified
     setdefault(data, default_input)
     return data
