@@ -542,16 +542,19 @@ def Classical_Vibrational_A(Temperature, wavenumbers):
     h = 2.520 * 10 ** (-38)  # Reduced Plank's constant in kcal*s
     k = 3.2998 * 10 ** (-27)  # Boltzmann constant in kcal/K
     Na = 6.022 * 10 ** 23  # Avogadro's number
-    beta = 1 / (k * Temperature)
     wavenumbers = np.sort(wavenumbers)
     A = []
-    for i in wavenumbers[3:]:  # Skipping the translational modes
-        if i > 0:  # Skipping negative wavenumbers
-            a = (1 / beta) * np.log(beta * h * i * c) * Na
-            A.append(a)
-        else:
-            pass
-    A = sum(A)
+    if Temperature == 0.:
+        A = 0.
+    else:
+        beta = 1 / (k * Temperature)
+        for i in wavenumbers[3:]:  # Skipping the translational modes
+            if i > 0:  # Skipping negative wavenumbers
+                a = (1 / beta) * np.log(beta * h * i * c) * Na
+                A.append(a)
+            else:
+                pass
+        A = sum(A)
     return A
 
 
@@ -567,12 +570,13 @@ def Quantum_Vibrational_A(Temperature, wavenumbers):
     h = 2.520 * 10 ** (-38)  # Reduced Plank's constant in kcal/s
     k = 3.2998 * 10 ** (-27)  # Boltzmann constant in kcal/K
     Na = 6.022 * 10 ** 23  # Avogadro's number
-    beta = 1 / (k * Temperature)
+    if Temperature != 0.:
+        beta = 1 / (k * Temperature)
     wavenumbers = np.sort(wavenumbers)
     A = []
     for i in wavenumbers[3:]:  # Skipping translational modes
         if i > 0:  # Skipping negative wavenumbers
-            if Temperature == 0:
+            if Temperature == 0.:
                 a = (h * i * c / 2) * Na
             else:
                 a = (h * i * c / 2 + (1 / beta) * np.log(1 - np.exp(- beta * h * i * c ))) * Na
@@ -592,21 +596,20 @@ def Vibrational_Entropy(Temperature, wavenumbers, Statistical_mechanics):
     Statistical_mechanics = 'Classical'
                             'Quantum'
     """
-    if Statistical_mechanics == 'Classical' and Temperature != 0.:
-        S = Classical_Vibrational_S(Temperature, wavenumbers)
-    elif Statistical_mechanics == 'Quantum':
-        S = Quantum_Vibrational_S(Temperature, wavenumbers)
+    if Temperature == 0.:
+        if Statistical_mechanics == 'Classical':
+            S = Classical_Vibrational_S(Temperature, wavenumbers)
+        elif Statistical_mechanics == 'Quantum':
+            S = Quantum_Vibrational_S(Temperature, wavenumbers)
     else:
         S = 0.
     return S
 
 def Vibrational_Helmholtz(Temperature, wavenumbers, Statistical_mechanics):
-    if Statistical_mechanics == 'Classical' and Temperature != 0.:
+    if Statistical_mechanics == 'Classical':
         Av = Classical_Vibrational_A(Temperature, wavenumbers)
     elif Statistical_mechanics == 'Quantum':
         Av = Quantum_Vibrational_A(Temperature, wavenumbers)
-    else:
-        Av = 0.
     return Av
 
 
@@ -693,7 +696,7 @@ def Gibbs_Free_Energy(Temperature, Pressure, Program, wavenumbers, Coordinate_fi
 
     # Helmholtz free energy
     if Statistical_mechanics == 'Classical':
-        if Temperature != 0.:
+        if Temperature < 0.1:
             A = Classical_Vibrational_A(Temperature, wavenumbers) / molecules_in_coord
         else:
             A = 0.

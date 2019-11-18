@@ -185,7 +185,6 @@ def anisotropic_gradient_settings_1D(inputs, dC_dLambda):
 
     for i in range(n_steps):
         dlattice_matrix = Ex.array_to_triangle_crystal_matrix(steps[i] * dC_dLambda)
-
         Ex.Expand_Structure(inputs.coordinate_file, inputs.program, 'crystal_matrix', inputs.number_of_molecules,
                             inputs.output, inputs.min_rms_gradient, Parameter_file=inputs.tinker_parameter_file,
                             dcrystal_matrix=dlattice_matrix)

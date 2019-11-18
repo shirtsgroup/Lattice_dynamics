@@ -21,6 +21,7 @@ def temperature_lattice_dynamics(inputs, data, input_file='input.yaml'):
     # Geometry and lattice optimizing the input structure
     if (inputs.tinker_xtalmin == True) and (inputs.program == 'Tinker'):
         Ex.tinker_xtalmin(inputs)
+        inputs.tinker_xtalmin = False
 
     if inputs.method == 'HA':
         print("Performing Harmonic Approximation")
@@ -47,6 +48,22 @@ def temperature_lattice_dynamics(inputs, data, input_file='input.yaml'):
             print("Creating directory 'Cords/' to store structures along Gibbs free energy path")
             subprocess.call(['mkdir', 'Cords'])
 
+    # Expanding the crystal with the zero point energy
+    if inputs.statistical_mechanics == 'Quantum':
+        if any(inputs.gradient_matrix_fractions != 0.):
+            crystal_matrix_array = Ex.triangle_crystal_matrix_to_array(Ex.Lattice_parameters_to_Crystal_matrix(
+                Pr.Lattice_parameters(inputs.program, inputs.coordinate_file)))
+            LocGrd_dC = np.absolute(inputs.gradient_matrix_fractions * crystal_matrix_array)
+            for i in range(len(LocGrd_dC)):
+                if LocGrd_dC[i] == 0.:
+                    LocGrd_dC[i] = inputs.gradient_matrix_fractions[i]
+        else:
+            LocGrd_dC = Ss.anisotropic_gradient_settings(inputs, data, input_file)
+
+        TNA.anisotropic_gradient_expansion_ezp(inputs, LocGrd_dC)
+        inputs.coordinate_file = 'ezp_minimum' + Ex.assign_file_ending(inputs.program)
+
+    # Running through QHA
     if (inputs.method == 'SiQ') or (inputs.method == 'SiQg'):
         # Stepwise Isotropic QHA
         print("Performing Stepwise Isotropic Quasi-Harmonic Approximation")
@@ -68,15 +85,16 @@ def temperature_lattice_dynamics(inputs, data, input_file='input.yaml'):
         print("   Saving user specified properties in indipendent files:")
         Pr.Save_Properties(inputs, properties)
     elif (inputs.method == 'GaQ') or (inputs.method == 'GaQg'):
-        if any(inputs.gradient_matrix_fractions != 0.):
-            crystal_matrix_array = Ex.triangle_crystal_matrix_to_array(Ex.Lattice_parameters_to_Crystal_matrix(
-                Pr.Lattice_parameters(inputs.program, inputs.coordinate_file)))
-            LocGrd_dC = np.absolute(inputs.gradient_matrix_fractions * crystal_matrix_array)
-            for i in range(len(LocGrd_dC)):
-                if LocGrd_dC[i] == 0.:
-                    LocGrd_dC[i] = inputs.gradient_matrix_fractions[i]
-        else:
-            LocGrd_dC = Ss.anisotropic_gradient_settings(inputs, data, input_file)
+        if inputs.statistical_mechanics == 'Classical':
+            if any(inputs.gradient_matrix_fractions != 0.):
+                crystal_matrix_array = Ex.triangle_crystal_matrix_to_array(Ex.Lattice_parameters_to_Crystal_matrix(
+                    Pr.Lattice_parameters(inputs.program, inputs.coordinate_file)))
+                LocGrd_dC = np.absolute(inputs.gradient_matrix_fractions * crystal_matrix_array)
+                for i in range(len(LocGrd_dC)):
+                    if LocGrd_dC[i] == 0.:
+                        LocGrd_dC[i] = inputs.gradient_matrix_fractions[i]
+            else:
+                LocGrd_dC = Ss.anisotropic_gradient_settings(inputs, data, input_file)
 
         if inputs.anisotropic_type != '1D':
             print("Performing Gradient Anisotropic Quasi-Harmonic Approximation")
@@ -144,6 +162,7 @@ class Inputs:
 
         self.gradient_max_temperature = data['gradient']['max_temperature']
         self.gradient_numerical_step = data['gradient']['numerical_step']
+        self.zeta_numerical_step = data['gradient']['zeta_numerical_step']
         if self.method in ['GiQ', 'GiQg', 'GaQ', 'GaQg']:
             # Making sure all temperature outputs are less than the max temperature sampled during integration
             if any(self.temperature > self.gradient_max_temperature):
