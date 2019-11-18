@@ -297,16 +297,19 @@ def Classical_Vibrational_A(Temperature, wavenumbers):
     h = 2.520 * 10 ** (-38)  # Reduced Plank's constant in kcal*s
     k = 3.2998 * 10 ** (-27)  # Boltzmann constant in kcal/K
     Na = 6.022 * 10 ** 23  # Avogadro's number
-    beta = 1 / (k * Temperature)
     wavenumbers = np.sort(wavenumbers)
     A = []
-    for i in wavenumbers[3:]:  # Skipping the translational modes
-        if i > 0:  # Skipping negative wavenumbers
-            a = (1 / beta) * np.log(beta * h * i * c) * Na
-            A.append(a)
-        else:
-            pass
-    A = sum(A)
+    if Temperature == 0.:
+        A = 0.
+    else:
+        beta = 1 / (k * Temperature)
+        for i in wavenumbers[3:]:  # Skipping the translational modes
+            if i > 0:  # Skipping negative wavenumbers
+                a = (1 / beta) * np.log(beta * h * i * c) * Na
+                A.append(a)
+            else:
+                pass
+        A = sum(A)
     return A
 
 def Quantum_Vibrational_A(Temperature, wavenumbers):
@@ -314,12 +317,13 @@ def Quantum_Vibrational_A(Temperature, wavenumbers):
     h = 2.520 * 10 ** (-38)  # Reduced Plank's constant in kcal/s
     k = 3.2998 * 10 ** (-27)  # Boltzmann constant in kcal/K
     Na = 6.022 * 10 ** 23  # Avogadro's number
-    beta = 1 / (k * Temperature)
+    if Temperature != 0.:
+        beta = 1 / (k * Temperature)
     wavenumbers = np.sort(wavenumbers)
     A = []
     for i in wavenumbers[3:]:  # Skipping translational modes
         if i > 0:  # Skipping negative wavenumbers
-            if Temperature == 0:
+            if Temperature == 0.:
                 a = (h * i * c / 2) * Na
             else:
                 a = (h * i * c / 2 + (1 / beta) * np.log(1 - np.exp(- beta * h * i * c ))) * Na
@@ -330,17 +334,39 @@ def Quantum_Vibrational_A(Temperature, wavenumbers):
     return A
 
 
-# Entropy of a harmonic oscillator
 def Vibrational_Entropy(Temperature, wavenumbers, Statistical_mechanics):
-    if Statistical_mechanics == 'Classical' and Temperature != 0.:
-        S = Classical_Vibrational_S(Temperature, wavenumbers)
-    elif Statistical_mechanics == 'Quantum':
-        S = Quantum_Vibrational_S(Temperature, wavenumbers)
+    """
+    Function to call the vibraitonal entropy based off of a specific statistical mechanics
+    **Required Inputs
+    Temperature = single temperature in Kelvin to determine the vibrational entropy (does not work at 0 K)
+    wavenumbers = array of wavenumber (in order with the first three being 0 cm**-1 for the translational modes)
+    Statistical_mechanics = 'Classical'
+                            'Quantum'
+    """
+    if Temperature == 0.:
+        if Statistical_mechanics == 'Classical':
+            S = Classical_Vibrational_S(Temperature, wavenumbers)
+        elif Statistical_mechanics == 'Quantum':
+            S = Quantum_Vibrational_S(Temperature, wavenumbers)
     else:
         S = 0.
     return S
 
+def Vibrational_Helmholtz(Temperature, wavenumbers, Statistical_mechanics):
+    if Statistical_mechanics == 'Classical':
+        Av = Classical_Vibrational_A(Temperature, wavenumbers)
+    elif Statistical_mechanics == 'Quantum':
+        Av = Quantum_Vibrational_A(Temperature, wavenumbers)
+    return Av
+
+
 def Classical_Vibrational_S(Temperature, wavenumbers):
+    """
+    Funciton to calculate the classical vibrational entropy at a given temperature
+    **Required Inputs
+    Temperature = single temperature in Kelvin to determine the vibrational entropy (does not work at 0 K)
+    wavenumbers = array of wavenumber (in order with the first three being 0 cm**-1 for the translational modes)
+    """
     c = 2.998 * 10 ** 10  # Speed of light in cm/s
     h = 2.520 * 10 ** (-38)  # Reduced Plank's constant in cal*s
     k = 3.2998 * 10 ** (-27)  # Boltzmann constant in cal*K
@@ -357,7 +383,14 @@ def Classical_Vibrational_S(Temperature, wavenumbers):
     S = sum(S)
     return S
 
+
 def Quantum_Vibrational_S(Temperature, wavenumbers):
+    """
+    Funciton to calculate the quantum vibrational entropy at a given temperature
+    **Required Inputs
+    Temperature = single temperature in Kelvin to determine the vibrational entropy (does not work at 0 K)
+    wavenumbers = array of wavenumber (in order with the first three being 0 cm**-1 for the translational modes)
+    """
     c = 2.998 * 10 ** 10  # Speed of light in cm/s
     h = 2.520 * 10 ** (-38)  # Reduced Plank's constant in cal*s
     k = 3.2998 * 10 ** (-27)  # Boltzmann constant in cal*K
@@ -375,21 +408,45 @@ def Quantum_Vibrational_S(Temperature, wavenumbers):
     return S
 
 
-# Gibbs free energy for QHA
 def Gibbs_Free_Energy(Temperature, Pressure, Program, wavenumbers, Coordinate_file, Statistical_mechanics,
                       molecules_in_coord, **keyword_parameters):
+    """
+    Function to calculate the Gibbs free energy from the potential energy and vibrational Helmholtz free energy
+    **Required Inputs
+    Temperature = single temperature in Kelvin to determine the vibrational entropy (does not work at 0 K)
+    Pressure = single Pressure in atm
+    Program = 'Tinker' for Tinker Molecular Modeling
+              'Test' for a test run
+    wavenumbers = array of wavenumber (in order with the first three being 0 cm**-1 for the translational modes)
+    Coordinate_file = File containing lattice parameters and atom coordinates
+    Statistical_mechanics = 'Classical' Classical mechanics
+                            'Quantum' Quantum mechanics
+    molecules_in_coord = number of molecules in coordinate file
+    **Optional Inputs
+    Parameter_file = Optional input for program
+    """
     # Potential Energy
-    U = psf.Potential_energy(Coordinate_file, Program, Parameter_file=keyword_parameters['Parameter_file']) / \
-        molecules_in_coord
-
+    if Program == 'Tinker':
+        U = Tinker_U(Coordinate_file, keyword_parameters['Parameter_file']) / molecules_in_coord  # Potential Energy
+    elif Program == 'Test':
+        U = Test_U(Coordinate_file) / molecules_in_coord
+    elif Program == 'CP2K':
+        U = CP2K_U(Coordinate_file)
+    elif Program == 'QE':
+        U = QE_U(Coordinate_file)
     # Volume
     volume = Volume(Program=Program, Coordinate_file=Coordinate_file)
 
     # Helmholtz free energy
-    A = Vibrational_Helmholtz(Temperature, wavenumbers, Statistical_mechanics) / molecules_in_coord
+    if Statistical_mechanics == 'Classical':
+        if Temperature < 0.1:
+            A = Classical_Vibrational_A(Temperature, wavenumbers) / molecules_in_coord
+        else:
+            A = 0.
+    elif Statistical_mechanics == 'Quantum':
+        A = Quantum_Vibrational_A(Temperature, wavenumbers) / molecules_in_coord 
 
     # Gibbs Free energy
     G = U + A + PV_energy(Pressure, volume) / molecules_in_coord
     return G, U, A
-
 

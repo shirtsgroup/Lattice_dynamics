@@ -16,7 +16,7 @@ import program_specific_functions as psf
 ##########################################
 #           Numerical Methods            #
 ##########################################
-def Runge_Kutta_Fourth_Order(inputs, coordinate_file, temperature, **keyword_parameters):
+def Runge_Kutta_Fourth_Order(inputs, coordinate_file, temperature, zeta=-1., **keyword_parameters):
     """
     This function determines the gradient of thermal expansion of a strucutre between two temperatures using
     a forth order Runge-Kutta numerical analysis
@@ -66,8 +66,14 @@ def Runge_Kutta_Fourth_Order(inputs, coordinate_file, temperature, **keyword_par
         os.system('cp ' + coordinate_file + 'bv' + ' RK4' + file_ending + 'bv')
 
     # Setting the different temperature stepsizes
-    temperature_steps = np.array([0., inputs.gradient_numerical_step / 2., inputs.gradient_numerical_step / 2.,
-                                  inputs.gradient_numerical_step])
+    if zeta == -1.:
+        temperature_steps = np.array([0., inputs.gradient_numerical_step / 2., inputs.gradient_numerical_step / 2.,
+                                      inputs.gradient_numerical_step])
+        zeta_steps = np.zeros(4)
+    else:
+        temperature_steps = np.zeros(4)
+        zeta_steps = np.array([0., inputs.zeta_numerical_step / 2., inputs.zeta_numerical_step / 2.,
+                                      inputs.zeta_numerical_step])
 
     # Setting RK_4 array/matix and general parameters that aren't required for specific methods
     if (inputs.method == 'GiQ') or (inputs.method == 'GiQg'):
@@ -75,7 +81,7 @@ def Runge_Kutta_Fourth_Order(inputs, coordinate_file, temperature, **keyword_par
         RK_grad = np.zeros(4)
     elif (inputs.method == 'GaQ') or (inputs.method == 'GaQg'):
         # Setting array to save 4 gradients for the six different strains d\eta/dT
-        if inputs.anisotropic_type == '1D':
+        if inputs.anisotropic_type == '1D' and zeta == -1.:
             RK_grad = np.zeros(6)
         else:
             RK_grad = np.zeros((4, 6))
@@ -96,11 +102,11 @@ def Runge_Kutta_Fourth_Order(inputs, coordinate_file, temperature, **keyword_par
                                   Volume_Reference=keyword_parameters['Volume_Reference'])
 
         elif (inputs.method == 'GaQ') or (inputs.method == 'GaQg'):
-            if inputs.anisotropic_type != '1D':
+            if inputs.anisotropic_type != '1D' or zeta != -1.:
                 # Determining the slope at the current RK step
                 RK_grad[i], wavenumbers_hold, left_minimum = \
-                    Ex.Call_Expansion(inputs, 'local_gradient', 'RK4' + file_ending, Temperature=temperature +
-                                                                                                 temperature_steps[i],
+                    Ex.Call_Expansion(inputs, 'local_gradient', 'RK4' + file_ending, zeta=zeta + zeta_steps[i], 
+                                      Temperature=temperature + temperature_steps[i],
                                       LocGrd_dC=keyword_parameters['LocGrd_dC'],
                                       Gruneisen=keyword_parameters['Gruneisen'],
                                       Wavenumber_Reference=keyword_parameters['Wavenumber_Reference'],
@@ -139,6 +145,8 @@ def Runge_Kutta_Fourth_Order(inputs, coordinate_file, temperature, **keyword_par
                 if inputs.anisotropic_type != '1D':
                     # For anisotropic expansion, determining the strain of th input strucutre for the next step
                     RK_crystal_matrix = Ex.array_to_triangle_crystal_matrix(RK_grad[i] * temperature_steps[i + 1])
+                elif zeta != -1.:
+                    RK_crystal_matrix = Ex.array_to_triangle_crystal_matrix(RK_grad[i] * zeta_steps[i])
                 else:
                     # For anisotropic expansion, determining the strain of th input strucutre for the next step
                     RK_crystal_matrix = Ex.array_to_triangle_crystal_matrix(RK_grad[i] * temperature_steps[i + 1] *
@@ -964,7 +972,6 @@ def Anisotropic_Gradient_Expansion_1D(inputs, LocGrd_dC):
     # Original coordinate file is used for 0K
     subprocess.call(['cp', inputs.coordinate_file, inputs.output + '_' + inputs.method + 'T' + str(temperature[0])
                      + file_ending])
-
     LocGrd_dLambda = Ss.anisotropic_gradient_settings_1D(inputs, dC_dLambda)
 
     # Setting a place to store dLambda/dT
@@ -1092,3 +1099,93 @@ def Anisotropic_Gradient_Expansion_1D(inputs, LocGrd_dC):
     print("   All properties have been saved in " + inputs.output + "_raw.npy")
     np.save(inputs.output+'_raw', properties)
     return properties
+
+
+def anisotropic_gradient_expansion_ezp(inputs, LocGrd_dC):
+    # Setting file endings and determining how many wavenumbers there will be
+    file_ending = Ex.assign_file_ending(inputs.program)
+    number_of_modes = int(Pr.atoms_count(inputs.program, inputs.coordinate_file) * 3)
+
+    # Setting the array of zeta points for turning on the zero point energy
+    zetas = np.arange(0, 1 + inputs.zeta_numerical_step, inputs.zeta_numerical_step)
+
+    # Setting the volume gradient array to be filled
+    crystal_matrix_gradient = np.zeros((len(zetas), 2, 7))
+    crystal_matrix_gradient[:, 0, 0] = zetas[:len(zetas)]
+
+    # Setting up a matrix to store the wavenumbers in
+    wavenumbers = np.zeros((len(zetas), number_of_modes + 1))
+    wavenumbers[:, 0] = zetas
+
+    if inputs.method == 'GaQg':
+        # Setting parameters for the Gruneisen parameter and loading in previously found wavenumbers for SiQ
+        gruneisen, wavenumber_reference = Wvn.Call_Wavenumbers(inputs)
+
+    elif inputs.method == 'GaQ':
+        # Setting parameters for Gruneisen parameter that won't be used (blank variable)
+        gruneisen = 0.
+        wavenumber_reference = 0.
+        if os.path.isfile(inputs.output + '_WVN_' + inputs.method + '.npy'):
+            # If a npy file of wavenumbers exist, pulling those in to use
+            wavenumbers_hold = np.load(inputs.output + '_WVN_' + inputs.method + '.npy')
+            if len(wavenumbers_hold[:, 0]) <= len(wavenumbers[:, 0]):
+                if all(wavenumbers_hold[:, 0] == wavenumbers[:len(wavenumbers_hold[:, 0]), 0]):
+                    # If the temperatures line up in the previous wavenumber matrix, it will be used in the current run
+                    print("   Using wavenumbers already computed in: " + inputs.output + "_WVN_" + inputs.method
+                          + ".npy")
+                    wavenumbers[:len(wavenumbers_hold[:, 0]), :] = wavenumbers_hold
+
+    # Original coordinate file is used for 0K
+    subprocess.call(['cp', inputs.coordinate_file, inputs.output + '_' + inputs.method + 'EZP' + str(0.0) +
+                     file_ending])
+
+    # Keeping track of the strain applied to the system [3 diagonal, 3 off-diagonal]
+    ref_crystal_matrix = Ex.Lattice_parameters_to_Crystal_matrix(Pr.Lattice_parameters(inputs.program,
+                                                                                       inputs.coordinate_file))
+
+    # Finding structures at higher temperatures
+    for i in range(len(zetas) - 1):
+        left_minimum = False
+        print("   Determining local gradient and thermal properties at: " + str(zetas[i]) + " K")
+        # Using a numerical method to determine the gradient of the strains with thermal expansion
+        if inputs.gradient_numerical_method == 'RK4':
+            crystal_matrix_gradient[i, 0, 1:], wavenumbers[i, 1:], ignore, crystal_matrix_gradient[i, 1, 1:] = \
+                    Runge_Kutta_Fourth_Order(inputs, inputs.output + '_' + inputs.method + 'EZP' +
+                                             str(zetas[i]) + file_ending, 0., zeta=zetas[i], LocGrd_dC=LocGrd_dC,
+                                             Gruneisen=gruneisen, Wavenumber_Reference=wavenumber_reference,
+                                             ref_crystal_matrix=ref_crystal_matrix)
+            if np.isnan(ignore):
+                left_minimum = True
+        elif inputs.gradient_numerical_method == 'Euler':
+            crystal_matrix_gradient[i, 0, 1:], wavenumbers[i, 1:], left_minimum = \
+                    Ex.Call_Expansion(inputs, 'local_gradient', inputs.output + '_' + inputs.method + 'EZP' +
+                                      str(zetas[i]) + file_ending, Temperature=0.,
+                                      LocGrd_dC=LocGrd_dC, Gruneisen=gruneisen,
+                                      Wavenumber_Reference=wavenumber_reference,
+                                      ref_crystal_matrix=ref_crystal_matrix, zeta=zetas[i])
+            if left_minimum == True:
+                crystal_matrix_gradient[i, :, 1:] = np.nan
+                wavenumbers[i, 1:] = np.nan
+            # Setting the local gradient equal to the step gradient
+            else:
+                crystal_matrix_gradient[i, 1, 1:] = crystal_matrix_gradient[i, 0, 1:]
+
+        # Changing the applied strain to the new expanded structure
+        if os.path.isfile('Cords/' + inputs.output + '_' + inputs.method + 'EZP' + str(zetas[i + 1]) + file_ending):
+            subprocess.call(['cp', 'Cords/' + inputs.output + '_' + inputs.method + 'EZP' + str(zetas[i + 1]) +
+                             file_ending, './'])
+        else:
+            # Expanding to the next structure using the strain gradient to the next zeta step
+            Ex.Call_Expansion(inputs, 'expand', inputs.output + '_' + inputs.method + 'EZP' + str(zetas[i])
+                              + file_ending,
+                              dcrystal_matrix=Ex.array_to_triangle_crystal_matrix(crystal_matrix_gradient[i, 0, 1:] *
+                                                                                  inputs.zeta_numerical_step),
+                              output_file=inputs.output + '_' + inputs.method + 'EZP' + str(zetas[i + 1]))
+
+        # Moving the current structure to the Cords directory
+        subprocess.call(['mv', inputs.output + '_' + inputs.method + 'EZP' + str(zetas[i]) + file_ending, 'Cords/'])
+        if zetas[i + 1] == 1.:
+            subprocess.call(['cp', inputs.output + '_' + inputs.method + 'EZP' + str(zetas[i + 1]) + file_ending, 
+                             'ezp_minimum' + file_ending])
+            subprocess.call(['mv', inputs.output + '_' + inputs.method + 'EZP' + str(zetas[i + 1]) + file_ending, 'Cords/'])
+

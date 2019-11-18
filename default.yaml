@@ -21,6 +21,7 @@ gradient:
    vol_fraction: 
    matrix_fractions:
    anisotropic_type: 1D
+   zeta_numerical_step: 0.5
 stepwise:
    volume_fraction_stepsize: 0.01
    volume_fraction_lower: 0.99
