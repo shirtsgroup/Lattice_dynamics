@@ -343,7 +343,7 @@ def Vibrational_Entropy(Temperature, wavenumbers, Statistical_mechanics):
     Statistical_mechanics = 'Classical'
                             'Quantum'
     """
-    if Temperature == 0.:
+    if Temperature != 0.:
         if Statistical_mechanics == 'Classical':
             S = Classical_Vibrational_S(Temperature, wavenumbers)
         elif Statistical_mechanics == 'Quantum':
