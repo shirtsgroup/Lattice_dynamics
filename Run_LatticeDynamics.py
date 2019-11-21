@@ -13,6 +13,7 @@ import Expand as Ex
 import System_sensitivity as Ss
 import pressure_setup as ps
 import yaml
+import program_specific_functions as psf 
 
 path = os.path.realpath(__file__).strip('Run_LatticeDynamics.py')
 
@@ -42,7 +43,7 @@ def temperature_lattice_dynamics(inputs, data, input_file='input.yaml'):
             np.save(inputs.output + '_raw', properties)
             print("   Saving user specified properties in indipendent files:")
             Pr.Save_Properties(inputs, properties)
-
+        exit()
     else:
         if os.path.isdir('Cords') != True:
             print("Creating directory 'Cords/' to store structures along Gibbs free energy path")
@@ -52,7 +53,7 @@ def temperature_lattice_dynamics(inputs, data, input_file='input.yaml'):
     if inputs.statistical_mechanics == 'Quantum':
         if any(inputs.gradient_matrix_fractions != 0.):
             crystal_matrix_array = Ex.triangle_crystal_matrix_to_array(Ex.Lattice_parameters_to_Crystal_matrix(
-                Pr.Lattice_parameters(inputs.program, inputs.coordinate_file)))
+                psf.Lattice_parameters(inputs.program, inputs.coordinate_file)))
             LocGrd_dC = np.absolute(inputs.gradient_matrix_fractions * crystal_matrix_array)
             for i in range(len(LocGrd_dC)):
                 if LocGrd_dC[i] == 0.:
@@ -61,7 +62,7 @@ def temperature_lattice_dynamics(inputs, data, input_file='input.yaml'):
             LocGrd_dC = Ss.anisotropic_gradient_settings(inputs, data, input_file)
 
         TNA.anisotropic_gradient_expansion_ezp(inputs, LocGrd_dC)
-        inputs.coordinate_file = 'ezp_minimum' + Ex.assign_file_ending(inputs.program)
+        inputs.coordinate_file = 'ezp_minimum' + psf.assign_coordinate_file_ending(inputs.program)
 
     # Running through QHA
     if (inputs.method == 'SiQ') or (inputs.method == 'SiQg'):
@@ -88,7 +89,7 @@ def temperature_lattice_dynamics(inputs, data, input_file='input.yaml'):
         if inputs.statistical_mechanics == 'Classical':
             if any(inputs.gradient_matrix_fractions != 0.):
                 crystal_matrix_array = Ex.triangle_crystal_matrix_to_array(Ex.Lattice_parameters_to_Crystal_matrix(
-                    Pr.Lattice_parameters(inputs.program, inputs.coordinate_file)))
+                    psf.Lattice_parameters(inputs.program, inputs.coordinate_file)))
                 LocGrd_dC = np.absolute(inputs.gradient_matrix_fractions * crystal_matrix_array)
                 for i in range(len(LocGrd_dC)):
                     if LocGrd_dC[i] == 0.:

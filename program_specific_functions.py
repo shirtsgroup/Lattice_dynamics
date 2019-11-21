@@ -346,7 +346,7 @@ def Test_Wavenumber(Coordinate_file, ref_crystal_matrix, function='Test3', Gru=F
             elif np.all(ref_crystal_matrix == False):
                 strain = np.zeros(6)
             else:
-                new_crystal_matrix = Ex.Lattice_parameters_to_Crystal_matrix(Pr.Lattice_parameters('Test',
+                new_crystal_matrix = Ex.Lattice_parameters_to_Crystal_matrix(Lattice_parameters('Test',
                                                                                                    Coordinate_file))
                 strain = Pr.RotationFree_StrainArray_from_CrystalMatrix(ref_crystal_matrix, new_crystal_matrix)
                 if Gru == True:

@@ -269,7 +269,7 @@ def Setup_Anisotropic_Gruneisen(inputs):
             applied_strain[i] = inputs.gruneisen_matrix_strain_stepsize
 # This next part should be made more general
             Wavenumber_expand = psf.Test_Wavenumber(expanded_coordinates[i] + file_ending,
-                                                Ex.Lattice_parameters_to_Crystal_matrix(Pr.Test_Lattice_Parameters(
+                                                Ex.Lattice_parameters_to_Crystal_matrix(psf.Test_Lattice_Parameters(
                                                     inputs.coordinate_file)), Gru=True)
 
             Gruneisen[3:, i] = -(np.log(Wavenumber_expand[3:]) - np.log(Wavenumber_Reference[3:])) \
@@ -280,7 +280,7 @@ def Setup_Anisotropic_Gruneisen(inputs):
 
 def Get_Aniso_Gruneisen_Wavenumbers(Gruneisen, Wavenumber_Reference, ref_crystal_matrix, Coordinate_file, Program):
     # Setting a blank array for new wavenumbers
-    new_crystal_matrix = Ex.Lattice_parameters_to_Crystal_matrix(Pr.Lattice_parameters(Program, Coordinate_file))
+    new_crystal_matrix = Ex.Lattice_parameters_to_Crystal_matrix(psf.Lattice_parameters(Program, Coordinate_file))
     applied_strain = Pr.RotationFree_StrainArray_from_CrystalMatrix(ref_crystal_matrix, new_crystal_matrix)
 
     wavenumbers = np.zeros(len(Wavenumber_Reference))

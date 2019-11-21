@@ -773,7 +773,7 @@ def Anisotropic_Gradient_Expansion(inputs, LocGrd_dC):
                      file_ending])
 
     # Keeping track of the strain applied to the system [3 diagonal, 3 off-diagonal]
-    ref_crystal_matrix = Ex.Lattice_parameters_to_Crystal_matrix(Pr.Lattice_parameters(inputs.program,
+    ref_crystal_matrix = Ex.Lattice_parameters_to_Crystal_matrix(psf.Lattice_parameters(inputs.program,
                                                                                        inputs.coordinate_file))
 
     # Finding structures at higher temperatures
@@ -946,7 +946,7 @@ def Anisotropic_Gradient_Expansion_1D(inputs, LocGrd_dC):
                     wavenumbers[:len(wavenumbers_hold[:, 0]), :] = wavenumbers_hold
 
     # Keeping track of the strain applied to the system [3 diagonal, 3 off-diagonal]
-    ref_crystal_matrix = Ex.Lattice_parameters_to_Crystal_matrix(Pr.Lattice_parameters(inputs.program,
+    ref_crystal_matrix = Ex.Lattice_parameters_to_Crystal_matrix(psf.Lattice_parameters(inputs.program,
                                                                                        inputs.coordinate_file))
 
     # Setting the volume gradient array to be filled
@@ -1103,8 +1103,8 @@ def Anisotropic_Gradient_Expansion_1D(inputs, LocGrd_dC):
 
 def anisotropic_gradient_expansion_ezp(inputs, LocGrd_dC):
     # Setting file endings and determining how many wavenumbers there will be
-    file_ending = Ex.assign_file_ending(inputs.program)
-    number_of_modes = int(Pr.atoms_count(inputs.program, inputs.coordinate_file) * 3)
+    file_ending = psf.assign_coordinate_file_ending(inputs.program)
+    number_of_modes = int(psf.atoms_count(inputs.program, inputs.coordinate_file) * 3)
 
     # Setting the array of zeta points for turning on the zero point energy
     zetas = np.arange(0, 1 + inputs.zeta_numerical_step, inputs.zeta_numerical_step)
@@ -1140,7 +1140,7 @@ def anisotropic_gradient_expansion_ezp(inputs, LocGrd_dC):
                      file_ending])
 
     # Keeping track of the strain applied to the system [3 diagonal, 3 off-diagonal]
-    ref_crystal_matrix = Ex.Lattice_parameters_to_Crystal_matrix(Pr.Lattice_parameters(inputs.program,
+    ref_crystal_matrix = Ex.Lattice_parameters_to_Crystal_matrix(psf.Lattice_parameters(inputs.program,
                                                                                        inputs.coordinate_file))
 
     # Finding structures at higher temperatures

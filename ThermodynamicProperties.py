@@ -47,7 +47,8 @@ def Properties(inputs: list, Coordinate_file: int, wavenumbers: list, Temperatur
 
     properties[0] = Temperature  # Temperature
     properties[1] = inputs.pressure  # Pressure
-    properties[3] = psf.Potential_energy(Coordinate_file, inputs.program, inputs.tinker_parameter_file)  # Potential Energy
+    properties[3] = psf.Potential_energy(Coordinate_file, inputs.program, inputs.tinker_parameter_file) / \
+                    inputs.number_of_molecules  # Potential Energy
     properties[7:13] = psf.Lattice_parameters(inputs.program, Coordinate_file)  # Lattice parameters
     properties[6] = Volume(lattice_parameters=properties[7:13])  # Volume
     properties[4] = Vibrational_Helmholtz(Temperature, wavenumbers, inputs.statistical_mechanics) / \
@@ -426,20 +427,14 @@ def Gibbs_Free_Energy(Temperature, Pressure, Program, wavenumbers, Coordinate_fi
     Parameter_file = Optional input for program
     """
     # Potential Energy
-    if Program == 'Tinker':
-        U = Tinker_U(Coordinate_file, keyword_parameters['Parameter_file']) / molecules_in_coord  # Potential Energy
-    elif Program == 'Test':
-        U = Test_U(Coordinate_file) / molecules_in_coord
-    elif Program == 'CP2K':
-        U = CP2K_U(Coordinate_file)
-    elif Program == 'QE':
-        U = QE_U(Coordinate_file)
+    U = psf.Potential_energy(Coordinate_file, Program, Parameter_file=keyword_parameters['Parameter_file']) / molecules_in_coord
+
     # Volume
     volume = Volume(Program=Program, Coordinate_file=Coordinate_file)
 
     # Helmholtz free energy
     if Statistical_mechanics == 'Classical':
-        if Temperature < 0.1:
+        if Temperature != 0.: #> 0.1:
             A = Classical_Vibrational_A(Temperature, wavenumbers) / molecules_in_coord
         else:
             A = 0.

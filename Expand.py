@@ -235,6 +235,8 @@ def Expand_Structure(Coordinate_file, Program, Expansion_type, molecules_in_coor
     Parameter_file = program specific file containingforce field parameters
     """
     if Program == 'Test':
+        coordinates = ''
+        keyword_parameters['Parameter_file'] = ''
         lattice_parameters = psf.Lattice_parameters(Program, Coordinate_file)
         crystal_matrix = Lattice_parameters_to_Crystal_matrix(lattice_parameters)
         if Expansion_type == 'lattice_parameters':
@@ -356,9 +358,6 @@ def Isotropic_Local_Gradient(inputs, coordinate_file, temperature, LocGrd_dV, **
     if temperature == 0.:
         temperature = 1e-03
 
-    if zeta == 0.:
-        zeta = 1e-04
-
     # Calculating the numerator of the local gradient -dS/dV
     dS = (Pr.Vibrational_Entropy(temperature, wavenumbers_plus, inputs.statistical_mechanics) /
           inputs.number_of_molecules - Pr.Vibrational_Entropy(temperature, wavenumbers_minus,
@@ -462,9 +461,14 @@ def Anisotropic_Local_Gradient(inputs, coordinate_file, temperature, LocGrd_dC, 
     # Making array for dG/dC
     dG_dC = np.zeros((6, 3))
 
-    if temperature == 0. and zeta == -1.:
+    if temperature == 0. and zeta == -1. and inputs.statistical_mechanics == 'Classical':
         # If temperature is zero, we assume that the local gradient is the same at 0.1K
-        temperature = 1e-1
+        temperature = 0.0001
+    elif temperature == 0. and zeta == -1. and inputs.statistical_mechanics == 'Quantum':
+        # If temperature is zero, we assume that the local gradient is the same at 0.1K
+        temperature = 0.1
+    elif zeta == 0.:
+        zeta = 0.0001
 
     # Modified anisotropic Local Gradient
     if (inputs.anisotropic_type == '6D') or ((inputs.anisotropic_type == '1D') and not os.path.isfile(inputs.output + '_dC_' + inputs.method + '.npy')):
@@ -483,10 +487,14 @@ def Anisotropic_Local_Gradient(inputs, coordinate_file, temperature, LocGrd_dC, 
                                        Gruneisen=keyword_parameters['Gruneisen'],
                                        Wavenumber_Reference=keyword_parameters['Wavenumber_Reference'])
 
-    dG_dict['0'], U_0, Av_0 = Pr.Gibbs_Free_Energy(temperature, inputs.pressure, inputs.program, wavenumbers,
+    G_hold, U_0, Av_0 = Pr.Gibbs_Free_Energy(temperature, inputs.pressure, inputs.program, wavenumbers,
                                                    coordinate_file, inputs.statistical_mechanics,
                                                    inputs.number_of_molecules,
                                                    Parameter_file=inputs.tinker_parameter_file)
+
+    PV_0 = G_hold - U_0 - Av_0
+    dG_dict['0'] = U_0 + Av_0*np.absolute(zeta) + PV_0
+
     Av_0 *= zeta
     for i in range(diag_limit):
         # Calculating the diagonals of ddG_ddeta and the vector dS_deta
@@ -526,11 +534,27 @@ def Anisotropic_Local_Gradient(inputs, coordinate_file, temperature, LocGrd_dC, 
 
         # Computing the derivative of entropy as a funciton of strain using a finite difference approach
         if zeta == -1.:
-            Sp = Pr.Vibrational_Entropy(temperature, wavenumbers_dict['p'], inputs.statistical_mechanics) / \
-                 inputs.number_of_molecules
-            Sm = Pr.Vibrational_Entropy(temperature, wavenumbers_dict['m'], inputs.statistical_mechanics) / \
-                 inputs.number_of_molecules
-            dS_dC[i] = (Sp - Sm) / (2 * LocGrd_dC[i])
+            if temperature < 1.0 and inputs.statistical_mechanics == 'Quantum':
+                # The limit of quantum entropy blows up at low T so computing -d^2 G / d C^2
+                Gpp,_,_ = Pr.Gibbs_Free_Energy(temperature + 0.05, inputs.pressure, inputs.program, wavenumbers_dict['p'], 'p' + file_ending,
+                                               inputs.statistical_mechanics, inputs.number_of_molecules,
+                                               Parameter_file=inputs.tinker_parameter_file)
+                Gpm,_,_ = Pr.Gibbs_Free_Energy(temperature - 0.05, inputs.pressure, inputs.program, wavenumbers_dict['p'], 'p' + file_ending,
+                                               inputs.statistical_mechanics, inputs.number_of_molecules,
+                                               Parameter_file=inputs.tinker_parameter_file)
+                Gmp,_,_ = Pr.Gibbs_Free_Energy(temperature + 0.05, inputs.pressure, inputs.program, wavenumbers_dict['m'], 'm' + file_ending,
+                                               inputs.statistical_mechanics, inputs.number_of_molecules,
+                                               Parameter_file=inputs.tinker_parameter_file)
+                Gmm,_,_ = Pr.Gibbs_Free_Energy(temperature - 0.05, inputs.pressure, inputs.program, wavenumbers_dict['m'], 'm' + file_ending,
+                                               inputs.statistical_mechanics, inputs.number_of_molecules,
+                                               Parameter_file=inputs.tinker_parameter_file)
+                dS_dC[i] = - (Gpp - Gpm - Gpm + Gmm) / (4 * (temperature * 0.01) * LocGrd_dC[i])
+            else: 
+                Sp = Pr.Vibrational_Entropy(temperature, wavenumbers_dict['p'], inputs.statistical_mechanics) / \
+                     inputs.number_of_molecules
+                Sm = Pr.Vibrational_Entropy(temperature, wavenumbers_dict['m'], inputs.statistical_mechanics) / \
+                     inputs.number_of_molecules
+                dS_dC[i] = (Sp - Sm) / (2 * LocGrd_dC[i])
         else:
             dzeta = inputs.zeta_numerical_step * 0.05
             ddG_dCdzeta[i] = ((U[i, 1] + PV[i, 1] + Av[i, 1]*(zeta + dzeta)) 
@@ -606,6 +630,7 @@ def Anisotropic_Local_Gradient(inputs, coordinate_file, temperature, LocGrd_dC, 
         left_minimum = NO.aniso_gradient(dG_dC, ddG_ddC, dS_dC, dC_dT)
     else:
         dC_dT = np.linalg.lstsq(ddG_ddC, - ddG_dCdzeta, rcond=None)[0]
+        print(dC_dT)
         left_minimum = False
     return dC_dT, wavenumbers, left_minimum
 

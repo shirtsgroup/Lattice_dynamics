@@ -119,7 +119,7 @@ def anisotropic_gradient_settings(inputs, data, input_file):
     U = np.zeros((6, n_steps))
 
     # Determining the tensor parameters of the input file
-    crystal_matrix = Ex.Lattice_parameters_to_Crystal_matrix(Pr.Lattice_parameters(inputs.program,
+    crystal_matrix = Ex.Lattice_parameters_to_Crystal_matrix(psf.Lattice_parameters(inputs.program,
                                                                                    inputs.coordinate_file))
     crystal_matrix_array = Ex.triangle_crystal_matrix_to_array(crystal_matrix)
 

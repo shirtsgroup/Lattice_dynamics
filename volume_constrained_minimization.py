@@ -17,7 +17,7 @@ def constrained_minimization(Coordinate_file, Program, molecules_in_coord=1, min
     file_ending = psf.assign_coordinate_file_ending(Program)
 
     # Determining the lattice parameters and volume of the input coordinate file
-    lp_0 = Pr.Lattice_parameters(Program, Coordinate_file)
+    lp_0 = psf.Lattice_parameters(Program, Coordinate_file)
     V0 = Pr.Volume(lattice_parameters=lp_0)
     cm_0 = Ex.triangle_crystal_matrix_to_array(Ex.Lattice_parameters_to_Crystal_matrix(lp_0))
 
@@ -158,7 +158,7 @@ def Return_U_from_Aniso_Expand(new_crystal_matrix, coordinate_file, Parameter_fi
     file_ending = psf.assign_coordinate_file_ending(Program)
 
     # Determine the input coordinate files lattice parameters
-    old_lattice_parameters = Pr.Lattice_parameters(Program, coordinate_file)
+    old_lattice_parameters = psf.Lattice_parameters(Program, coordinate_file)
 
     # Expand input coordinate file using the new lattice parameters
     Ex.Expand_Structure(coordinate_file, Program, 'lattice_parameters', molecules_in_coord, output_file_name,

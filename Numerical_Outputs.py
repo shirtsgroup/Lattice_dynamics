@@ -6,6 +6,7 @@ import numpy as np
 import Expand as Ex
 import ThermodynamicProperties as Pr
 import Wavenumbers as Wvn
+import program_specific_functions as psf
 
 #######################################################################################################################
 ##############                                    General Funcitons                                       #############
@@ -81,7 +82,7 @@ def start_RK(T_0, dT):
 
 def step_RK(index, T, Program, Coordinate_file):
     write_out('///   RUNGE-KUTTA Step ' + str(index + 1) + ' at T = ' + str(T)+ 'K   ///   \n')
-    lattice_parameters = Pr.Lattice_parameters(Program, Coordinate_file)
+    lattice_parameters = psf.Lattice_parameters(Program, Coordinate_file)
     write_out('Lattice vectors [Ang.^3] = \n')
     numpy_write_out(lattice_parameters[:3])
     write_out('Lattice angles [Degrees] = \n')
@@ -99,7 +100,7 @@ def end_RK(k_values):
 
 def gradient_output(T, Program, Coordinate_file):
     write_out('//////////////// Gradient at ' + str(T) + 'K ////////////////\n')
-    lattice_parameters = Pr.Lattice_parameters(Program, Coordinate_file)
+    lattice_parameters = psf.Lattice_parameters(Program, Coordinate_file)
     write_out('Lattice vectors [Ang.^3] = \n')
     numpy_write_out(lattice_parameters[:3])
     write_out('Lattice angles [Degrees] = \n')

@@ -26,7 +26,7 @@ n_samples = 200
 file_ending = psf.assign_coordinate_file_ending(Program)
 
 
-lattice_parameters = Pr.Lattice_parameters(Program, Coordinate_file)
+lattice_parameters = psf.Lattice_parameters(Program, Coordinate_file)
 fractional_change = np.random.normal(0., 0.02, (n_samples,6))
 
 dlattice_parameters = (fractional_change * lattice_parameters)
