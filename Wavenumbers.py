@@ -214,68 +214,67 @@ def Get_Iso_Gruneisen_Wavenumbers(Gruneisen, Wavenumber_Reference, Volume_Refere
 ##########################################
 # Strain Ansotropic Gruneisen Parameter  #
 ##########################################
+
 def Setup_Anisotropic_Gruneisen(inputs):
+    number_of_modes = int(3 * psf.atoms_count(inputs.program, inputs.coordinate_file))
+
+    file_ending = psf.assign_coordinate_file_ending(inputs.program)
+
     # Starting by straining the crystal in the six principal directions
     re_run = False
-    if os.path.isfile('GRU_wvn.npy'):
-        hold_wvn = np.load('GRU_wvn.npy')
+    if os.path.isfile('GRU_wvn.npy') and os.path.isfile('GRU_eigen.npy'):
+        wavenumbers = np.load('GRU_wvn.npy')
+        eigenvectors = np.load('GRU_eigen.npy')
         re_run = True
+    else:
+        wavenumbers = np.zeros((7, number_of_modes))
+        eigenvectors = np.zeros((7, number_of_modes, number_of_modes))
+        NO.start_anisoGru()
 
+    # Computing the reference wavenumbers and eigenvectors
+    wavenumbers[0], eigenvectors[0] = psf.Wavenumber_and_Vectors(inputs.program, inputs.coordinate_file,
+                                                                 inputs.tinker_parameter_file)
     for i in range(6):
-        if (re_run == True) and (hold_wvn[i + 1, 3] != 0.):
+        if (re_run == True) and (wavenumbers[i + 1, 3] != 0.):
             pass
         else:
             # Making expanded structures in th direction of the six principal strains
             applied_strain = np.zeros(6)
             applied_strain[i] = inputs.gruneisen_matrix_strain_stepsize
             Ex.Expand_Structure(inputs.coordinate_file, inputs.program, 'strain', inputs.number_of_molecules,
-                                'temp_' + str(i), inputs.min_rms_gradient, strain=Ex.strain_matrix(applied_strain),
+                                'temp', inputs.min_rms_gradient, strain=Ex.strain_matrix(applied_strain),
                                 crystal_matrix=
                                 Ex.Lattice_parameters_to_Crystal_matrix(
                                     psf.Lattice_parameters(inputs.program, inputs.coordinate_file)),
                                 Parameter_file=inputs.tinker_parameter_file)
 
-    # Setting an array of the names of expanded strucutres
-    expanded_coordinates = ['temp_0', 'temp_1', 'temp_2', 'temp_3', 'temp_4', 'temp_5']
+            # Computing the strained wavenumbers and eigenvectors
+            wavenumbers_unorganized, eigenvectors_unorganized = \
+                psf.Wavenumber_and_Vectors(inputs.program, 'temp' + file_ending, inputs.tinker_parameter_file)
 
-    if inputs.program == 'Tinker':
-        file_ending = '.xyz'
+            # Determining how the strained eigenvectors match up with the reference structure
+            z, weight = matching_eigenvectors_of_modes(number_of_modes, eigenvectors[0], eigenvectors_unorganized)
+            NO.GRU_weight(weight)
 
-        # Organizing the Tinker wavenumbers
-        Organized_wavenumbers = Tinker_Gru_organized_wavenumbers('Anisotropic', inputs.coordinate_file,
-                                                                 [s + '.xyz' for s in expanded_coordinates],
-                                                                 inputs.tinker_parameter_file)
+            # Re-organizing the expanded wavenumbers
+            wavenumbers[i + 1], eigenvectors[i + 1] = reorder_modes(z, wavenumbers_unorganized,
+                                                                    eigenvectors_unorganized)
 
-        # Setting aside the reference wavenumbers
-        Wavenumber_Reference = Organized_wavenumbers[0]
+            # Saving the eigenvectors and wavenumbers
+            np.save('GRU_eigen', eigenvectors)
+            np.save('GRU_wvn', wavenumbers)
 
-        # Setting a blank matrix to save the Gruneisen parameters in
-        Gruneisen = np.zeros((len(Wavenumber_Reference), 6))
+            # Removing the strained coordinate file
+            subprocess.call(['rm', 'temp' + file_ending])
 
-        for i in range(6):
-            # Calculating the Gruneisen parameters
-            Gruneisen[3:, i] = -(np.log(Organized_wavenumbers[i + 1, 3:]) - np.log(Wavenumber_Reference[3:])) \
-                               / inputs.gruneisen_matrix_strain_stepsize
-            subprocess.call(['rm', expanded_coordinates[i] + file_ending])
+    # Setting a blank matrix to save the Gruneisen parameters in
+    gruneisen = np.zeros((number_of_modes, 6))
 
-    elif inputs.program == 'Test':
-        file_ending = '.npy'
-# This next part should be made more general
-        Wavenumber_Reference = psf.Test_Wavenumber(inputs.coordinate_file, False)
-        Gruneisen = np.zeros((len(Wavenumber_Reference), 6))
-
-        for i in range(6):
-            applied_strain = np.zeros(6)
-            applied_strain[i] = inputs.gruneisen_matrix_strain_stepsize
-# This next part should be made more general
-            Wavenumber_expand = psf.Test_Wavenumber(expanded_coordinates[i] + file_ending,
-                                                Ex.Lattice_parameters_to_Crystal_matrix(psf.Test_Lattice_Parameters(
-                                                    inputs.coordinate_file)), Gru=True)
-
-            Gruneisen[3:, i] = -(np.log(Wavenumber_expand[3:]) - np.log(Wavenumber_Reference[3:])) \
-                               / inputs.gruneisen_matrix_strain_stepsize
-            subprocess.call(['rm', expanded_coordinates[i] + file_ending])
-    return Gruneisen, Wavenumber_Reference
+    for i in range(6):
+        # Calculating the Gruneisen parameters
+        gruneisen[3:, i] = -(np.log(wavenumbers[i + 1, 3:]) - np.log(wavenumbers[0, 3:])) \
+                           / inputs.gruneisen_matrix_strain_stepsize
+    return gruneisen, wavenumbers[0]
 
 
 def Get_Aniso_Gruneisen_Wavenumbers(Gruneisen, Wavenumber_Reference, ref_crystal_matrix, Coordinate_file, Program):
@@ -443,11 +442,4 @@ def QE_Gru_organized_wavenumbers(Expansion_type, Coordinate_file, Expanded_Coord
         for i in z:
             wavenumbers_out[k, i[0]] = wavenumbers[k, i[1]]
     return wavenumbers_out
-
-
-# Getting the wavenumbers and vectors from the programs
-
-
-
-
 
