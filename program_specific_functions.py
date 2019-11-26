@@ -12,85 +12,171 @@ import ThermodynamicProperties as Pr
 ######################                           General Functions                              ########################
 ########################################################################################################################
 
-def Potential_energy(Coordinate_file, Program, Parameter_file=''):
-    if Program == 'Tinker':
-        U = Tinker_U(Coordinate_file, Parameter_file)
-    elif Program == 'Test':
-        U = Test_U(Coordinate_file)
-    elif Program == 'CP2K':
-        U = CP2K_U(Coordinate_file)
-    elif Program == 'QE':
-        U = QE_U(Coordinate_file)
+def Potential_energy(coordinate_file: str, program: str, parameter_file='': str):
+    """
+    Computes the potential energy on a per lattice basis for a given cooridnate file
+
+    Paramaeters
+    -----------
+    coordinate_file : coorindate file specific to the program
+    program : program to use to compute the potential for [Tinker, Test, CP2K, QE]
+    paramater_file : optional flag for parameter file for Tinker 
+
+    Returns
+    -------
+    :return: potential energy in kcal/lattice
+    """
+    if program == 'Tinker':
+        U = Tinker_U(coordinate_file, parameter_file)
+    elif program == 'Test':
+        U = Test_U(coordinate_file)
+    elif program == 'CP2K':
+        U = CP2K_U(coordinate_file)
+    elif program == 'QE':
+        U = QE_U(coordinate_file)
     return U
 
-def Lattice_parameters(Program, Coordinate_file):
-    if Program == 'Tinker':
-        lattice_parameters = Tinker_Lattice_Parameters(Coordinate_file)
-    elif Program == 'Test':
-        lattice_parameters = Test_Lattice_Parameters(Coordinate_file)
-    elif Program == 'CP2K':
-        lattice_parameters = CP2K_Lattice_Parameters(Coordinate_file)
-    elif Program == 'QE':
-        lattice_parameters = QE_Lattice_Parameters(Coordinate_file)
+def Lattice_parameters(coordinate_file: str, program: str):
+    """
+    Returns the lattice parameters of a given coordinate file
+
+    Paramaeters
+    -----------
+    coordinate_file : coorindate file specific to the program
+    program : program to use to compute the potential for [Tinker, Test, CP2K, QE]
+
+    Returns
+    -------
+    :return: list of lattice parameters [ 3x lattice vectors, 3x lattice angles]
+    """
+    if program == 'Tinker':
+        lattice_parameters = Tinker_Lattice_Parameters(coordinate_file)
+    elif program == 'Test':
+        lattice_parameters = Test_Lattice_Parameters(coordinate_file)
+    elif program == 'CP2K':
+        lattice_parameters = CP2K_Lattice_Parameters(coordinate_file)
+    elif program == 'QE':
+        lattice_parameters = QE_Lattice_Parameters(coordinate_file)
     return lattice_parameters
 
-def atoms_count(Program, Coordinate_file, molecules_in_coord=1):
+def atoms_count(program: str, coordinate_file: str, molecules_in_coord=1: int):
     """
-    Number of atoms per molecule
+    Returns either: the number of atoms per coordinate file or the number of atoms per molecule
 
+    Paramaeters
+    -----------
+    program : program to use to compute the potential for [Tinker, Test, CP2K, QE]
+    coordinate_file : coorindate file specific to the program
+    molecules_in_coord : optional flag to provide the number of molecules per cooridnate file 
+
+    Returns
+    -------
+    :return: number of atoms per coordinate file if molecule_in_coord is 1 or atoms per molecule
     """
-    if Program == 'Tinker':
-        atoms_in_coord = len(Return_Tinker_Coordinates(Coordinate_file)[:, 0])
-    elif Program == 'Test':
-        atoms_in_coord = len(Test_Wavenumber(Coordinate_file, True)) / 3
-    elif Program == 'CP2K':
-        atoms_in_coord = len(Return_CP2K_Coordinates(Coordinate_file)[:, 0])
-    elif Program == 'QE':
-        atoms_in_coord = len(QE_atoms_per_molecule(Coordinate_file, 1))
+    if program == 'Tinker':
+        atoms_in_coord = len(Return_Tinker_Coordinates(coordinate_file)[:, 0])
+    elif program == 'Test':
+        atoms_in_coord = len(Test_Wavenumber(coordinate_file, True)) / 3
+    elif program == 'CP2K':
+        atoms_in_coord = len(Return_CP2K_Coordinates(coordinate_file)[:, 0])
+    elif program == 'QE':
+        atoms_in_coord = len(QE_atoms_per_molecule(coordinate_file, 1))
     return int(atoms_in_coord / molecules_in_coord)
 
-def program_wavenumbers(Coordinate_file, tinker_parameter_file, output, original_coordinate_file, program, method):
-    # Directly computing the wavenumbers for a specific program, given a coordinate file
+def program_wavenumbers(coordinate_file: str, tinker_parameter_file: str, output: str, original_coordinate_file: str, program: str, method: str):
+    """
+    Returns the list of wavenumbers of a given coordinate file
+
+    Paramaeters
+    -----------
+    coordinate_file : coorindate file specific to the program
+    tinker_parameter_file : parameter file for Tinker
+    output : name for output files
+    original_coordinate_file : used for the Test program
+    program : program to use to compute the potential for [Tinker, Test, CP2K, QE]
+    method : QHA method being used
+
+    Returns
+    -------
+    :return: list of wavenumbers in cm^-1 
+    """
     if program == 'Tinker':
-        wavenumbers = Tinker_Wavenumber(Coordinate_file, tinker_parameter_file)
+        wavenumbers = Tinker_Wavenumber(coordinate_file, tinker_parameter_file)
     elif program == 'CP2K':
-        wavenumbers = CP2K_Wavenumber(Coordinate_file, tinker_parameter_file, Output=output)
+        wavenumbers = CP2K_Wavenumber(coordinate_file, tinker_parameter_file, Output=output)
     elif program == 'QE':
-        wavenumbers = QE_Wavenumber(Coordinate_file, tinker_parameter_file, Output=output)
+        wavenumbers = QE_Wavenumber(coordinate_file, tinker_parameter_file, Output=output)
     elif program == 'Test':
         if method == 'GaQ':
-            wavenumbers = Test_Wavenumber(Coordinate_file,
+            wavenumbers = Test_Wavenumber(coordinate_file,
                                           Ex.Lattice_parameters_to_Crystal_matrix(np.load(original_coordinate_file)))
         else:
-            wavenumbers = Test_Wavenumber(Coordinate_file, True)
+            wavenumbers = Test_Wavenumber(coordinate_file, True)
     return wavenumbers
 
-def Wavenumber_and_Vectors(Program, Coordinate_file, Parameter_file):
-    if Program == 'Tinker':
-        wavenumbers, eigenvectors = Tinker_Wavenumber_and_Vectors(Coordinate_file, Parameter_file)
-    elif Program == 'Test':
-        wavenumbers = Test_Wavenumber(Coordinate_file, True)
+def Wavenumber_and_Vectors(program: str, coordinate_file: str, parameter_file: str):
+    """
+    Returns the wavenumbers and corresponding eigenvectors
+
+    Paramaeters
+    -----------
+    coordinate_file : coorindate file specific to the program
+    program : program to use to compute the potential for [Tinker, Test, CP2K, QE]
+    parameter_file : program specific parameter file
+
+    Returns
+    -------
+    :return: list of wavenumbers in cm^-1 and eigenvectors
+    """
+    if program == 'Tinker':
+        wavenumbers, eigenvectors = Tinker_Wavenumber_and_Vectors(coordinate_file, parameter_file)
+    elif program == 'Test':
+        wavenumbers = Test_Wavenumber(coordinate_file, True)
         eigenvectors = np.diag(np.ones(len(wavenumbers)))
         eigenvectors = np.ones((len(wavenumbers), len(wavenumbers)))
         np.fill_diagonal(eigenvectors, 0)
-    elif Program == 'CP2K':
-        wavenumbers, eigenvectors = CP2K_Wavenumber_and_Vectors(Coordinate_file, Parameter_file)
-    elif Program == 'QE':
-        wavenumbers, eigenvectors = QE_Wavenumber_and_Vectors(Coordinate_file, Parameter_file)
+    elif program == 'CP2K':
+        wavenumbers, eigenvectors = CP2K_Wavenumber_and_Vectors(coordinate_file, parameter_file)
+    elif program == 'QE':
+        wavenumbers, eigenvectors = QE_Wavenumber_and_Vectors(coordinate_file, parameter_file)
     return wavenumbers, eigenvectors
 
-def return_coordinates(Program, Coordinate_file, Lattice_parameters):
-    if Program == 'Tinker':
-        coordinates = Return_Tinker_Coordinates(Coordinate_file)
-    elif Program == 'Test':
+def return_coordinates(program: str, coordinate_file: str, lattice_parameters: list):
+    """
+    Returns the systems Cartesian coordinates
+
+    Paramaeters
+    -----------
+    program : program to use to compute the potential for [Tinker, Test, CP2K, QE]
+    coordinate_file : coorindate file specific to the program
+    lattice_parameters : list of lattice vectors and angles
+
+    Returns
+    -------
+    :return: list of 3xN Cartesian coordinates
+    """
+    if program == 'Tinker':
+        coordinates = Return_Tinker_Coordinates(coordinate_file)
+    elif program == 'Test':
         coordinates = Return_Test_Coordinates()
-    elif Program == 'CP2K':
-        coordinates = Return_CP2K_Coordinates(Coordinate_file)
-    elif Program == 'QE':
-        coordinates = Return_QE_Coordinates(Coordinate_file, Lattice_parameters)
+    elif program == 'CP2K':
+        coordinates = Return_CP2K_Coordinates(coordinate_file)
+    elif program == 'QE':
+        coordinates = Return_QE_Coordinates(coordinate_file, lattice_parameters)
     return coordinates
 
-def assign_coordinate_file_ending(program):
+def assign_coordinate_file_ending(program: str):
+    """
+    Returns the coordinate file ending specific to the program
+
+    Paramaeters
+    -----------
+    program : program to use to compute the potential for [Tinker, Test, CP2K, QE]
+
+    Returns
+    -------
+    :return: string of the file ending
+    """
     if program == 'Tinker':
         return '.xyz'
     elif program == 'Test':
@@ -100,36 +186,57 @@ def assign_coordinate_file_ending(program):
     elif program == 'QE':
         return '.pw'
 
-def output_new_coordinate_file(Program, Coordinate_file, Parameter_file, coordinates, lattice_parameters, Output,
-                               min_RMS_gradient):
-    if Program == 'Tinker':
-        Ouput_Tinker_Coordinate_File(Coordinate_file, Parameter_file, coordinates, lattice_parameters, Output)
-        Tinker_optimization(Parameter_file, Output + '.xyz', Output, min_RMS_gradient)
-    elif Program == 'CP2K':
-        Ouput_CP2K_Coordinate_File(Coordinate_file, Parameter_file, coordinates, lattice_parameters, Output)
-        CP2K_minimization(Parameter_file, Output + '.pdb', Output, min_RMS_gradient)
-    elif Program == 'QE':
-        Output_QE_Coordinate_File(Coordinate_file, Parameter_file, coordinates, lattice_parameters, Output)
-        QE_minimization(Parameter_file, Output + '.qe', Output, min_RMS_gradient)
-    elif Program == 'Test':
-        np.save(Output, lattice_parameters)
+def output_new_coordinate_file(programi: str, coordinate_file: str, parameter_file: str, coordinates: list, lattice_parameters: list, output: str,
+                               min_rms_gradient: float):
+    """
+    Creates a new program specific coordinate file
+
+    Paramaeters
+    -----------
+    program : program to use to compute the potential for [Tinker, Test, CP2K, QE]
+    coordinate_file : coorindate file specific to the program
+    parameter_file : program specific parameter file
+    coordinates : 3xN list of Cartesian coordinate files
+    lattice_parameters : list of lattice vectors and angles
+    output : output to label cooridnate file
+    min_rms_gradient : minimization cretierion for geometry optimization
+    """
+    if program == 'Tinker':
+        Ouput_Tinker_Coordinate_File(coordinate_file, parameter_file, coordinates, lattice_parameters, output)
+        Tinker_optimization(parameter_file, output + '.xyz', output, min_rms_gradient)
+    elif program == 'CP2K':
+        Ouput_CP2K_Coordinate_File(coordinate_file, parameter_file, coordinates, lattice_parameters, output)
+        CP2K_minimization(parameter_file, output + '.pdb', output, min_rms_gradient)
+    elif program == 'QE':
+        Output_QE_Coordinate_File(coordinate_file, parameter_file, coordinates, lattice_parameters, output)
+        QE_minimization(parameter_file, output + '.qe', output, min_rms_gradient)
+    elif program == 'Test':
+        np.save(output, lattice_parameters)
 
 
 ########################################################################################################################
 ######################                         Tinker Molecular Modeling                        ########################
 ########################################################################################################################
 
-def Tinker_U(Coordinate_file: str, Parameter_file: str) -> float:
+def Tinker_U(Coordinate_file: str, Parameter_file: str):
     """
-    Computes the potential energy in kcal/mol for the test system
+    Returns the lattice energy in kcal/lattice
 
+    Paramaeters
+    -----------
+    Coorindate_file : Tinker .xyz file
+    Parameter_file : Tinker parameter file
+
+    Returns
+    -------
+    :return: lattice energy in kcal/lattice
     """
     U = float(subprocess.check_output(
         "analyze %s -k %s E | grep 'Total'| grep -oP '[-+]*[0-9]*\.[0-9]*'" % (Coordinate_file, Parameter_file),
         shell=True))
     return U
 
-def Tinker_Lattice_Parameters(Coordinate_file: str) -> list:
+def Tinker_Lattice_Parameters(Coordinate_file: str):
     """
     Getting the lattice parameters of the Tinker coordinate file
 
@@ -137,11 +244,9 @@ def Tinker_Lattice_Parameters(Coordinate_file: str) -> list:
     -----------
     Coorindate_file : Tinker .xyz file
 
-
     Returns
     -------
     :return: list of lattice parameters
-
     """
     with open('%s' % Coordinate_file, 'r') as l:  # Opening coordinate file
         lattice_parameters = [lines.split() for lines in l]
@@ -149,13 +254,18 @@ def Tinker_Lattice_Parameters(Coordinate_file: str) -> list:
         lattice_parameters = lattice_parameters[1, :6].astype(float)
     return lattice_parameters
 
-def Tinker_Wavenumber(Coordinate_file, Parameter_file):
+def Tinker_Wavenumber(Coordinate_file: str, Parameter_file: str):
     """
-    Calls the vibrate executable of Tinker Molecular Modeling and extracts the wavenumbers
+    Returns the tinker wavenumbers in cm ^-1
 
-    **Required Inputs
-    Coordinate_file = Tinker .xyz file for crystal structure
-    Parameter_file = Tinker .key file specifying the force field parameter
+    Paramaeters
+    -----------
+    Coorindate_file : Tinker .xyz file
+    Parameter_file : Tinker parameter file
+
+    Returns
+    -------
+    :return: list of wavenumbers in cm^-1
     """
     # Calling Tinker's vibrate executable and extracting the eigenvalues and wavenumbers of the respective
     # Hessian and mass-weighted Hessian
@@ -174,7 +284,20 @@ def Tinker_Wavenumber(Coordinate_file, Parameter_file):
     wavenumbers = np.sort(np.array(eigenvalues_and_wavenumbers_hold[len(eigenvalues_and_wavenumbers_hold)//2:]))
     return wavenumbers
 
-def Tinker_Wavenumber_and_Vectors(Coordinate_file, Parameter_file):
+def Tinker_Wavenumber_and_Vectors(Coordinate_file: str, Parameter_file: str):
+    """
+    Returns the tinker wavenumbers in cm ^-1 and eigenvectors
+
+    Paramaeters
+    -----------
+    Coorindate_file : Tinker .xyz file
+    Parameter_file : Tinker parameter file
+
+    Returns
+    -------
+    :return: list of wavenumbers in cm^-1 and eigenvectors
+    """
+
     # Calling Tinker's vibrate executable and extracting the eigenvectors and wavenumbers of the respective
     # Hessian and mass-weighted Hessian
     subprocess.call(['cp', Coordinate_file, 'vector_temp.xyz'])
@@ -201,6 +324,8 @@ def Tinker_Wavenumber_and_Vectors(Coordinate_file, Parameter_file):
         finish = start + number_of_modes
         eigenvectors[i] = output[start: finish] / np.sqrt(np.sum(output[start: finish]**2))
     return wavenumbers, eigenvectors
+
+
 
 def Return_Tinker_Coordinates(Coordinate_file):
     """
