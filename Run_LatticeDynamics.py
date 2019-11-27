@@ -21,7 +21,7 @@ path = os.path.realpath(__file__).strip('Run_LatticeDynamics.py')
 def temperature_lattice_dynamics(inputs, data, input_file='input.yaml'):
     # Geometry and lattice optimizing the input structure
     if (inputs.tinker_xtalmin == True) and (inputs.program == 'Tinker'):
-        Ex.tinker_xtalmin(inputs)
+        psf.tinker_xtalmin(inputs)
         inputs.tinker_xtalmin = False
 
     if inputs.method == 'HA':
@@ -50,7 +50,7 @@ def temperature_lattice_dynamics(inputs, data, input_file='input.yaml'):
             subprocess.call(['mkdir', 'Cords'])
 
     # Expanding the crystal with the zero point energy
-    if inputs.statistical_mechanics == 'Quantum':
+    if (inputs.statistical_mechanics == 'Quantum') and (inputs.coordinate_file != 'ezp_minimum' + psf.assign_coordinate_file_ending(inputs.program)):
         if any(inputs.gradient_matrix_fractions != 0.):
             crystal_matrix_array = Ex.triangle_crystal_matrix_to_array(Ex.Lattice_parameters_to_Crystal_matrix(
                 psf.Lattice_parameters(inputs.program, inputs.coordinate_file)))
