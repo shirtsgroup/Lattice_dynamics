@@ -12,7 +12,7 @@ import ThermodynamicProperties as Pr
 ######################                           General Functions                              ########################
 ########################################################################################################################
 
-def Potential_energy(coordinate_file: str, program: str, parameter_file='': str):
+def Potential_energy(coordinate_file: str, program: str, Parameter_file=''):
     """
     Computes the potential energy on a per lattice basis for a given cooridnate file
 
@@ -27,7 +27,7 @@ def Potential_energy(coordinate_file: str, program: str, parameter_file='': str)
     :return: potential energy in kcal/lattice
     """
     if program == 'Tinker':
-        U = Tinker_U(coordinate_file, parameter_file)
+        U = Tinker_U(coordinate_file, Parameter_file)
     elif program == 'Test':
         U = Test_U(coordinate_file)
     elif program == 'CP2K':
@@ -36,7 +36,7 @@ def Potential_energy(coordinate_file: str, program: str, parameter_file='': str)
         U = QE_U(coordinate_file)
     return U
 
-def Lattice_parameters(coordinate_file: str, program: str):
+def Lattice_parameters(program: str, coordinate_file: str):
     """
     Returns the lattice parameters of a given coordinate file
 
@@ -50,16 +50,15 @@ def Lattice_parameters(coordinate_file: str, program: str):
     :return: list of lattice parameters [ 3x lattice vectors, 3x lattice angles]
     """
     if program == 'Tinker':
-        lattice_parameters = Tinker_Lattice_Parameters(coordinate_file)
+        return Tinker_Lattice_Parameters(coordinate_file)
     elif program == 'Test':
-        lattice_parameters = Test_Lattice_Parameters(coordinate_file)
+        return Test_Lattice_Parameters(coordinate_file)
     elif program == 'CP2K':
-        lattice_parameters = CP2K_Lattice_Parameters(coordinate_file)
+        return CP2K_Lattice_Parameters(coordinate_file)
     elif program == 'QE':
-        lattice_parameters = QE_Lattice_Parameters(coordinate_file)
-    return lattice_parameters
+        return QE_Lattice_Parameters(coordinate_file)
 
-def atoms_count(program: str, coordinate_file: str, molecules_in_coord=1: int):
+def atoms_count(program: str, coordinate_file: str, molecules_in_coord=1):
     """
     Returns either: the number of atoms per coordinate file or the number of atoms per molecule
 
@@ -186,7 +185,7 @@ def assign_coordinate_file_ending(program: str):
     elif program == 'QE':
         return '.pw'
 
-def output_new_coordinate_file(programi: str, coordinate_file: str, parameter_file: str, coordinates: list, lattice_parameters: list, output: str,
+def output_new_coordinate_file(program: str, coordinate_file: str, parameter_file: str, coordinates: list, lattice_parameters: list, output: str,
                                min_rms_gradient: float):
     """
     Creates a new program specific coordinate file
