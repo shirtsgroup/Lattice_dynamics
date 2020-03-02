@@ -126,18 +126,20 @@ def setdefault(input_data, default_values):
 def yaml_loader(file_path):
     # Load in the default values
     with open(path + 'default.yaml', "r") as default_file:
-        default_input = yaml.load(default_file, Loader=yaml.FullLoader)
+        #default_input = yaml.load(default_file, Loader=yaml.FullLoader)
+        default_input = yaml.load(default_file)
 
     # Loads in a ymal file
     with open(file_path, "r") as input_file:
-        data = yaml.load(input_file, Loader=yaml.FullLoader)
+        #data = yaml.load(input_file, Loader=yaml.FullLoader)
+        data = yaml.load(input_file)
     # Setting the default values if not specified
     setdefault(data, default_input)
     return data
 
 class Inputs:
     def __init__(self, data):
-        self.temperature = np.array(data['temperature'].split(',')).astype(float)
+        self.temperature = np.array([data['temperature']]).flatten().astype(float)
         if len(str(data['pressure']).split(',')) == 1:
             self.pressure = data['pressure']
             self.pressure_scan = False
