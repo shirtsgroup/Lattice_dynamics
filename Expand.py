@@ -53,13 +53,10 @@ def Call_Expansion(inputs, purpose, coordinate_file, zeta=-1., **keyword_paramet
             dlattice_parameters = Isotropic_Change_Lattice_Parameters(keyword_parameters['volume_fraction_change'],
                                                                       inputs.program, coordinate_file)
             
-            Expand_Structure(coordinate_file, inputs.program, 'lattice_parameters', inputs.number_of_molecules,
-                             keyword_parameters['output_file'], inputs.min_rms_gradient,
-                             Parameter_file=inputs.tinker_parameter_file, dlattice_parameters=dlattice_parameters)
+            Expand_Structure(inputs, coordinate_file, 'lattice_parameters', keyword_parameters['output_file'],
+                             dlattice_parameters=dlattice_parameters)
         elif (inputs.method == 'GaQ') or (inputs.method == 'GaQg'):
-            Expand_Structure(coordinate_file, inputs.program, 'crystal_matrix', inputs.number_of_molecules,
-                             keyword_parameters['output_file'], inputs.min_rms_gradient,
-                             Parameter_file=inputs.tinker_parameter_file,
+            Expand_Structure(inputs, coordinate_file, 'crystal_matrix', keyword_parameters['output_file'],
                              dcrystal_matrix=keyword_parameters['dcrystal_matrix'])
 
     # Fining the local gradient of expansion for inputted strucutre
@@ -214,8 +211,7 @@ def array_to_triangle_crystal_matrix(array):
 ##########################################
 #            General Expansion           #
 ##########################################
-def Expand_Structure(Coordinate_file, Program, Expansion_type, molecules_in_coord, Output, min_RMS_gradient,
-                     **keyword_parameters):
+def Expand_Structure(inputs, Coordinate_file, Expansion_type, output_file_name, **keyword_parameters):
     """
     This function expands a coordinate file either based off of an inputted change in lattice vectors or crystal 
         lattice matrix
@@ -234,10 +230,9 @@ def Expand_Structure(Coordinate_file, Program, Expansion_type, molecules_in_coor
     dcrystal_matrix = changes in crystal matrix
     Parameter_file = program specific file containingforce field parameters
     """
-    if Program == 'Test':
+    if inputs.program == 'Test':
         coordinates = ''
-        keyword_parameters['Parameter_file'] = ''
-        lattice_parameters = psf.Lattice_parameters(Program, Coordinate_file)
+        lattice_parameters = psf.Lattice_parameters(inputs.program, Coordinate_file)
         crystal_matrix = Lattice_parameters_to_Crystal_matrix(lattice_parameters)
         if Expansion_type == 'lattice_parameters':
             lattice_parameters = lattice_parameters + keyword_parameters['dlattice_parameters']
@@ -249,22 +244,40 @@ def Expand_Structure(Coordinate_file, Program, Expansion_type, molecules_in_coor
             lattice_parameters = crystal_matrix_to_lattice_parameters(crystal_matrix)
 
     else:
-        lattice_parameters = psf.Lattice_parameters(Program, Coordinate_file)
-        coordinates = psf.return_coordinates(Program, Coordinate_file, lattice_parameters)
+        # Grabbing the lattice parameters and coordiantes
+        lattice_parameters = psf.Lattice_parameters(inputs.program, Coordinate_file)
+        coordinates = psf.return_coordinates(inputs.program, Coordinate_file, lattice_parameters)
 
+        # Converting the lattice parameters to the lattice tensor
         crystal_matrix = Lattice_parameters_to_Crystal_matrix(lattice_parameters)
 
-        coordinate_center_of_mass = np.zeros((molecules_in_coord, 3))
-        atoms_per_molecule = len(coordinates[:, 0])//molecules_in_coord
+        # Setting up the number of atoms per molecule as specified by the user
+        if type(inputs.multi_nmols) == type(None):
+            coordinate_center_of_mass = np.zeros((inputs.molecules_in_coord, 3))
+            atoms_per_molecule = np.zeros(inputs.molecules_in_coord)
+            atoms_per_molecule[:] = len(coordinates[:, 0])//inputs.molecules_in_coord
+        else:
+            coordinate_center_of_mass = np.zeros((sum(inputs.multi_nmols), 3))
+            atoms_per_molecule = np.zeros(sum(inputs.multi_nmols))
 
-        for i in range(int(molecules_in_coord)):
-            coordinate_center_of_mass[i, :] = np.mean(coordinates[i*atoms_per_molecule:(i+1)*atoms_per_molecule],
-                                                      axis=0)
-            coordinates[i*atoms_per_molecule:(i+1)*atoms_per_molecule] = \
-                np.subtract(coordinates[i*atoms_per_molecule:(i+1)*atoms_per_molecule], coordinate_center_of_mass[i, :])
+            placement = 0
+            for i in range(len(inputs.multi_nmols)):
+                atoms_per_molecule[placement: placement+inputs.multi_nmols[i]] = inputs.multi_atomspermol[i]
+                placement += inputs.multi_nmols[i]
+
+        # Determining the molecules center and removing that to expand the crystal
+        for i in range(len(atoms_per_molecule)):
+            lb = int(sum(atoms_per_molecule[:i]))
+            #lb = i*atoms_per_molecule
+            ub = int(sum(atoms_per_molecule[:i+1]))
+            #ub = (i+1)*atoms_per_molecule
+            coordinate_center_of_mass[i, :] = np.mean(coordinates[lb:ub], axis=0)
+            coordinates[lb:ub] = np.subtract(coordinates[lb:ub], coordinate_center_of_mass[i, :])
         
         # Center of mass coordinates converted to fractional coordinates
         coordinate_center_of_mass = np.dot(np.linalg.inv(crystal_matrix), coordinate_center_of_mass.T).T
+
+        # Computing the new crystal matrix
         if Expansion_type == 'lattice_parameters':
             lattice_parameters = lattice_parameters + keyword_parameters['dlattice_parameters']
             crystal_matrix = Lattice_parameters_to_Crystal_matrix(lattice_parameters)
@@ -275,15 +288,22 @@ def Expand_Structure(Coordinate_file, Program, Expansion_type, molecules_in_coor
         elif Expansion_type == 'crystal_matrix':
             crystal_matrix = crystal_matrix + keyword_parameters['dcrystal_matrix']
             lattice_parameters = crystal_matrix_to_lattice_parameters(crystal_matrix)
+
+        # Converting the center of mass to cartesian coordinates, but expanded to the new crystal matrix
         coordinate_center_of_mass = np.dot(crystal_matrix, coordinate_center_of_mass.T).T
-        for i in range(int(molecules_in_coord)):
-            coordinates[i*atoms_per_molecule:(i+1)*atoms_per_molecule] = \
-                np.subtract(coordinates[i*atoms_per_molecule:(i+1)*atoms_per_molecule],
-                            -1*coordinate_center_of_mass[i, :])
+
+        # Adding the atoms back to the expanded center of mass
+        for i in range(int(inputs.molecules_in_coord)):
+            lb = int(sum(atoms_per_molecule[:i]))
+            #lb = i*atoms_per_molecule
+            ub = int(sum(atoms_per_molecule[:i+1]))
+            #ub = (i+1)*atoms_per_molecule
+            coordinates[lb:ub] = np.subtract(coordinates[lb:ub], -1*coordinate_center_of_mass[i, :])
 
     # Outputing the new coordinate file
-    psf.output_new_coordinate_file(Program, Coordinate_file, keyword_parameters['Parameter_file'], coordinates,
-                                   lattice_parameters, Output, min_RMS_gradient)
+    psf.output_new_coordinate_file(inputs.program, Coordinate_file, inputs.tinker_parameter_file, coordinates,
+                                   lattice_parameters, output_file_name, inputs.min_rms_gradient)
+
 
 
 ###################################################
@@ -328,12 +348,8 @@ def Isotropic_Local_Gradient(inputs, coordinate_file, temperature, LocGrd_dV, **
                                                                 coordinate_file)
 
     # Building the isotropically expanded and compressed strucutres
-    Expand_Structure(coordinate_file, inputs.program, 'lattice_parameters', inputs.number_of_molecules, 'plus',
-                     inputs.min_rms_gradient, dlattice_parameters=dlattice_parameters_p,
-                     Parameter_file=inputs.tinker_parameter_file)
-    Expand_Structure(coordinate_file, inputs.program, 'lattice_parameters', inputs.number_of_molecules, 'minus',
-                     inputs.min_rms_gradient, dlattice_parameters=dlattice_parameters_m,
-                     Parameter_file=inputs.tinker_parameter_file)
+    Expand_Structure(inputs, coordinate_file, 'lattice_parameters', 'plus', dlattice_parameters=dlattice_parameters_p)
+    Expand_Structure(inputs, coordinate_file, 'lattice_parameters', 'minus', dlattice_parameters=dlattice_parameters_m)
 
     # Calculating wavenumbers coordinate_file, plus.*, and minus.*
     if inputs.method == 'GiQ':
@@ -515,10 +531,8 @@ def Anisotropic_Local_Gradient(inputs, coordinate_file, temperature, LocGrd_dC, 
             else:
                 cm_factor = 1.0
                 out_factor = 1
-            Expand_Structure(coordinate_file, inputs.program, 'crystal_matrix', inputs.number_of_molecules, d,
-                             inputs.min_rms_gradient,
-                             dcrystal_matrix=array_to_triangle_crystal_matrix(cm_factor * cm_array),
-                             Parameter_file=inputs.tinker_parameter_file)
+            Expand_Structure(inputs, coordinate_file, 'crystal_matrix', d,
+                             dcrystal_matrix=array_to_triangle_crystal_matrix(cm_factor * cm_array))
 
             wavenumbers_dict[d] = Wvn.Call_Wavenumbers(inputs, Coordinate_file=d + file_ending,
                                                        ref_crystal_matrix=keyword_parameters['ref_crystal_matrix'],
@@ -591,10 +605,8 @@ def Anisotropic_Local_Gradient(inputs, coordinate_file, temperature, LocGrd_dC, 
                         else:
                             cm_factor = 1.0
 
-                        Expand_Structure(di + file_ending, inputs.program, 'crystal_matrix', inputs.number_of_molecules,
-                                         d2, inputs.min_rms_gradient,
-                                         dcrystal_matrix=array_to_triangle_crystal_matrix(cm_factor * cm_array_2),
-                                         Parameter_file=inputs.tinker_parameter_file)
+                        Expand_Structure(inputs, di + file_ending, 'crystal_matrix', d2,
+                                         dcrystal_matrix=array_to_triangle_crystal_matrix(cm_factor * cm_array_2))
 
                 for d in delta2:
                     wavenumbers_dict[d] = \
@@ -671,10 +683,8 @@ def Anisotropic_Local_Gradient_1D(inputs, coordinate_file, temperature, LocGrd_d
             out_factor = 2
 
         # Expand the crystal structure
-        Expand_Structure(coordinate_file, inputs.program, 'crystal_matrix', inputs.number_of_molecules, d,
-                         inputs.min_rms_gradient,
-                         dcrystal_matrix=array_to_triangle_crystal_matrix(cm_factor * crystal_matrix_array),
-                         Parameter_file=inputs.tinker_parameter_file)
+        Expand_Structure(inputs, coordinate_file, 'crystal_matrix', d,
+                         dcrystal_matrix=array_to_triangle_crystal_matrix(cm_factor * crystal_matrix_array))
 
         # Compute the wavenumbers
         wavenumbers_hold = Wvn.Call_Wavenumbers(inputs, Coordinate_file=d + file_ending, **wavenumber_keywords)

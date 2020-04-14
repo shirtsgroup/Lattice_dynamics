@@ -485,10 +485,8 @@ def stepwise_expansion(inputs):
                                   output_file=inputs.output + '_' + inputs.method + str(round((V + i * dV) / V0, 4)))
     
                 if inputs.method == 'SaQply':
-                    vcm.constrained_minimization(inputs.output + '_' + inputs.method + str(round((V + i * dV) / V0, 4))
+                    vcm.constrained_minimization(inputs, inputs.output + '_' + inputs.method + str(round((V + i * dV) / V0, 4))
                                                  + file_ending, inputs.program,
-                                                 molecules_in_coord=inputs.number_of_molecules,
-                                                 min_RMS_gradient=inputs.min_rms_gradient,
                                                  Parameter_file=inputs.tinker_parameter_file)
     
                 subprocess.call(['cp', inputs.output + '_' + inputs.method + str(round((V + i * dV) / V0, 4))

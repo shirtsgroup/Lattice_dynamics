@@ -151,6 +151,8 @@ class Inputs:
         self.statistical_mechanics = data['statistical_mechanics']
         self.coordinate_file = data['coordinate_file']
         self.number_of_molecules = data['number_of_molecules']
+        self.multi_nmols = data['multi_component']['number_of_molecules_multi']
+        self.multi_atomspermol = data['multi_component']['atoms_per_mol']
         self.program = data['program']
         self.tinker_parameter_file = data['tinker']['parameter_file']
         self.tinker_xtalmin = bool(data['tinker']['xtalmin'])

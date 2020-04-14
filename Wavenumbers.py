@@ -142,31 +142,26 @@ def Setup_Isotropic_Gruneisen(inputs):
     # Also, assigning a file ending name for the nex coordinate file (program dependent)
     lattice_parameters = psf.Lattice_parameters(inputs.program, inputs.coordinate_file)
     if inputs.program == 'Tinker':
-        Ex.Expand_Structure(inputs.coordinate_file, inputs.program, 'lattice_parameters', inputs.number_of_molecules,
-                            'temp', inputs.min_rms_gradient, dlattice_parameters=dLattice_Parameters,
-                            Parameter_file=inputs.tinker_parameter_file)
+        Ex.Expand_Structure(inputs, inputs.coordinate_file, 'lattice_parameters', 'temp',
+                            dlattice_parameters=dLattice_Parameters)
         Organized_wavenumbers = Tinker_Gru_organized_wavenumbers('Isotropic', inputs.coordinate_file, 'temp.xyz',
                                                                  inputs.tinker_parameter_file)
         Wavenumber_Reference = Organized_wavenumbers[0] 
         Wavenumber_expand = Organized_wavenumbers[1]
         file_ending = '.xyz'
     if inputs.program == 'CP2K':
-        Ex.Expand_Structure(inputs.coordinate_file, inputs.program, 'lattice_parameters', inputs.number_of_molecules,
-                            'temp', inputs.min_rms_gradient, dlattice_parameters=dLattice_Parameters,
-                            Parameter_file=inputs.tinker_parameter_file)
+        Ex.Expand_Structure(inputs, inputs.coordinate_file, 'lattice_parameters', 'temp',
+                            dlattice_parameters=dLattice_Parameters)
         Organized_wavenumbers = CP2K_Gru_organized_wavenumbers('Isotropic', inputs.coordinate_file, 'temp.pdb',
                                                                inputs.tinker_parameter_file, inputs.output)
         Wavenumber_Reference = Organized_wavenumbers[0] 
         Wavenumber_expand = Organized_wavenumbers[1]
         file_ending = '.pdb'
     elif inputs.program == 'QE':
-        Ex.Expand_Structure(inputs.coordinate_file, inputs.program, 'lattice_parameters', inputs.number_of_molecules,
-                            inputs.coordinate_file[0:-3], inputs.min_rms_gradient,
-                            dlattice_parameters=[0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-                            Parameter_file=inputs.tinker_parameter_file)
-        Ex.Expand_Structure(inputs.coordinate_file, inputs.program, 'lattice_parameters', inputs.number_of_molecules,
-                            'temp', inputs.min_rms_gradient, dlattice_parameters=dLattice_Parameters,
-                            Parameter_file=inputs.tinker_parameter_file)
+        Ex.Expand_Structure(inputs, inputs.coordinate_file, 'lattice_parameters', inputs.coordinate_file[0:-3],
+                            dlattice_parameters=[0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
+        Ex.Expand_Structure(inputs, inputs.coordinate_file, 'lattice_parameters', 'temp',
+                            dlattice_parameters=dLattice_Parameters)
         Organized_wavenumbers = QE_Gru_organized_wavenumbers('Isotropic', inputs.coordinate_file, 'temp.pw',
                                                              inputs.tinker_parameter_file, inputs.output)
         Wavenumber_Reference = Organized_wavenumbers[0]
@@ -174,8 +169,8 @@ def Setup_Isotropic_Gruneisen(inputs):
         file_ending = '.pw'
 
     elif inputs.program == 'Test':
-        Ex.Expand_Structure(inputs.coordinate_file, inputs.program, 'lattice_parameters', inputs.number_of_molecules,
-                            'temp', inputs.min_rms_gradient, dlattice_parameters=dLattice_Parameters)
+        Ex.Expand_Structure(inputs, inputs.coordinate_file, 'lattice_parameters', 'temp',
+                            dlattice_parameters=dLattice_Parameters)
         Wavenumber_Reference = psf.program_wavenumbers(inputs.coordinate_file, 0, 0, 0, inputs.program, 'GiQg')
         Wavenumber_expand = psf.program_wavenumbers('temp.npy', 0, 0, 0, inputs.program, 'GiQg')
         file_ending = '.npy'
@@ -241,12 +236,10 @@ def Setup_Anisotropic_Gruneisen(inputs):
             # Making expanded structures in th direction of the six principal strains
             applied_strain = np.zeros(6)
             applied_strain[i] = inputs.gruneisen_matrix_strain_stepsize
-            Ex.Expand_Structure(inputs.coordinate_file, inputs.program, 'strain', inputs.number_of_molecules,
-                                'temp', inputs.min_rms_gradient, strain=Ex.strain_matrix(applied_strain),
-                                crystal_matrix=
-                                Ex.Lattice_parameters_to_Crystal_matrix(
-                                    psf.Lattice_parameters(inputs.program, inputs.coordinate_file)),
-                                Parameter_file=inputs.tinker_parameter_file)
+            Ex.Expand_Structure(inputs, inputs.coordinate_file, 'strain', 'temp',
+                                strain=Ex.strain_matrix(applied_strain),
+                                crystal_matrix=Ex.Lattice_parameters_to_Crystal_matrix(
+                                    psf.Lattice_parameters(inputs.program, inputs.coordinate_file)))
 
             # Computing the strained wavenumbers and eigenvectors
             wavenumbers_unorganized, eigenvectors_unorganized = \

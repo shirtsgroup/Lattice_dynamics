@@ -49,8 +49,7 @@ def isotropic_gradient_settings(inputs):
                                                                      inputs.coordinate_file)
 
         # Expanding the strucutre
-        Ex.Expand_Structure(inputs.coordinate_file, inputs.program, 'lattice_parameters', inputs.number_of_molecules,
-                            inputs.output, inputs.min_rms_gradient, Parameter_file=inputs.tinker_parameter_file,
+        Ex.Expand_Structure(inputs, inputs.coordinate_file, 'lattice_parameters', inputs.output,
                             dlattice_parameters=dlattice_parameters)
 
         # Computing the potential energy
@@ -132,8 +131,7 @@ def anisotropic_gradient_settings(inputs, data, input_file):
             if np.absolute(crystal_matrix_array[j]) < 1e-4:
                 dlattice_matrix_array[j] = steps[i]
             dlattice_matrix = Ex.array_to_triangle_crystal_matrix(dlattice_matrix_array)
-            Ex.Expand_Structure(inputs.coordinate_file, inputs.program, 'crystal_matrix', inputs.number_of_molecules,
-                                inputs.output, inputs.min_rms_gradient, Parameter_file=inputs.tinker_parameter_file,
+            Ex.Expand_Structure(inputs, inputs.coordinate_file, 'crystal_matrix', inputs.output,
                                 dcrystal_matrix=dlattice_matrix)
             U[j, i] = psf.Potential_energy(inputs.output + file_ending, inputs.program,
                                           Parameter_file=inputs.tinker_parameter_file) / inputs.number_of_molecules
@@ -186,8 +184,7 @@ def anisotropic_gradient_settings_1D(inputs, dC_dLambda):
 
     for i in range(n_steps):
         dlattice_matrix = Ex.array_to_triangle_crystal_matrix(steps[i] * dC_dLambda)
-        Ex.Expand_Structure(inputs.coordinate_file, inputs.program, 'crystal_matrix', inputs.number_of_molecules,
-                            inputs.output, inputs.min_rms_gradient, Parameter_file=inputs.tinker_parameter_file,
+        Ex.Expand_Structure(inputs, inputs.coordinate_file, 'crystal_matrix', inputs.output,
                             dcrystal_matrix=dlattice_matrix)
         U[i] = psf.Potential_energy(inputs.output + file_ending, inputs.program,
                                    Parameter_file=inputs.tinker_parameter_file) / inputs.number_of_molecules
