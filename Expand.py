@@ -253,9 +253,9 @@ def Expand_Structure(inputs, Coordinate_file, Expansion_type, output_file_name, 
 
         # Setting up the number of atoms per molecule as specified by the user
         if type(inputs.multi_nmols) == type(None):
-            coordinate_center_of_mass = np.zeros((inputs.molecules_in_coord, 3))
-            atoms_per_molecule = np.zeros(inputs.molecules_in_coord)
-            atoms_per_molecule[:] = len(coordinates[:, 0])//inputs.molecules_in_coord
+            coordinate_center_of_mass = np.zeros((inputs.number_of_molecules, 3))
+            atoms_per_molecule = np.zeros(inputs.number_of_molecules)
+            atoms_per_molecule[:] = len(coordinates[:, 0])//inputs.number_of_molecules
         else:
             coordinate_center_of_mass = np.zeros((sum(inputs.multi_nmols), 3))
             atoms_per_molecule = np.zeros(sum(inputs.multi_nmols))
@@ -293,7 +293,7 @@ def Expand_Structure(inputs, Coordinate_file, Expansion_type, output_file_name, 
         coordinate_center_of_mass = np.dot(crystal_matrix, coordinate_center_of_mass.T).T
 
         # Adding the atoms back to the expanded center of mass
-        for i in range(int(inputs.molecules_in_coord)):
+        for i in range(len(atoms_per_molecule)):
             lb = int(sum(atoms_per_molecule[:i]))
             #lb = i*atoms_per_molecule
             ub = int(sum(atoms_per_molecule[:i+1]))

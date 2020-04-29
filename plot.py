@@ -75,6 +75,12 @@ def plot_lattice_parameters_multiple_methods(lattice_parameters, temperature, co
             error_V = find_dVvT(lp, error)
             ax_V.plot(T[:Tp], V[:Tp], c=color[i], linestyle=line_style[i], label=label[i])
             ax_V.fill_between(T[2:Tp], V[2:Tp] - error_V[2:Tp], V[2:Tp] + error_V[2:Tp], color=color[i], linestyle=line_style[i], zorder=0, alpha=0.3)
+#
+            dh_MD =  np.zeros(7)
+            for j in range(6):
+                dh_MD[j] = np.polyfit(T[:Tp], lp[:Tp, j], 1)[0]
+            dh_MD[6] = np.polyfit(T[:Tp], V[:Tp], 1)[0]
+#
 
             v1.plot(T[2:Tp], lp[2:Tp, 0], c=color[i], linestyle=line_style[i], zorder=0, label=label[i])
             v2.plot(T[2:Tp], lp[2:Tp, 1], c=color[i], linestyle=line_style[i], zorder=0)
@@ -101,8 +107,10 @@ def plot_lattice_parameters_multiple_methods(lattice_parameters, temperature, co
 
     # Adding in experimental data
     if exp_added == True:
-        colors = ['r','g','b','c','m', 'y', 'k']
+        colors = ['r','g','b','m', 'y', 'k']
         shapes = ["," , "o" , "v" , "^" , "<", ">"]
+        find = 'Wilson 2009' 
+#        find = 'Brandenburg 2017'
         for i, l in enumerate(np.unique(exp_labels)):
             loc = np.where(exp_labels == l)[0]
             V = np.zeros(len(loc))
@@ -115,6 +123,67 @@ def plot_lattice_parameters_multiple_methods(lattice_parameters, temperature, co
             a2.scatter(exp_values[loc, 0], exp_values[loc, 5], marker=shapes[i],  edgecolors=colors[i], facecolor='none')  
             a3.scatter(exp_values[loc, 0], exp_values[loc, 6], marker=shapes[i],  edgecolors=colors[i], facecolor='none')
             ax_V.scatter(exp_values[loc, 0], V, marker=shapes[i],  edgecolors=colors[i], label=l, facecolor='none')
+# hxacan p1
+            if l == find:
+                dh =  np.zeros(7)
+                for j in range(1,7):
+                    dh[j-1] = np.polyfit(exp_values[loc, 0].astype(float), exp_values[loc, j].astype(float), 1)[0]
+                dh[6] = np.polyfit(exp_values[loc, 0].astype(float), V, 1)[0]
+                v1.text(10,12.92,r'$\frac{d a}{d T} = $' + str(np.around(dh[0]*10000,1)) + r'$\times10^{-4}$ [Ang./K]', fontsize=12, color=colors[i])
+                v1.text(10,12.86,r'$\frac{d a}{d T} = $' + str(np.around(dh_MD[0]*10000,1)) + r'$\times10^{-4}$ [Ang./K]', fontsize=12, color=color[0])
+
+                v2.text(10,9.61,r'$\frac{d b}{d T} = $' + str(np.around(dh[1]*10000,1)) + r'$\times10^{-4}$ [Ang./K]', fontsize=12, color=colors[i])
+                v2.text(10,9.67,r'$\frac{d b}{d T} = $' + str(np.around(dh_MD[1]*10000,1)) + r'$\times10^{-4}$ [Ang./K]', fontsize=12, color=color[0])
+
+                v3.text(10,7.16,r'$\frac{d c}{d T} = $' + str(np.around(dh[2]*10000,1)) + r'$\times10^{-4}$ [Ang./K]', fontsize=12, color=colors[i])
+                v3.text(10,7.175,r'$\frac{d c}{d T} = $' + str(np.around(dh_MD[2]*10000,1)) + r'$\times10^{-4}$ [Ang./K]', fontsize=12, color=color[0])
+
+                a1.text(10,90.75,r'$\frac{d \alpha}{d T} = 0.0$ [Deg./K]', fontsize=12, color=colors[i])
+                a1.text(10,90.50,r'$\frac{d \alpha}{d T} = 0.0$ [Deg./K]', fontsize=12, color=color[0])
+
+                a2.text(10,116,r'$\frac{d \beta}{d T} = $' + str(np.around(dh[4]*10000,1)) + r'$\times10^{-4}$ [Deg./K]', fontsize=12, color=colors[i])
+                a2.text(10,116.5,r'$\frac{d \beta}{d T} = $' + str(np.around(dh_MD[4]*10000,1)) + r'$\times10^{-4}$ [Deg./K]', fontsize=12, color=color[0])
+
+                a3.text(10,90.75,r'$\frac{d \gamma}{d T} = 0.0$ [Deg./K]', fontsize=12, color=colors[i])
+                a3.text(10,90.5,r'$\frac{d \gamma}{d T} = 0.0$ [Deg./K]', fontsize=12, color=color[0])
+
+                ax_V.text(10, 800, r'$\frac{d V}{dT} = $' +str(np.around(dh_MD[6],2))+ ' [Ang.$^{3}$/K]', fontsize=12, color=color[0])
+                ax_V.text(10, 795, r'$\frac{d V}{dT} = $' +str(np.around(dh[6],2))+ ' [Ang.$^{3}$/K]', fontsize=12, color=colors[i])
+#                                                             
+## cbmzpn p3                                                  
+#            if l == find:
+#                dh =  np.zeros(7)
+#                T_loc = np.where(exp_values[loc, 0] > 100.)[0]
+#                for j in range(1,7):
+#                    dh[j-1] = np.polyfit(exp_values[loc, 0].astype(float)[T_loc], exp_values[loc, j].astype(float)[T_loc], 1)[0]
+#                dh[6] = np.polyfit(exp_values[loc, 0].astype(float)[T_loc], V[T_loc], 1)[0]
+#
+#                v1.text(10,7.64,r'$\frac{d a}{d T} = $' + str(np.around(dh[0]*10000,1)) + r'$\times10^{-4}$ [Ang./K]', fontsize=12, color=colors[i])
+#                v1.text(10,7.67,r'$\frac{d a}{d T} = $' + str(np.around(dh_MD[0]*10000,1)) + r'$\times10^{-4}$ [Ang./K]', fontsize=12, color=color[0])
+#
+#                v2.text(10,11.24,r'$\frac{d b}{d T} = $' + str(np.around(dh[1]*10000,1)) + r'$\times10^{-4}$ [Ang./K]', fontsize=12, color=colors[i])
+#                v2.text(10,11.28,r'$\frac{d b}{d T} = $' + str(np.around(dh_MD[1]*10000,1)) + r'$\times10^{-4}$ [Ang./K]', fontsize=12, color=color[0])
+#
+#                v3.text(10,13.68,r'$\frac{d c}{d T} = $' + str(np.around(dh[2]*10000,1)) + r'$\times10^{-4}$ [Ang./K]', fontsize=12, color=colors[i])
+#                v3.text(10,13.6,r'$\frac{d c}{d T} = $' + str(np.around(dh_MD[2]*10000,1)) + r'$\times10^{-4}$ [Ang./K]', fontsize=12, color=color[0])
+#
+#                a1.text(10,90.75,r'$\frac{d \alpha}{d T} = 0.0$ [Deg./K]', fontsize=12, color=colors[i])
+#                a1.text(10,90.50,r'$\frac{d \alpha}{d T} = 0.0$ [Deg./K]', fontsize=12, color=color[0])
+#
+#                a2.text(10,93.55,r'$\frac{d \beta}{d T} = $' + str(np.around(dh[4]*10000,1)) + r'$\times10^{-4}$ [Deg./K]', fontsize=12, color=colors[i])
+#                a2.text(10,94.0,r'$\frac{d \beta}{d T} = $' + str(np.around(dh_MD[4]*10000,1)) + r'$\times10^{-4}$ [Deg./K]', fontsize=12, color=color[0])
+#
+#                a3.text(10,90.75,r'$\frac{d \gamma}{d T} = 0.0$ [Deg./K]', fontsize=12, color=colors[i])
+#                a3.text(10,90.5,r'$\frac{d \gamma}{d T} = 0.0$ [Deg./K]', fontsize=12, color=color[0])
+#
+#                ax_V.text(10, 1180, r'$\frac{d V}{dT} = $' +str(np.around(dh[6],2))+ ' [Ang.$^{3}$/K]', fontsize=12, color=colors[i])
+#                ax_V.text(10, 1175, r'$\frac{d V}{dT} = $' +str(np.around(dh_MD[6],2))+ ' [Ang.$^{3}$/K]', fontsize=12, color=color[0])
+#
+##
+
+
+
+
 
     v1.title.set_text('a-Vector')
     v2.title.set_text('b-Vector')
