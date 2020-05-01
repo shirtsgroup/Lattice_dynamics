@@ -268,19 +268,15 @@ def Tinker_Wavenumber(Coordinate_file: str, Parameter_file: str):
     """
     # Calling Tinker's vibrate executable and extracting the eigenvalues and wavenumbers of the respective
     # Hessian and mass-weighted Hessian
-    eigenvalues_and_wavenumbers = subprocess.check_output("vibrate %s -k %s  CR |  grep -oP '[-+]*[0-9]*\.[0-9]{2,9}'"
-                                                          % (Coordinate_file, Parameter_file), shell=True).decode("utf-8")
+    output = subprocess.check_output("vibrate %s -k %s  CR |  grep -oP '[-+]*[0-9]*\.[0-9]{2,9}'"
+                                     %(Coordinate_file, Parameter_file), shell=True).decode("utf-8")
     # Splitting the outputs into array form
-    eigenvalues_and_wavenumbers = eigenvalues_and_wavenumbers.split('\n')
-    eigenvalues_and_wavenumbers_hold = []
-    for i in eigenvalues_and_wavenumbers:
-        if i == '':
-            pass
-        else:
-            eigenvalues_and_wavenumbers_hold.append(float(i))
+    output = output.split('\n')
+    output.remove('')
+    output = np.array(output).astype(float)
 
     # Extracting the wavenumbers and assuring they're sorted from lowest to highest
-    wavenumbers = np.sort(np.array(eigenvalues_and_wavenumbers_hold[len(eigenvalues_and_wavenumbers_hold)//2:]))
+    wavenumbers = np.sort(np.array(output[len(output)//2:]))
     return wavenumbers
 
 def Tinker_Wavenumber_and_Vectors(Coordinate_file: str, Parameter_file: str):
@@ -305,13 +301,13 @@ def Tinker_Wavenumber_and_Vectors(Coordinate_file: str, Parameter_file: str):
 
     subprocess.call(['rm vector_temp.*'], shell=True)
 
-    # Finding the number modes in the system
-    number_of_modes = int(3 * atoms_count('Tinker', Coordinate_file))
-
     # Splitting the outputs into array form
     output = output.split('\n')
     output.remove('')
     output = np.array(output).astype(float)
+
+    # Finding the number modes in the system
+    number_of_modes = int(0.5 * (np.sqrt(4 * len(output) + 9) - 3))
 
     # Grabbing the wavenumbers
     wavenumbers = np.array(output[number_of_modes: number_of_modes*2]).astype(float)
