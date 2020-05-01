@@ -211,8 +211,7 @@ def Get_Iso_Gruneisen_Wavenumbers(Gruneisen, Wavenumber_Reference, Volume_Refere
 ##########################################
 
 def Setup_Anisotropic_Gruneisen(inputs):
-    number_of_modes = int(3 * psf.atoms_count(inputs.program, inputs.coordinate_file))
-
+    # Determining the file ending for the program used
     file_ending = psf.assign_coordinate_file_ending(inputs.program)
 
     # Starting by straining the crystal in the six principal directions
@@ -222,15 +221,28 @@ def Setup_Anisotropic_Gruneisen(inputs):
         eigenvectors = np.load('GRU_eigen.npy')
         re_run = True
     else:
+        # Computing the reference wavenumbers and eigenvectors
+        wavenumbers_ref, eigenvectors_ref = psf.Wavenumber_and_Vectors(inputs.program, inputs.coordinate_file,
+                                                                       inputs.tinker_parameter_file)
+
+        # Setting the number of vibrational modes
+        number_of_modes = int(len(wavenumbers_ref))
+
+        # Setting a place to store all the wavenumbers and eigenvalues for the Gruenisen paremeters
         wavenumbers = np.zeros((7, number_of_modes))
         eigenvectors = np.zeros((7, number_of_modes, number_of_modes))
+        wavenumbers[0] = wavenumbers_ref
+        eigenvectors[0] = eigenvectors_ref
+
+        # Outputing information for user output
         NO.start_anisoGru()
 
-    # Computing the reference wavenumbers and eigenvectors
-    wavenumbers[0], eigenvectors[0] = psf.Wavenumber_and_Vectors(inputs.program, inputs.coordinate_file,
-                                                                 inputs.tinker_parameter_file)
+        # Saving that data computed thusfar in case the system crashes or times out
+        np.save('GRU_eigen', eigenvectors)
+        np.save('GRU_wvn', wavenumbers)
+
     for i in range(6):
-        if (re_run == True) and (wavenumbers[i + 1, 3] != 0.):
+        if re_run and (wavenumbers[i + 1, 3] != 0.):
             pass
         else:
             # Making expanded structures in th direction of the six principal strains
