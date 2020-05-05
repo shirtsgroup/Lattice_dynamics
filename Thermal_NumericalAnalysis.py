@@ -333,7 +333,8 @@ def Isotropic_Stepwise_Expansion(inputs):
     """
     # Setting file endings and determining how many wavenumbers there will be
     file_ending = psf.assign_coordinate_file_ending(inputs.program)
-    number_of_modes = int(psf.atoms_count(inputs.program, inputs.coordinate_file) * 3)
+    if inputs.number_of_modes == -1:
+        inputs.number_of_modes = int(psf.atoms_count(inputs.program, inputs.coordinate_file) * 3)
 
     # Setting up array of volume fractions from the lattice structure
     lower_volume_fraction = np.arange(inputs.stepwise_volume_fraction_lower, 1.0,
@@ -346,7 +347,7 @@ def Isotropic_Stepwise_Expansion(inputs):
     volume_fraction = np.append(lower_volume_fraction, upper_volume_fraction)
 
     # Setting up a matrix to store the wavenumbers in
-    wavenumbers = np.zeros((len(volume_fraction), number_of_modes + 1))
+    wavenumbers = np.zeros((len(volume_fraction), inputs.number_of_modes + 1))
     wavenumbers[:, 0] = volume_fraction
 
     # Setting parameters for the Gruneisen parameter and loading in previously found wavenumbers for SiQ
@@ -448,7 +449,8 @@ def Isotropic_Stepwise_Expansion(inputs):
 def stepwise_expansion(inputs):
     # Setting file endings and determining how many wavenumbers there will be
     file_ending = psf.assign_coordinate_file_ending(inputs.program)
-    number_of_modes = int(psf.atoms_count(inputs.program, inputs.coordinate_file) * 3)
+    if inputs.number_of_modes == -1:
+        inputs.number_of_modes = int(psf.atoms_count(inputs.program, inputs.coordinate_file) * 3)
 
     # Setting up array of volume fractions from the lattice structure
     V0 = Pr.Volume(Program=inputs.program, Coordinate_file=inputs.coordinate_file)
@@ -457,11 +459,11 @@ def stepwise_expansion(inputs):
                         + 0.000001, inputs.stepwise_volume_fraction_stepsize * V0)
 
     # Setting up a matrix to store the wavenumbers in
-    wavenumbers = np.zeros((len(volumes), number_of_modes + 1))
+    wavenumbers = np.zeros((len(volumes), inputs.number_of_modes + 1))
     wavenumbers[:, 0] = volumes
     placement = np.where(np.around(volumes, 3) == np.around(V0, 3))
     if inputs.method == 'SaQply':
-        eigenvectors = np.zeros((len(volumes), number_of_modes, number_of_modes))
+        eigenvectors = np.zeros((len(volumes), inputs.number_of_modes, inputs.number_of_modes))
         wavenumbers_hold = \
             Wvn.Call_Wavenumbers(inputs, Coordinate_file=inputs.coordinate_file)
 
@@ -555,7 +557,8 @@ def Isotropic_Gradient_Expansion(inputs, LocGrd_dV):
     """
     # Setting file endings and determining how many wavenumbers there will be
     file_ending = psf.assign_coordinate_file_ending(inputs.program)
-    number_of_modes = int(psf.atoms_count(inputs.program, inputs.coordinate_file) * 3)
+    if inputs.number_of_modes == -1:
+        inputs.number_of_modes = int(psf.atoms_count(inputs.program, inputs.coordinate_file) * 3)
 
     # Setting the temperature array
     temperature = np.arange(0, inputs.gradient_max_temperature + 1., inputs.gradient_numerical_step)
@@ -572,7 +575,7 @@ def Isotropic_Gradient_Expansion(inputs, LocGrd_dV):
                 volume_gradient[:len(volume_gradient_hold[:, 0]), :] = volume_gradient_hold
 
     # Setting up a matrix to store the wavenumbers in
-    wavenumbers = np.zeros((len(temperature), number_of_modes + 1))
+    wavenumbers = np.zeros((len(temperature), inputs.number_of_modes + 1))
     wavenumbers[:, 0] = temperature
 
     # Setting parameters for the Gruneisen parameter and loading in previously found wavenumbers for SiQ
@@ -723,7 +726,8 @@ def Isotropic_Gradient_Expansion(inputs, LocGrd_dV):
 def Anisotropic_Gradient_Expansion(inputs, LocGrd_dC):
     # Setting file endings and determining how many wavenumbers there will be
     file_ending = psf.assign_coordinate_file_ending(inputs.program)
-    number_of_modes = int(psf.atoms_count(inputs.program, inputs.coordinate_file) * 3)
+    if inputs.number_of_modes == -1:
+        inputs.number_of_modes = int(psf.atoms_count(inputs.program, inputs.coordinate_file) * 3)
 
     # Setting the temperature array
     temperature = np.arange(0, inputs.gradient_max_temperature + 1, inputs.gradient_numerical_step)
@@ -742,7 +746,7 @@ def Anisotropic_Gradient_Expansion(inputs, LocGrd_dC):
                     crystal_matrix_gradient_hold
 
     # Setting up a matrix to store the wavenumbers in
-    wavenumbers = np.zeros((len(temperature), number_of_modes + 1))
+    wavenumbers = np.zeros((len(temperature), inputs.number_of_modes + 1))
     wavenumbers[:, 0] = temperature
 
     if inputs.method == 'GaQg':
@@ -916,13 +920,14 @@ def Anisotropic_Gradient_Expansion(inputs, LocGrd_dC):
 def Anisotropic_Gradient_Expansion_1D(inputs, LocGrd_dC):
     # Setting file endings and determining how many wavenumbers there will be
     file_ending = psf.assign_coordinate_file_ending(inputs.program)
-    number_of_modes = int(psf.atoms_count(inputs.program, inputs.coordinate_file) * 3)
+    if inputs.number_of_modes == -1:
+        inputs.number_of_modes = int(psf.atoms_count(inputs.program, inputs.coordinate_file) * 3)
 
     # Setting the temperature array
     temperature = np.arange(0, inputs.gradient_max_temperature + 1, inputs.gradient_numerical_step)
 
     # Setting up a matrix to store the wavenumbers in
-    wavenumbers = np.zeros((len(temperature), number_of_modes + 1))
+    wavenumbers = np.zeros((len(temperature), inputs.number_of_modes + 1))
     wavenumbers[:, 0] = temperature
 
     if inputs.method == 'GaQg':
@@ -1102,7 +1107,8 @@ def Anisotropic_Gradient_Expansion_1D(inputs, LocGrd_dC):
 def anisotropic_gradient_expansion_ezp(inputs, LocGrd_dC):
     # Setting file endings and determining how many wavenumbers there will be
     file_ending = psf.assign_coordinate_file_ending(inputs.program)
-    number_of_modes = int(psf.atoms_count(inputs.program, inputs.coordinate_file) * 3)
+    if inputs.number_of_modes == -1:
+        inputs.number_of_modes = int(psf.atoms_count(inputs.program, inputs.coordinate_file) * 3)
 
     # Setting the array of zeta points for turning on the zero point energy
     zetas = np.arange(0, 1 + inputs.zeta_numerical_step, inputs.zeta_numerical_step)
@@ -1112,7 +1118,7 @@ def anisotropic_gradient_expansion_ezp(inputs, LocGrd_dC):
     crystal_matrix_gradient[:, 0, 0] = zetas[:len(zetas)]
 
     # Setting up a matrix to store the wavenumbers in
-    wavenumbers = np.zeros((len(zetas), number_of_modes + 1))
+    wavenumbers = np.zeros((len(zetas), inputs.number_of_modes + 1))
     wavenumbers[:, 0] = zetas
 
     if inputs.method == 'GaQg':

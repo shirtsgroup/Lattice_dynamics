@@ -9,6 +9,7 @@ number_of_molecules: NNNN
 multi_component:
    number_of_molecules_multi:
    atoms_per_mol:
+   number_of_modes: -1
 program: Tinker
 tinker:
    parameter_file: keyfile.key
