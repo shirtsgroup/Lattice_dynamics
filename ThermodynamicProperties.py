@@ -62,6 +62,39 @@ def Properties(inputs: list, Coordinate_file: int, wavenumbers: list, Temperatur
     return properties
 
 
+def Properties_with_Temperature(inputs: list, Coordinate_file: int, wavenumbers: list) -> list:
+    """
+    Computes all harmonic properties of a crystal structure at all temperatures and pressures
+
+    Paramaeters
+    -----------
+    inputs : list with all inputs from the yaml file
+    Coordinate_file : coordinate file corresponding with program selected
+    wavenumbers : wavenumbers [cm^-1]
+    Temperature : system temperatures [K]
+
+    Returns
+    -------
+    :return: length 14 array of thermodynamic properties in the following order
+      0 - Temperature[K]
+      1 - Pressure [atm]
+      2 - Gibbs free energy [kcal/mol]
+      3 - Potential energy [kcal/mol]
+      4 - Harmonic Helmholtz free energy [kcal/mol]
+      5 - Pressure-volume energy contribution [kcal/mol]
+      6 - Volume [Ang.^3]
+      7,8,9 - a, b, and c lattice vectors [Ang.]
+      10,11,12 - alpha, beta, and gamma lattice angles [Deg.]
+      13 - Harmonic entropy [kcal/(mol*K)]
+    """
+    # list to save properties to be returned
+    properties = np.zeros((len(inputs.temperature), 14))
+
+    # computing all properties for a fixed coordinate file with temperature and pressure
+    for i, t in enumerate(inputs.temperature):
+        properties[i, :] = Properties(inputs, Coordinate_file, wavenumbers, t)
+    return properties
+
 def Properties_with_Temperature_and_Pressure(inputs: list, Coordinate_file: int, wavenumbers: list) -> list:
     """
     Computes all harmonic properties of a crystal structure at all temperatures and pressures
@@ -95,7 +128,6 @@ def Properties_with_Temperature_and_Pressure(inputs: list, Coordinate_file: int,
         for j, p in enumerate(inputs.pressure):
             properties[i, j, :] = Properties(inputs, Coordinate_file, wavenumbers, t, pressure=p)
     return properties
-
 
 def Save_Properties_1D(inputs: list, properties: list):
     """
