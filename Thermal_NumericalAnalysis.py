@@ -464,8 +464,7 @@ def stepwise_expansion(inputs):
     placement = np.where(np.around(volumes, 3) == np.around(V0, 3))
     if inputs.method == 'SaQply':
         eigenvectors = np.zeros((len(volumes), inputs.number_of_modes, inputs.number_of_modes))
-        wavenumbers_hold = \
-            Wvn.Call_Wavenumbers(inputs, Coordinate_file=inputs.coordinate_file)
+    wavenumbers_hold = Wvn.Call_Wavenumbers(inputs, Coordinate_file=inputs.coordinate_file)
 
     # setting a matrix for properties versus temperature and pressure
     properties = np.zeros((len(volumes), len(inputs.temperature), 14))
