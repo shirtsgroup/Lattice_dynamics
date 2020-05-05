@@ -461,20 +461,20 @@ def stepwise_expansion(inputs):
     # Setting up a matrix to store the wavenumbers in
     wavenumbers = np.zeros((len(volumes), inputs.number_of_modes + 1))
     wavenumbers[:, 0] = volumes
-    placement = np.where(np.around(volumes, 3) == np.around(V0, 3))
-    if inputs.method == 'SaQply':
-        eigenvectors = np.zeros((len(volumes), inputs.number_of_modes, inputs.number_of_modes))
-    wavenumbers_hold = Wvn.Call_Wavenumbers(inputs, Coordinate_file=inputs.coordinate_file)
+    placement = np.where(np.around(volumes, 3) == np.around(V0, 3))[0][0]
+#    if inputs.method == 'SaQply':
+#        eigenvectors = np.zeros((len(volumes), inputs.number_of_modes, inputs.number_of_modes))
+    wavenumbers[placement, 1:] = Wvn.Call_Wavenumbers(inputs, Coordinate_file=inputs.coordinate_file)
 
     # setting a matrix for properties versus temperature and pressure
     properties = np.zeros((len(volumes), len(inputs.temperature), 14))
-    properties[placement, :] = Pr.Properties_with_Temperature(inputs, inputs.coordinate_file, wavenumbers_hold[0])
+    properties[placement, :] = Pr.Properties_with_Temperature(inputs, inputs.coordinate_file, wavenumbers[placement, 1:])
 
     for i in [-1, 1]:
         V = V0
         subprocess.call(['cp', inputs.coordinate_file, 'hold' + file_ending])
         while volumes[0] <= V + i * dV <= volumes[-1]:
-            placement = np.where(np.around(V + i * dV, 3) == np.around(volumes, 3))
+            placement = np.where(np.around(V + i * dV, 3) == np.around(volumes, 3))[0][0]
             if os.path.isfile('Cords/' + inputs.output + '_' + inputs.method + str(round((V + i * dV) / V0, 4))
                               + file_ending):
                 subprocess.call(['cp', 'Cords/' + inputs.output + '_' + inputs.method + str(round((V + i * dV) / V0, 4))
@@ -503,7 +503,7 @@ def stepwise_expansion(inputs):
                 wavenumbers[placement, 1:] = wavenumbers_hold
             properties[placement, :] = Pr.Properties_with_Temperature(inputs, inputs.output + '_' + inputs.method +
                                                                       str(round((V + i * dV) / V0, 4)) + file_ending,
-                                                                      wavenumbers_hold[0])
+                                                                      wavenumbers[placement, 1:])
             V = V + i * dV
     subprocess.call(['mv ' + inputs.output + '_' + inputs.method + '* ./Cords'], shell=True)
     subprocess.call(['rm', 'hold' + file_ending])
