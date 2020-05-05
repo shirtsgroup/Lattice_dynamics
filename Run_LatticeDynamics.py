@@ -20,32 +20,38 @@ path = os.path.realpath(__file__).strip('Run_LatticeDynamics.py')
 
 def temperature_lattice_dynamics(inputs, data, input_file='input.yaml'):
     # Geometry and lattice optimizing the input structure
-    if (inputs.tinker_xtalmin == True) and (inputs.program == 'Tinker'):
+    if inputs.tinker_xtalmin and (inputs.program == 'Tinker'):
         psf.tinker_xtalmin(inputs)
         inputs.tinker_xtalmin = False
 
+    # Running the harmonic approximation
     if inputs.method == 'HA':
         print("Performing Harmonic Approximation")
-        # Running the Harmonic Approximation
+
+        # Determining if the wavenumbers have already been calculated
         if os.path.isfile(inputs.output + '_' + inputs.method + '_WVN.npy'):
+            # Loading in te wavenumbers
             wavenumbers = np.load(inputs.output + '_' + inputs.method + '_WVN.npy')
             print("   Importing wavenumbers from:" + inputs.output + '_' + inputs.method + '_WVN.npy')
         else:
+            # Computing the wavenumbers and saving them
             print("   Computing wavenumbers of coordinate file")
             wavenumbers = Wvn.Call_Wavenumbers(inputs, Coordinate_file=inputs.coordinate_file,
                                                Parameter_file=inputs.tinker_parameter_file)
             np.save(inputs.output + '_' + inputs.method + '_WVN', wavenumbers)
 
-        if all(wavenumbers[:3] < inputs.wavenumber_tolerance) and all(wavenumbers[:3] > -1. * inputs.wavenumber_tolerance):
+        # Making sure all wavenumbers are within the user specified tolerance
+        if all(wavenumbers[:3] < inputs.wavenumber_tolerance) and \
+                all(wavenumbers[:3] > -1. * inputs.wavenumber_tolerance):
             print("   All wavenumbers are greater than tolerance of: " + str(inputs.wavenumber_tolerance) + " cm^-1")
-            properties = Pr.Properties_with_Temperature(inputs, inputs.coordinate_file, wavenumbers)
+            properties = Pr.Properties_with_Temperature_and_Pressure(inputs, inputs.coordinate_file, wavenumbers)
             print("   All properties have been saved in " + inputs.output + "_raw.npy")
             np.save(inputs.output + '_raw', properties)
             print("   Saving user specified properties in indipendent files:")
-            Pr.Save_Properties(inputs, properties)
+            Pr.Save_Properties_2D(inputs, properties)
         exit()
     else:
-        if os.path.isdir('Cords') != True:
+        if not os.path.isdir('Cords'):
             print("Creating directory 'Cords/' to store structures along Gibbs free energy path")
             subprocess.call(['mkdir', 'Cords'])
 
@@ -68,10 +74,11 @@ def temperature_lattice_dynamics(inputs, data, input_file='input.yaml'):
     if (inputs.method == 'SiQ') or (inputs.method == 'SiQg'):
         # Stepwise Isotropic QHA
         print("Performing Stepwise Isotropic Quasi-Harmonic Approximation")
-        properties = TNA.Isotropic_Stepwise_Expansion(inputs)
+        #properties = TNA.Isotropic_Stepwise_Expansion(inputs)
+        properties = TNA.stepwise_expansion(inputs)
 
         print("   Saving user specified properties in indipendent files:")
-        Pr.Save_Properties(inputs, properties)
+        Pr.Save_Properties_1D(inputs, properties)
 
     elif (inputs.method == 'GiQ') or (inputs.method == 'GiQg'):
         if inputs.gradient_vol_fraction == (0. or None):
@@ -84,7 +91,7 @@ def temperature_lattice_dynamics(inputs, data, input_file='input.yaml'):
         properties = TNA.Isotropic_Gradient_Expansion(inputs, LocGrd_dV)
 
         print("   Saving user specified properties in indipendent files:")
-        Pr.Save_Properties(inputs, properties)
+        Pr.Save_Properties_1D(inputs, properties)
     elif (inputs.method == 'GaQ') or (inputs.method == 'GaQg'):
         if inputs.statistical_mechanics == 'Classical':
             if any(inputs.gradient_matrix_fractions != 0.):
@@ -101,18 +108,18 @@ def temperature_lattice_dynamics(inputs, data, input_file='input.yaml'):
             print("Performing Gradient Anisotropic Quasi-Harmonic Approximation")
             properties = TNA.Anisotropic_Gradient_Expansion(inputs, LocGrd_dC)
             print("   Saving user specified properties in independent files:")
-            Pr.Save_Properties(inputs, properties)
+            Pr.Save_Properties_1D(inputs, properties)
         else:
             print("Performing 1D-Gradient Anisotropic Quasi-Harmonic Approximation")
             properties = TNA.Anisotropic_Gradient_Expansion_1D(inputs, LocGrd_dC)
             print("   Saving user specified properties in independent files:")
-            Pr.Save_Properties(inputs, properties)
+            Pr.Save_Properties_1D(inputs, properties)
         
     elif inputs.method == 'SaQply':
         print("Performing Quasi-Anisotropic Quasi-Harmonic Approximation")
         properties = TNA.stepwise_expansion(inputs)
         print("   Saving user specified properties in independent files:")
-        Pr.Save_Properties(inputs, properties)
+        Pr.Save_Properties_1D(inputs, properties)
     print("Lattice dynamic calculation is complete!")
 
 def setdefault(input_data, default_values):

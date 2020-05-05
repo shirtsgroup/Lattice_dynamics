@@ -17,7 +17,7 @@ import matplotlib.pyplot as plt
 ##########################################
 #           Export PROPERTIES            #
 ##########################################
-def Properties(inputs: list, Coordinate_file: int, wavenumbers: list, Temperature: [float, int]) -> list:
+def Properties(inputs: list, Coordinate_file: int, wavenumbers: list, Temperature: [float, int], pressure=-1.) -> list:
     """
     Computes all harmonic properties of a crystal structure at the specified temperature.
 
@@ -42,11 +42,13 @@ def Properties(inputs: list, Coordinate_file: int, wavenumbers: list, Temperatur
       10,11,12 - alpha, beta, and gamma lattice angles [Deg.]
       13 - Harmonic entropy [kcal/(mol*K)]
     """
+    if pressure == -1:
+        pressure = inputs.pressure
 
     properties = np.zeros(14)  # list to save properties to be returned
 
     properties[0] = Temperature  # Temperature
-    properties[1] = inputs.pressure  # Pressure
+    properties[1] = pressure  # Pressure
     properties[3] = psf.Potential_energy(Coordinate_file, inputs.program, inputs.tinker_parameter_file) / \
                     inputs.number_of_molecules  # Potential Energy
     properties[7:13] = psf.Lattice_parameters(inputs.program, Coordinate_file)  # Lattice parameters
@@ -55,14 +57,14 @@ def Properties(inputs: list, Coordinate_file: int, wavenumbers: list, Temperatur
                     inputs.number_of_molecules  # Computing the Helmholtz vibrational free energy
     properties[13] = Vibrational_Entropy(Temperature, wavenumbers, inputs.statistical_mechanics) / \
                      inputs.number_of_molecules  # Computing the vibrational entropy
-    properties[5] = PV_energy(inputs.pressure, properties[6]) / inputs.number_of_molecules  # Pressure-Volume energy contribution
+    properties[5] = PV_energy(pressure, properties[6]) / inputs.number_of_molecules  # Pressure-Volume energy contribution
     properties[2] = sum(properties[3:6])  # Gibbs free energy
     return properties
 
 
-def Properties_with_Temperature(inputs: list, Coordinate_file: int, wavenumbers: list) -> list:
+def Properties_with_Temperature_and_Pressure(inputs: list, Coordinate_file: int, wavenumbers: list) -> list:
     """
-    Computes all harmonic properties of a crystal structure at all temperatures.
+    Computes all harmonic properties of a crystal structure at all temperatures and pressures
 
     Paramaeters
     -----------
@@ -85,24 +87,17 @@ def Properties_with_Temperature(inputs: list, Coordinate_file: int, wavenumbers:
       10,11,12 - alpha, beta, and gamma lattice angles [Deg.]
       13 - Harmonic entropy [kcal/(mol*K)]
     """
-    properties = np.zeros((len(inputs.temperature), 14))  # list to save properties to be returned
-    properties[0, :] = Properties(inputs, Coordinate_file, wavenumbers, inputs.temperature[0]) # Computing all properties for the first temperature
-    properties[:, 0] = inputs.temperature  # Temperature
-    properties[:, 1] = properties[0, 1]  # Pressure
-    properties[:, 3] = properties[0, 3]  # Potential energy
-    properties[:, 7:13] = properties[0, 7:13]  # Lattice parameters
-    properties[:, 6] = properties[0, 6]  # Volume
-    properties[:, 5] = properties[0, 5]  # Pressure-volume energy
-    for i in range(1, len(inputs.temperature)):
-        properties[i, 4] = Vibrational_Helmholtz(inputs.temperature[i], wavenumbers, inputs.statistical_mechanics) / \
-                           inputs.number_of_molecules  # Harmonic Helmholtz free energy
-        properties[i, 13] = Vibrational_Entropy(inputs.temperature[i], wavenumbers, inputs.statistical_mechanics) / \
-                            inputs.number_of_molecules  # Harmonic entropy
-        properties[i, 2] = sum(properties[i, 3:6])  # Gibbs free energy
+    # list to save properties to be returned
+    properties = np.zeros((len(inputs.temperature), len(inputs.pressure), 14))
+
+    # computing all properties for a fixed coordinate file with temperature and pressure
+    for i, t in enumerate(inputs.temperature):
+        for j, p in enumerate(inputs.pressure):
+            properties[i, j, :] = Properties(inputs, Coordinate_file, wavenumbers, t, pressure=p)
     return properties
 
 
-def Save_Properties(inputs: list, properties: list):
+def Save_Properties_1D(inputs: list, properties: list):
     """
     Goes through the user specified properties to save to individual numpy files.
 
@@ -111,12 +106,9 @@ def Save_Properties(inputs: list, properties: list):
     inputs : list with all inputs from the yaml file
     properties : computed properties at all temperature of interest
     """
-    if 'T' in inputs.properties_to_save:  # Temperature
-        print("   ... Saving temperature in: " + inputs.output + "_T_" + inputs.method + ".npy")
-        np.save(inputs.output + '_T_' + inputs.method, properties[:, 0])
-    if 'P' in inputs.properties_to_save:  # Pressure
-        print("   ... Saving Pressure in: " + inputs.output + "_P_" + inputs.method + ".npy")
-        np.save(inputs.output + '_P_' + inputs.method, properties[:, 1])
+    print("   ... Saving temperature in: " + inputs.output + "_T_" + inputs.method + ".npy")
+    np.save(inputs.output + '_T_' + inputs.method, properties[:, 0])
+
     if 'G' in inputs.properties_to_save:  # Gibbs free energy
         print("   ... Saving Gibbs free energy in: " + inputs.output + "_G" + inputs.statistical_mechanics + "_" +
               inputs.method + ".npy")
@@ -141,6 +133,46 @@ def Save_Properties(inputs: list, properties: list):
         print("   ... Saving entropy in: " + inputs.output + "_S" + inputs.statistical_mechanics + "_" +
               inputs.method + ".npy")
         np.save(inputs.output + '_S' + inputs.statistical_mechanics + '_' + inputs.method, properties[:, 13])
+
+def Save_Properties_2D(inputs: list, properties: list):
+    """
+    Goes through the user specified properties to save to individual numpy files.
+
+    Paramaeters
+    -----------
+    inputs : list with all inputs from the yaml file
+    properties : computed properties at all temperature of interest
+    """
+    print("   ... Saving temperature in: " + inputs.output + "_T_" + inputs.method + ".npy")
+    np.save(inputs.output + '_T_' + inputs.method, properties[:, :, 0])
+
+    print("   ... Saving Pressure in: " + inputs.output + "_P_" + inputs.method + ".npy")
+    np.save(inputs.output + '_P_' + inputs.method, properties[:, :, 1])
+
+    if 'G' in inputs.properties_to_save:  # Gibbs free energy
+        print("   ... Saving Gibbs free energy in: " + inputs.output + "_G" + inputs.statistical_mechanics + "_" +
+              inputs.method + ".npy")
+        np.save(inputs.output + '_G' + inputs.statistical_mechanics + '_' + inputs.method, properties[:, :, 2])
+    if 'U' in inputs.properties_to_save:  # Potential energy
+        print("   ... Saving potential energy in: " + inputs.output + "_U" + inputs.statistical_mechanics + "_" +
+              inputs.method + ".npy")
+        np.save(inputs.output + '_U' + inputs.statistical_mechanics + '_' + inputs.method, properties[:, :, 3])
+    if 'Av' in inputs.properties_to_save:  # Helmholtz vibrational energy
+        print("   ... Saving vibrational Helmholtz free energy in: " + inputs.output + "_Av" +
+              inputs.statistical_mechanics + "_" + inputs.method + ".npy")
+        np.save(inputs.output + '_Av' + inputs.statistical_mechanics + '_' + inputs.method, properties[:, :, 4])
+    if 'V' in inputs.properties_to_save:  # Volume
+        print("   ... Saving volume in: " + inputs.output + "_V" + inputs.statistical_mechanics + "_" +
+              inputs.method + ".npy")
+        np.save(inputs.output + '_V' + inputs.statistical_mechanics + '_' + inputs.method, properties[:, :, 6])
+    if 'h' in inputs.properties_to_save:  # Lattice parameters
+        print("   ... Saving lattice parameters in: " + inputs.output + "_h" + inputs.statistical_mechanics +
+              "_" + inputs.method + ".npy")
+        np.save(inputs.output + '_h' + inputs.statistical_mechanics + '_' + inputs.method, properties[:, :, 7:13])
+    if 'S' in inputs.properties_to_save:  # Entropy
+        print("   ... Saving entropy in: " + inputs.output + "_S" + inputs.statistical_mechanics + "_" +
+              inputs.method + ".npy")
+        np.save(inputs.output + '_S' + inputs.statistical_mechanics + '_' + inputs.method, properties[:, :, 13])
 
 
 def polynomial_properties_optimize(volumes, V0, wavenumbers, eigenvectors, molecules_in_coord, Statistical_mechanics,
