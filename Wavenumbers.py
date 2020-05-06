@@ -134,6 +134,7 @@ def Setup_Isotropic_Gruneisen(inputs):
     **Optional inputs
     Parameter_file = Optional input for program
     """
+
     # Change in lattice parameters for expanded structure
     dLattice_Parameters = Ex.Isotropic_Change_Lattice_Parameters((1 + inputs.gruneisen_volume_fraction_stepsize),
                                                                  inputs.program, inputs.coordinate_file)
@@ -142,55 +143,94 @@ def Setup_Isotropic_Gruneisen(inputs):
     # Also, assigning a file ending name for the nex coordinate file (program dependent)
     lattice_parameters = psf.Lattice_parameters(inputs.program, inputs.coordinate_file)
 
-    if inputs.program == 'Tinker':
-        Ex.Expand_Structure(inputs, inputs.coordinate_file, 'lattice_parameters', 'temp',
-                            dlattice_parameters=dLattice_Parameters)
-        Organized_wavenumbers = Tinker_Gru_organized_wavenumbers('Isotropic', inputs.coordinate_file, 'temp.xyz',
-                                                                 inputs.tinker_parameter_file)
-        Wavenumber_Reference = Organized_wavenumbers[0] 
-        Wavenumber_expand = Organized_wavenumbers[1]
-        file_ending = '.xyz'
+    # Expanding structure
+    Ex.Expand_Structure(inputs, inputs.coordinate_file, 'lattice_parameters', 'temp',
+                        dlattice_parameters=dLattice_Parameters)
 
-    if inputs.program == 'CP2K':
-        Ex.Expand_Structure(inputs, inputs.coordinate_file, 'lattice_parameters', 'temp',
-                            dlattice_parameters=dLattice_Parameters)
-        Organized_wavenumbers = CP2K_Gru_organized_wavenumbers('Isotropic', inputs.coordinate_file, 'temp.pdb',
-                                                               inputs.tinker_parameter_file, inputs.output)
-        Wavenumber_Reference = Organized_wavenumbers[0] 
-        Wavenumber_expand = Organized_wavenumbers[1]
-        file_ending = '.pdb'
+    # File ending of the coordinate file
+    file_ending = psf.assign_coordinate_file_ending(inputs.program) 
 
-    elif inputs.program == 'QE':
-        Ex.Expand_Structure(inputs, inputs.coordinate_file, 'lattice_parameters', inputs.coordinate_file[0:-3],
-                            dlattice_parameters=[0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
-        Ex.Expand_Structure(inputs, inputs.coordinate_file, 'lattice_parameters', 'temp',
-                            dlattice_parameters=dLattice_Parameters)
-        Organized_wavenumbers = QE_Gru_organized_wavenumbers('Isotropic', inputs.coordinate_file, 'temp.pw',
-                                                             inputs.tinker_parameter_file, inputs.output)
-        Wavenumber_Reference = Organized_wavenumbers[0]
-        Wavenumber_expand = Organized_wavenumbers[1]
-        file_ending = '.pw'
+    # Computing the reference wavenumbers and eigenvectors
+    wavenumbers_ref, eigenvectors_ref = psf.Wavenumber_and_Vectors(inputs.program, inputs.coordinate_file,
+                                                                       inputs.tinker_parameter_file)
+    number_of_modes = len(wavenumbers_ref)
 
-    elif inputs.program == 'Test':
-        Ex.Expand_Structure(inputs, inputs.coordinate_file, 'lattice_parameters', 'temp',
-                            dlattice_parameters=dLattice_Parameters)
-        Wavenumber_Reference = psf.program_wavenumbers(inputs.coordinate_file, 0, 0, 0, inputs.program, 'GiQg')
-        Wavenumber_expand = psf.program_wavenumbers('temp.npy', 0, 0, 0, inputs.program, 'GiQg')
-        file_ending = '.npy'
+    # Outputing information for user output
+    NO.start_isoGru()
+
+    # Computing the strained wavenumbers and eigenvectors
+    wavenumbers_unorganized, eigenvectors_unorganized = \
+        psf.Wavenumber_and_Vectors(inputs.program, 'temp' + file_ending, inputs.tinker_parameter_file)
+
+    # Determining how the strained eigenvectors match up with the reference structure
+    z, weight = matching_eigenvectors_of_modes(number_of_modes, eigenvectors_ref, eigenvectors_unorganized)
+    NO.GRU_weight(weight)
+
+    # Re-organizing the expanded wavenumbers
+    wavenumbers_organized, eigenvectors_organized = reorder_modes(z, wavenumbers_unorganized, eigenvectors_unorganized)
 
     # Calculating the volume of the lattice minimum and expanded structure
     Volume_Reference = Pr.Volume(lattice_parameters=lattice_parameters)
     Volume_expand = Volume_Reference + inputs.gruneisen_volume_fraction_stepsize * Volume_Reference
 
-    Gruneisen = np.zeros(len(Wavenumber_Reference))
-    Gruneisen[3:] = -(np.log(Wavenumber_Reference[3:]) - np.log(Wavenumber_expand[3:]))/(np.log(Volume_Reference) -
-                                                                                         np.log(Volume_expand))
+    Gruneisen = np.zeros(len(wavenumbers_ref))
+    Gruneisen[3:] = -(np.log(wavenumbers_ref[3:]) - np.log(wavenumbers_organized[3:]))/(np.log(Volume_Reference) - np.log(Volume_expand))
     for x in range(0,len(Gruneisen)):
-        if Wavenumber_Reference[x] == 0:
+        if wavenumbers_ref[x] == 0:
             Gruneisen[x] = 0.0
     # Removing extra files created in process
     subprocess.call(['rm', 'temp' + file_ending])
-    return Gruneisen, Wavenumber_Reference, Volume_Reference
+    return Gruneisen, wavenumbers_ref, Volume_Reference
+
+#    if inputs.program == 'Tinker':
+#        Ex.Expand_Structure(inputs, inputs.coordinate_file, 'lattice_parameters', 'temp',
+#                            dlattice_parameters=dLattice_Parameters)
+#        Organized_wavenumbers = Tinker_Gru_organized_wavenumbers('Isotropic', inputs.coordinate_file, 'temp.xyz',
+#                                                                 inputs.tinker_parameter_file)
+#        Wavenumber_Reference = Organized_wavenumbers[0] 
+#        Wavenumber_expand = Organized_wavenumbers[1]
+#        file_ending = '.xyz'
+#
+#    if inputs.program == 'CP2K':
+#        Ex.Expand_Structure(inputs, inputs.coordinate_file, 'lattice_parameters', 'temp',
+#                            dlattice_parameters=dLattice_Parameters)
+#        Organized_wavenumbers = CP2K_Gru_organized_wavenumbers('Isotropic', inputs.coordinate_file, 'temp.pdb',
+#                                                               inputs.tinker_parameter_file, inputs.output)
+#        Wavenumber_Reference = Organized_wavenumbers[0] 
+#        Wavenumber_expand = Organized_wavenumbers[1]
+#        file_ending = '.pdb'
+#
+#    elif inputs.program == 'QE':
+#        Ex.Expand_Structure(inputs, inputs.coordinate_file, 'lattice_parameters', inputs.coordinate_file[0:-3],
+#                            dlattice_parameters=[0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
+#        Ex.Expand_Structure(inputs, inputs.coordinate_file, 'lattice_parameters', 'temp',
+#                            dlattice_parameters=dLattice_Parameters)
+#        Organized_wavenumbers = QE_Gru_organized_wavenumbers('Isotropic', inputs.coordinate_file, 'temp.pw',
+#                                                             inputs.tinker_parameter_file, inputs.output)
+#        Wavenumber_Reference = Organized_wavenumbers[0]
+#        Wavenumber_expand = Organized_wavenumbers[1]
+#        file_ending = '.pw'
+#
+#    elif inputs.program == 'Test':
+#        Ex.Expand_Structure(inputs, inputs.coordinate_file, 'lattice_parameters', 'temp',
+#                            dlattice_parameters=dLattice_Parameters)
+#        Wavenumber_Reference = psf.program_wavenumbers(inputs.coordinate_file, 0, 0, 0, inputs.program, 'GiQg')
+#        Wavenumber_expand = psf.program_wavenumbers('temp.npy', 0, 0, 0, inputs.program, 'GiQg')
+#        file_ending = '.npy'
+#
+#    # Calculating the volume of the lattice minimum and expanded structure
+#    Volume_Reference = Pr.Volume(lattice_parameters=lattice_parameters)
+#    Volume_expand = Volume_Reference + inputs.gruneisen_volume_fraction_stepsize * Volume_Reference
+#
+#    Gruneisen = np.zeros(len(Wavenumber_Reference))
+#    Gruneisen[3:] = -(np.log(Wavenumber_Reference[3:]) - np.log(Wavenumber_expand[3:]))/(np.log(Volume_Reference) -
+#                                                                                         np.log(Volume_expand))
+#    for x in range(0,len(Gruneisen)):
+#        if Wavenumber_Reference[x] == 0:
+#            Gruneisen[x] = 0.0
+#    # Removing extra files created in process
+#    subprocess.call(['rm', 'temp' + file_ending])
+#    return Gruneisen, Wavenumber_Reference, Volume_Reference
 
 
 def Get_Iso_Gruneisen_Wavenumbers(Gruneisen, Wavenumber_Reference, Volume_Reference, New_Volume): 
