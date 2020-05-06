@@ -141,6 +141,7 @@ def Setup_Isotropic_Gruneisen(inputs):
     # Determining wavenumbers of lattice strucutre and expanded strucutre
     # Also, assigning a file ending name for the nex coordinate file (program dependent)
     lattice_parameters = psf.Lattice_parameters(inputs.program, inputs.coordinate_file)
+
     if inputs.program == 'Tinker':
         Ex.Expand_Structure(inputs, inputs.coordinate_file, 'lattice_parameters', 'temp',
                             dlattice_parameters=dLattice_Parameters)
@@ -149,6 +150,7 @@ def Setup_Isotropic_Gruneisen(inputs):
         Wavenumber_Reference = Organized_wavenumbers[0] 
         Wavenumber_expand = Organized_wavenumbers[1]
         file_ending = '.xyz'
+
     if inputs.program == 'CP2K':
         Ex.Expand_Structure(inputs, inputs.coordinate_file, 'lattice_parameters', 'temp',
                             dlattice_parameters=dLattice_Parameters)
@@ -157,6 +159,7 @@ def Setup_Isotropic_Gruneisen(inputs):
         Wavenumber_Reference = Organized_wavenumbers[0] 
         Wavenumber_expand = Organized_wavenumbers[1]
         file_ending = '.pdb'
+
     elif inputs.program == 'QE':
         Ex.Expand_Structure(inputs, inputs.coordinate_file, 'lattice_parameters', inputs.coordinate_file[0:-3],
                             dlattice_parameters=[0.0, 0.0, 0.0, 0.0, 0.0, 0.0])

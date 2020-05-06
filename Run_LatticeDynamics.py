@@ -74,8 +74,7 @@ def temperature_lattice_dynamics(inputs, data, input_file='input.yaml'):
     if (inputs.method == 'SiQ') or (inputs.method == 'SiQg'):
         # Stepwise Isotropic QHA
         print("Performing Stepwise Isotropic Quasi-Harmonic Approximation")
-        properties = TNA.Isotropic_Stepwise_Expansion(inputs)
-        #properties = TNA.stepwise_expansion(inputs)
+        properties = TNA.stepwise_expansion(inputs)
 
         print("   Saving user specified properties in indipendent files:")
         Pr.Save_Properties_1D(inputs, properties)
