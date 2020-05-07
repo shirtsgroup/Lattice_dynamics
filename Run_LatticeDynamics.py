@@ -146,12 +146,7 @@ def yaml_loader(file_path):
 class Inputs:
     def __init__(self, data):
         self.temperature = np.array([data['temperature']]).flatten().astype(float)
-        if len(str(data['pressure']).split(',')) == 1:
-            self.pressure = data['pressure']
-            self.pressure_scan = False
-        else:
-            self.pressure = np.array(data['pressure'].split(',')).astype(float)
-            self.pressure_scan = True
+        self.pressure = np.array([data['pressure']]).flatten().astype(float)
         self.method = data['method']
         self.output = data['output']
         self.statistical_mechanics = data['statistical_mechanics']
@@ -221,8 +216,7 @@ if __name__ == '__main__':
     # Importing user specified inputs from yaml file
     data = yaml_loader(args.Input_file)
     inputs = Inputs(data)
-    if not inputs.pressure_scan:
-        temperature_lattice_dynamics(inputs, data, input_file=args.Input_file)
-    else:
-        print("Nate needs to re-setup pressure capabilities")
+    temperature_lattice_dynamics(inputs, data, input_file=args.Input_file)
+   # else:
+   #     print("Nate needs to re-setup pressure capabilities")
 

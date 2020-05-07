@@ -89,10 +89,21 @@ def Properties_with_Temperature(inputs: list, Coordinate_file: int, wavenumbers:
     """
     # list to save properties to be returned
     properties = np.zeros((len(inputs.temperature), 14))
+    properties[0] = Properties(inputs, inputs.coordinate_file, wavenumbers, inputs.temperature[0])
+    properties[:, 1] = properties[0, 1]  # Pressure
+    properties[:, 3] = properties[0, 3]  # Potential Energy
+    properties[:, 7:13] = properties[0, 7:13]  # Lattice parameters
+    properties[:, 6] = properties[0, 6]  # Volume 
+    properties[:, 5] = properties[0, 5]  # PV energy
 
     # computing all properties for a fixed coordinate file with temperature and pressure
     for i, t in enumerate(inputs.temperature):
-        properties[i, :] = Properties(inputs, Coordinate_file, wavenumbers, t)
+        properties[i, 0] = t  # Temperature
+        properties[i, 4] = Vibrational_Helmholtz(t, wavenumbers, inputs.statistical_mechanics) / \
+                        inputs.number_of_molecules  # Computing the Helmholtz vibrational free energy
+        properties[i, 13] = Vibrational_Entropy(t, wavenumbers, inputs.statistical_mechanics) / \
+                         inputs.number_of_molecules  # Computing the vibrational entropy
+        properties[i, 2] = sum(properties[i, 3:6])  # Gibbs free energy
     return properties
 
 def Properties_with_Temperature_and_Pressure(inputs: list, Coordinate_file: int, wavenumbers: list) -> list:
@@ -122,11 +133,22 @@ def Properties_with_Temperature_and_Pressure(inputs: list, Coordinate_file: int,
     """
     # list to save properties to be returned
     properties = np.zeros((len(inputs.temperature), len(inputs.pressure), 14))
+    properties[0, 0, :] = Properties(inputs, inputs.coordinate_file, wavenumbers, inputs.temperature[0], pressure=inputs.pressure[0])
+    properties[:, :, 3] = properties[0, 0, 3]  # Potential Energy
+    properties[:, :, 7:13] = properties[0, 0, 7:13]  # Lattice parameters
+    properties[:, :, 6] = properties[0, 0, 6]  # Volume
 
     # computing all properties for a fixed coordinate file with temperature and pressure
     for i, t in enumerate(inputs.temperature):
+        properties[i, :, 0] = t  # Temperature
+        properties[i, :, 4] = Vibrational_Helmholtz(t, wavenumbers, inputs.statistical_mechanics) / \
+                        inputs.number_of_molecules  # Computing the Helmholtz vibrational free energy
+        properties[i, :, 13] = Vibrational_Entropy(t, wavenumbers, inputs.statistical_mechanics) / \
+                         inputs.number_of_molecules  # Computing the vibrational entropy
         for j, p in enumerate(inputs.pressure):
-            properties[i, j, :] = Properties(inputs, Coordinate_file, wavenumbers, t, pressure=p)
+            properties[i, j, 1] = p  # Pressure
+            properties[i, j, 5] = PV_energy(p, properties[i, j, 6]) / inputs.number_of_molecules  # PV energy
+            properties[i, j, 2] = sum(properties[i, j, 3:6])  # Gibbs free energy
     return properties
 
 def Save_Properties_1D(inputs: list, properties: list):
