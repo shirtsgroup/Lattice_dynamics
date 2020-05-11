@@ -2,7 +2,6 @@
 
 from __future__ import print_function
 import os
-import sys
 import subprocess
 import numpy as np
 import Expand as Ex
@@ -16,89 +15,89 @@ import program_specific_functions as psf
 #                 Input                  #
 ##########################################
 def Call_Wavenumbers(inputs, **keyword_parameters):
-    """
-    This function helps to direct how the wavenumbers will be calculated and calls other functions to calculate and 
-    return the wavenumbers
+    r"""
+    Given the inputs class and other keyword_parameters this will direct the computation of any wavenumber needs,
+    including setup of the Gruneisen parameters.
 
-    **Required Inputs
-    Method = Harmonic approximation ('HA');
-             Stepwise Isotropic QHA ('SiQ');
-             Stepwise Isotropic QHA w/ Gruneisen Parameter ('SiQg');
-             Gradient Isotropic QHA ('GiQ');
-             Gradient Isotropic QHA w/ Gruneisen Parameter ('GiQg');
-             Gradient Anisotropic QHA ('GaQ');
-             Gradient Anisotropic QHA w/ Gruneisen Parameter ('GaQg');
+    Parameters
+    ----------
+    inputs: Class
+        Contains all user defined values and filled in with default program values
 
-    **Optional Inputs
-    Output = Name of file to put wavenumbers into, if it already exists it will be loaded
-    Gruneisen = Gruneisen parameters found with Setup_Isotropic_Gruneisen
-    Wavenumber_Reference = Reference wavenumbers for Gruneisen parameter, will be output from Setup_Isotropic_Gruneisen
-    Volume_Reference = Reference volume of structure for Wavenumber_Reference, will be output from 
-    Setup_Isotropic_Gruneisen
-    New_Volume = Volume of new structure to calculate wavenumbers for
-    Gruneisen_Vol_FracStep = Volumetric stepsize to expand lattice minimum structure to numerically determine the
-    Gruneisen parameter
-    molecules_in_coord = number of molecules in Coordinate_file
-    Coordinate_file = File containing lattice parameters and atom coordinates
-    Parameter_file = Optional input for program
-    Program = 'Tinker' for Tinker Molecular Modeling
-              'Test' for a test run
-    Crystal_matrix_Reference
-    New_Crystal_matrix
-    Gruneisen_Lat_FracStep
+    Returns
+    -------
+    wavenumbers: Dict
+        If Gruneisen parameters need to be calculated:
+
+            * `'gruneisen'`: Gruneisen parameters of the input coordinate file.
+            * `'wavenumber_reference'`: The reference wavenumbers [cm$^{-1}$] of the input coordinate file.
+            * `'volume_reference'`: The reference volume [$\AA^{3}$] of the input coordinate file.
+
+        If wavnumebers need to be calculated:
+
+            * `'wavenumbers'`: wavenumbers [cm$^{-1}$] of the input coordinate file
     """
-    if (inputs.method == 'SiQ') or (inputs.method == 'GiQ') or (inputs.method == 'GaQ') or (inputs.method == 'HA'):
+
+    # If the method does not require the Gruneisen parameter the wavenumbers are directly computed
+    if inputs.method in ['HA', 'SiQ', 'GiQ', 'GaQ']:
         return psf.program_wavenumbers(keyword_parameters['Coordinate_file'], inputs.tinker_parameter_file,
                                        inputs.output, inputs.coordinate_file, inputs.program, inputs.method)
 
-    elif (inputs.method == 'SiQg') or (inputs.method == 'GiQg'):
-        # Methods that use the Gruneisen parameter
+    # Wavenumber / Gruneisen calculation for isotropic expansion methods that use the Gruensein parameters
+    elif inputs.method in ['SiQg', 'GiQg']:
+        # Checking if the Gruneisen parameters and reference wavenumbers are being fed in
         if ('Gruneisen' in keyword_parameters) and ('Wavenumber_Reference' in keyword_parameters) and \
                 ('Volume_Reference' in keyword_parameters) and ('New_Volume' in keyword_parameters):
-            # Calculating the wavenumbers of the new Isotropically expanded structure
+            # Directly determining the new wavenumbers
             wavenumbers = Get_Iso_Gruneisen_Wavenumbers(keyword_parameters['Gruneisen'],
                                                         keyword_parameters['Wavenumber_Reference'],
                                                         keyword_parameters['Volume_Reference'],
                                                         keyword_parameters['New_Volume'])
             return wavenumbers
+
         else:
-            # If there is a saved Gruneisen parameter and set of wavenumbers
+            # Checking if this is a re-run and if the Gruneisen parameters have already been saved
             if os.path.isfile(inputs.output + '_GRUwvn_' + inputs.method + '.npy') and \
                     os.path.isfile(inputs.output + '_GRU_' + inputs.method + '.npy'):
+                # Loading the previously saved Gruneisen parameters and wavenumbers
                 print("   ...Using Gruneisen parameters from: " + inputs.output + '_GRU_' + inputs.method + '.npy')
                 gruneisen = np.load(inputs.output + '_GRU_' + inputs.method + '.npy')
                 wavenumber_reference = np.load(inputs.output + '_GRUwvn_' + inputs.method + '.npy')
                 volume_reference = Pr.Volume(Coordinate_file=inputs.coordinate_file, Program=inputs.program,
                                              Parameter_file=inputs.tinker_parameter_file)
-            # If the Gruneisen parameter has yet to be determined, here it will be calculated
-            # It is assumed that the input Coordinate_file is the lattice minimum strucutre
+
             else:
+                # Calculating the Gruneisen parameters and reference wavenumbers
                 gruneisen, wavenumber_reference, volume_reference = Setup_Isotropic_Gruneisen(inputs)
+
+                # Saving the Gruneisen parameters and wavenumbers
                 print("   ... Saving reference wavenumbers and Gruneisen parameters to: " + inputs.output
                       + '_GRU_' + inputs.method + '.npy')
                 np.save(inputs.output + '_GRU_' + inputs.method, gruneisen)
                 np.save(inputs.output + '_GRUwvn_' + inputs.method, wavenumber_reference)
             return gruneisen, wavenumber_reference, volume_reference
 
-    elif inputs.method == 'GaQg':
+    # Wavenumber / Gruneisen calculation for anisotropic expansion methods that use the Gruensein parameters
+    elif inputs.method in ['GaQg']:
+        # Checking if the Gruneisen parameters and reference wavenumbers are being fed in
         if ('Gruneisen' in keyword_parameters) and ('Wavenumber_Reference' in keyword_parameters) and \
                 ('ref_crystal_matrix' in keyword_parameters):
-            # Calculating the wavenumbers of the new anisotropically expanded structure
-            # The Gruniesen parameter and reference wavenumbers have already been calculated
+            # Directly determining the new wavenumbers
             wavenumbers = Get_Aniso_Gruneisen_Wavenumbers(keyword_parameters['Gruneisen'],
                                                           keyword_parameters['Wavenumber_Reference'],
                                                           keyword_parameters['ref_crystal_matrix'],
-                                                          keyword_parameters['Coordinate_file'],
-                                                          inputs.program)
+                                                          keyword_parameters['Coordinate_file'], inputs.program)
             return wavenumbers
 
         else:
+            # Checking if this is a re-run and if the Gruneisen parameters have already been saved
             if os.path.isfile(inputs.output + '_GRUwvn_' + inputs.method + '.npy') and \
                     os.path.isfile(inputs.output + '_GRU_' + inputs.method + '.npy'):
-                # If the current directory has saved Gruneisen outputs, it will open those and use them
+                # Loading the previously saved Gruneisen parameters and wavenumbers
                 print("   ...Using Gruneisen parameters from: " + inputs.output + '_GRU_' + inputs.method + '.npy')
                 gruneisen = np.load(inputs.output + '_GRU_' + inputs.method + '.npy')
                 wavenumber_reference = np.load(inputs.output + '_GRUwvn_' + inputs.method + '.npy')
+
             else:
                 # Calculating the Gruneisen parameter and wavenumbers
                 gruneisen, wavenumber_reference = Setup_Anisotropic_Gruneisen(inputs)
@@ -109,7 +108,8 @@ def Call_Wavenumbers(inputs, **keyword_parameters):
                 np.save(inputs.output + '_GRU_' + inputs.method, gruneisen)
                 np.save(inputs.output + '_GRUwvn_' + inputs.method, wavenumber_reference)
             return gruneisen, wavenumber_reference
-    elif inputs.method == 'SaQply':
+
+    elif inputs.method in ['SaQply']:
         return psf.Wavenumber_and_Vectors(inputs.program, keyword_parameters['Coordinate_file'],
                                           inputs.tinker_parameter_file)
 
@@ -118,29 +118,29 @@ def Call_Wavenumbers(inputs, **keyword_parameters):
 #     Isotropic Gruneisen Parameter      #
 ##########################################
 def Setup_Isotropic_Gruneisen(inputs):
-    """
-    This function calculates the Isotropic Gruneisen parameters for a given coordinate file.
-    Calculated numerically given a specified volume fraction stepsize
-    ******Eventually! Impliment a second order Gruneisen parameter in here
+    r"""
+    Computes the isotropic Gruneisen parameters of the lattice minimum structure
 
-    **Required Inputs
-    Coordinate_file = File containing lattice parameters and atom coordinates
-    Program = 'Tinker' for Tinker Molecular Modeling
-              'Test' for a test run
-    Gruneisen_Vol_FracStep = Volumetric stepsize to expand lattice minimum structure to numerically determine the 
-    Gruneisen parameter
-    molecules_in_coord = number of molecules in Coordinate_file
+    Parameters
+    ----------
+    inputs: Class
+        Contains all user defined values and filled in with default program values
 
-    **Optional inputs
-    Parameter_file = Optional input for program
+    Returns
+    -------
+    gruneisen: List[float]
+        Isotropic Gruneisen parameters.
+    wavenumbers_ref: List[float]
+        Wavenumbers [cm$^{-1}$] of the lattice minimum structure.
+    volume_ref: float
+        Volume [$\AA^{3}$] of the lattice minimum structure.
     """
 
     # Change in lattice parameters for expanded structure
     dLattice_Parameters = Ex.Isotropic_Change_Lattice_Parameters((1 + inputs.gruneisen_volume_fraction_stepsize),
                                                                  inputs.program, inputs.coordinate_file)
 
-    # Determining wavenumbers of lattice strucutre and expanded strucutre
-    # Also, assigning a file ending name for the nex coordinate file (program dependent)
+    # Determining wavenumbers of lattice strucutre and expanded structure
     lattice_parameters = psf.Lattice_parameters(inputs.program, inputs.coordinate_file)
 
     # Expanding structure
@@ -152,100 +152,63 @@ def Setup_Isotropic_Gruneisen(inputs):
 
     # Computing the reference wavenumbers and eigenvectors
     wavenumbers_ref, eigenvectors_ref = psf.Wavenumber_and_Vectors(inputs.program, inputs.coordinate_file,
-                                                                       inputs.tinker_parameter_file)
-    number_of_modes = len(wavenumbers_ref)
-
-    # Outputing information for user output
-    NO.start_isoGru()
+                                                                   inputs.tinker_parameter_file)
+    number_of_modes = len(wavenumbers_ref)  # Number of vibrational modes
 
     # Computing the strained wavenumbers and eigenvectors
-    wavenumbers_unorganized, eigenvectors_unorganized = \
-        psf.Wavenumber_and_Vectors(inputs.program, 'temp' + file_ending, inputs.tinker_parameter_file)
+    wavenumbers_unorganized, eigenvectors_unorganized = psf.Wavenumber_and_Vectors(inputs.program, 'temp' + file_ending,
+                                                                                   inputs.tinker_parameter_file)
 
     # Determining how the strained eigenvectors match up with the reference structure
     z, weight = matching_eigenvectors_of_modes(number_of_modes, eigenvectors_ref, eigenvectors_unorganized)
+
+    # Outputing information for user output
+    NO.start_isoGru()
     NO.GRU_weight(weight)
 
     # Re-organizing the expanded wavenumbers
     wavenumbers_organized, eigenvectors_organized = reorder_modes(z, wavenumbers_unorganized, eigenvectors_unorganized)
 
     # Calculating the volume of the lattice minimum and expanded structure
-    Volume_Reference = Pr.Volume(lattice_parameters=lattice_parameters)
-    Volume_expand = Volume_Reference + inputs.gruneisen_volume_fraction_stepsize * Volume_Reference
+    volume_ref = Pr.Volume(lattice_parameters=lattice_parameters)
+    volume_expand = volume_ref + inputs.gruneisen_volume_fraction_stepsize * volume_ref
 
-    Gruneisen = np.zeros(len(wavenumbers_ref))
-    Gruneisen[3:] = -(np.log(wavenumbers_ref[3:]) - np.log(wavenumbers_organized[3:]))/(np.log(Volume_Reference) - np.log(Volume_expand))
-    for x in range(0,len(Gruneisen)):
+    # Computing the Gruneisen parameters
+    gruneisen = np.zeros(len(wavenumbers_ref))
+    gruneisen[3:] = -(np.log(wavenumbers_ref[3:]) - np.log(wavenumbers_organized[3:])) / \
+                    (np.log(volume_ref) - np.log(volume_expand))
+    for x in range(0, len(gruneisen)):
         if wavenumbers_ref[x] == 0:
-            Gruneisen[x] = 0.0
+            gruneisen[x] = 0.0
+
     # Removing extra files created in process
     subprocess.call(['rm', 'temp' + file_ending])
-    return Gruneisen, wavenumbers_ref, Volume_Reference
-
-#    if inputs.program == 'Tinker':
-#        Ex.Expand_Structure(inputs, inputs.coordinate_file, 'lattice_parameters', 'temp',
-#                            dlattice_parameters=dLattice_Parameters)
-#        Organized_wavenumbers = Tinker_Gru_organized_wavenumbers('Isotropic', inputs.coordinate_file, 'temp.xyz',
-#                                                                 inputs.tinker_parameter_file)
-#        Wavenumber_Reference = Organized_wavenumbers[0] 
-#        Wavenumber_expand = Organized_wavenumbers[1]
-#        file_ending = '.xyz'
-#
-#    if inputs.program == 'CP2K':
-#        Ex.Expand_Structure(inputs, inputs.coordinate_file, 'lattice_parameters', 'temp',
-#                            dlattice_parameters=dLattice_Parameters)
-#        Organized_wavenumbers = CP2K_Gru_organized_wavenumbers('Isotropic', inputs.coordinate_file, 'temp.pdb',
-#                                                               inputs.tinker_parameter_file, inputs.output)
-#        Wavenumber_Reference = Organized_wavenumbers[0] 
-#        Wavenumber_expand = Organized_wavenumbers[1]
-#        file_ending = '.pdb'
-#
-#    elif inputs.program == 'QE':
-#        Ex.Expand_Structure(inputs, inputs.coordinate_file, 'lattice_parameters', inputs.coordinate_file[0:-3],
-#                            dlattice_parameters=[0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
-#        Ex.Expand_Structure(inputs, inputs.coordinate_file, 'lattice_parameters', 'temp',
-#                            dlattice_parameters=dLattice_Parameters)
-#        Organized_wavenumbers = QE_Gru_organized_wavenumbers('Isotropic', inputs.coordinate_file, 'temp.pw',
-#                                                             inputs.tinker_parameter_file, inputs.output)
-#        Wavenumber_Reference = Organized_wavenumbers[0]
-#        Wavenumber_expand = Organized_wavenumbers[1]
-#        file_ending = '.pw'
-#
-#    elif inputs.program == 'Test':
-#        Ex.Expand_Structure(inputs, inputs.coordinate_file, 'lattice_parameters', 'temp',
-#                            dlattice_parameters=dLattice_Parameters)
-#        Wavenumber_Reference = psf.program_wavenumbers(inputs.coordinate_file, 0, 0, 0, inputs.program, 'GiQg')
-#        Wavenumber_expand = psf.program_wavenumbers('temp.npy', 0, 0, 0, inputs.program, 'GiQg')
-#        file_ending = '.npy'
-#
-#    # Calculating the volume of the lattice minimum and expanded structure
-#    Volume_Reference = Pr.Volume(lattice_parameters=lattice_parameters)
-#    Volume_expand = Volume_Reference + inputs.gruneisen_volume_fraction_stepsize * Volume_Reference
-#
-#    Gruneisen = np.zeros(len(Wavenumber_Reference))
-#    Gruneisen[3:] = -(np.log(Wavenumber_Reference[3:]) - np.log(Wavenumber_expand[3:]))/(np.log(Volume_Reference) -
-#                                                                                         np.log(Volume_expand))
-#    for x in range(0,len(Gruneisen)):
-#        if Wavenumber_Reference[x] == 0:
-#            Gruneisen[x] = 0.0
-#    # Removing extra files created in process
-#    subprocess.call(['rm', 'temp' + file_ending])
-#    return Gruneisen, Wavenumber_Reference, Volume_Reference
+    return gruneisen, wavenumbers_ref, volume_ref
 
 
-def Get_Iso_Gruneisen_Wavenumbers(Gruneisen, Wavenumber_Reference, Volume_Reference, New_Volume): 
+def Get_Iso_Gruneisen_Wavenumbers(gruneisen, wavenumber_ref, volume_ref, new_volume):
+    r"""
+    Computes the isotropic wavenumbers using the Gruneisen parmaeters due to an isotropic volume change to the crystal
+    lattice.
+
+    Parameters
+    ----------
+    gruneisen: List[float]
+        Isotropic Gruneisen parameters.
+    wavenumbers_ref: List[float]
+        Wavenumbers [cm$^{-1}$] of the lattice minimum structure.
+    volume_ref: List[float]
+        Volume [$\AA^{3}$] of the lattice minimum structure.
+    new_volume: float
+        Volume [$\AA^{3}$] of the isotropically expanded crystal that the wavenumbers need to be computed for.
+
+    Returns
+    -------
+    wavenumbers: List[float]
+        Wavenumbers [cm$^{-1}$] of the crystal structure at the new volume.
     """
-    This function calculates new wavenumber for an isotropically expanded strucutre using the gruneisen parameter
-    ******Eventually! Impliment a second order Gruneisen parameter in here
-
-    **Required Inputs
-    Gruneisen = Gruneisen parameters found with Setup_Isotropic_Gruneisen
-    Wavenumber_Reference = Reference wavenumbers for Gruneisen parameter, will be output from Setup_Isotropic_Gruneisen
-    Volume_Reference = Reference volume of strucutre for Wavenumber_Reference, will be output from Setup_Isotropic_Gruneisen
-    New_Volume = Volume of new structure to calculate wavenumbers for
-    """
-    wavenumbers = np.diag(np.power(New_Volume/Volume_Reference, -1*Gruneisen))
-    wavenumbers = np.dot(Wavenumber_Reference, wavenumbers)
+    wavenumbers = np.diag(np.power(new_volume / volume_ref, -1 * gruneisen))
+    wavenumbers = np.dot(wavenumber_ref, wavenumbers)
     return wavenumbers
 
 
@@ -254,55 +217,75 @@ def Get_Iso_Gruneisen_Wavenumbers(Gruneisen, Wavenumber_Reference, Volume_Refere
 ##########################################
 
 def Setup_Anisotropic_Gruneisen(inputs):
+    r"""
+    Computes the anisotropic Gruneisen parameters of the lattice minimum structure
+
+    Parameters
+    ----------
+    inputs: Class
+        Contains all user defined values and filled in with default program values
+
+    Returns
+    -------
+    gruneisen: List[float]
+        Anisotropic Gruneisen parameters.
+    wavenumbers_ref: List[float]
+        Wavenumbers [cm$^{-1}$] of the lattice minimum structure.
+    """
     # Determining the file ending for the program used
     file_ending = psf.assign_coordinate_file_ending(inputs.program)
 
-    # Starting by straining the crystal in the six principal directions
+    # Determining if the anisotropic Gruneisen parameters have already been calculated
+    # Typically, this take a long time. It may be advantageous to parallelize this in the future.
     re_run = False
     if os.path.isfile('GRU_wvn.npy') and os.path.isfile('GRU_eigen.npy'):
+        # Loading in previously computed Gruneisen parameters
         wavenumbers = np.load('GRU_wvn.npy')
         eigenvectors = np.load('GRU_eigen.npy')
         re_run = True
     else:
-        # Computing the reference wavenumbers and eigenvectors
+        # Computing the reference wavenumbers and eigenvectors (the lattice minimum structure fed in)
         wavenumbers_ref, eigenvectors_ref = psf.Wavenumber_and_Vectors(inputs.program, inputs.coordinate_file,
                                                                        inputs.tinker_parameter_file)
 
         # Setting the number of vibrational modes
         number_of_modes = int(len(wavenumbers_ref))
 
-        # Setting a place to store all the wavenumbers and eigenvalues for the Gruenisen paremeters
+        # Setting a place to store all the wavenumbers and eigenvalues for the Gruenisen parameters
         wavenumbers = np.zeros((7, number_of_modes))
         eigenvectors = np.zeros((7, number_of_modes, number_of_modes))
         wavenumbers[0] = wavenumbers_ref
         eigenvectors[0] = eigenvectors_ref
 
-        # Outputing information for user output
+        # Out putting information for user output
         NO.start_anisoGru()
 
         # Saving that data computed thusfar in case the system crashes or times out
         np.save('GRU_eigen', eigenvectors)
         np.save('GRU_wvn', wavenumbers)
 
+    # Cycling through the six principle six principal strains
     for i in range(6):
         if re_run and (wavenumbers[i + 1, 3] != 0.):
+            # Skipping a given strain if the wavenumbers have previously been computed and loaded in
             pass
         else:
-            # Making expanded structures in th direction of the six principal strains
+            # Expanding the lattice minimum structure in the direction of the i-th principal strain
             applied_strain = np.zeros(6)
             applied_strain[i] = inputs.gruneisen_matrix_strain_stepsize
             Ex.Expand_Structure(inputs, inputs.coordinate_file, 'strain', 'temp',
                                 strain=Ex.strain_matrix(applied_strain),
-                                crystal_matrix=Ex.Lattice_parameters_to_Crystal_matrix(
-                                    psf.Lattice_parameters(inputs.program, inputs.coordinate_file)))
+                                crystal_matrix=Ex.Lattice_parameters_to_Crystal_matrix(psf.Lattice_parameters(
+                                    inputs.program, inputs.coordinate_file)))
 
             # Computing the strained wavenumbers and eigenvectors
-            wavenumbers_unorganized, eigenvectors_unorganized = \
-                psf.Wavenumber_and_Vectors(inputs.program, 'temp' + file_ending, inputs.tinker_parameter_file)
+            wavenumbers_unorganized, eigenvectors_unorganized = psf.Wavenumber_and_Vectors(inputs.program,
+                                                                                           'temp' + file_ending,
+                                                                                           inputs.tinker_parameter_file)
 
             # Determining how the strained eigenvectors match up with the reference structure
             z, weight = matching_eigenvectors_of_modes(number_of_modes, eigenvectors[0], eigenvectors_unorganized)
-            NO.GRU_weight(weight)
+            NO.GRU_weight(weight)  # Writing out the precision of matching the modes with one another
 
             # Re-organizing the expanded wavenumbers
             wavenumbers[i + 1], eigenvectors[i + 1] = reorder_modes(z, wavenumbers_unorganized,
@@ -315,9 +298,8 @@ def Setup_Anisotropic_Gruneisen(inputs):
             # Removing the strained coordinate file
             subprocess.call(['rm', 'temp' + file_ending])
 
-    # Setting a blank matrix to save the Gruneisen parameters in
+    # Calculating the Gruneisen parameters due to the six principal strains
     gruneisen = np.zeros((number_of_modes, 6))
-
     for i in range(6):
         # Calculating the Gruneisen parameters
         gruneisen[3:, i] = -(np.log(wavenumbers[i + 1, 3:]) - np.log(wavenumbers[0, 3:])) \
@@ -325,43 +307,106 @@ def Setup_Anisotropic_Gruneisen(inputs):
     return gruneisen, wavenumbers[0]
 
 
-def Get_Aniso_Gruneisen_Wavenumbers(Gruneisen, Wavenumber_Reference, ref_crystal_matrix, Coordinate_file, Program):
+def Get_Aniso_Gruneisen_Wavenumbers(gruneisen, wavenumber_ref, crystal_matrix_ref, strained_coordinate_file, program):
+    r"""
+    Computes the isotropic wavenumbers using the Gruneisen parmaeters due to an isotropic volume change to the crystal
+    lattice.
+
+    Parameters
+    ----------
+    gruneisen: List[float]
+        Anisotropic Gruneisen parameters.
+    wavenumbers_ref: List[float]
+        Wavenumbers [cm$^{-1}$] of the lattice minimum structure.
+    crystal_matrix_ref: List[float]
+        Lattice tensor [$\AA$] of the lattice minimum structure.
+    strained_coordinate_file: float
+        Coordinate file of the anisotropically expanded crystal that the wavenumbers need to be computed for.
+    program: str
+        Program being used.
+
+    Returns
+    -------
+    wavenumbers: List[float]
+        Wavenumbers [cm$^{-1}$] of the crystal structure in the strained crystal.
+    """
+    # Determining the strain placed on the expanded crystal relative to the reference matrix
+    new_crystal_matrix = Ex.Lattice_parameters_to_Crystal_matrix(psf.Lattice_parameters(program,
+                                                                                        strained_coordinate_file))
+    applied_strain = Pr.RotationFree_StrainArray_from_CrystalMatrix(crystal_matrix_ref, new_crystal_matrix)
+
     # Setting a blank array for new wavenumbers
-    new_crystal_matrix = Ex.Lattice_parameters_to_Crystal_matrix(psf.Lattice_parameters(Program, Coordinate_file))
-    applied_strain = Pr.RotationFree_StrainArray_from_CrystalMatrix(ref_crystal_matrix, new_crystal_matrix)
+    wavenumbers = np.zeros(len(wavenumber_ref))
 
-    wavenumbers = np.zeros(len(Wavenumber_Reference))
-
+    # Computing the change to each wavenumber due to the current strain
     for i in np.arange(3, len(wavenumbers), 1):
-        # Computing the change to each wavenumber due to the current strain
-        wavenumbers[i] = Wavenumber_Reference[i]*np.exp(-1.*np.sum(np.dot(applied_strain, Gruneisen[i])))
+        wavenumbers[i] = wavenumber_ref[i] * np.exp(-1. * np.sum(np.dot(applied_strain, gruneisen[i])))
     return wavenumbers
+
 
 ##########################################
 #     Organizing Wavenumbers for Gru     #
 ##########################################
 
 def matching_eigenvectors_of_modes(number_of_modes, eigenvectors_1, eigenvectors_2):
+    r"""
+    Matches the eigenvectors of two crystal structures and returns new order of the modes and the weight to match each
+    mode.
+
+    Parameters
+    ----------
+    number_of_modes: int
+        Number of vibrational modes in the crystal lattice
+    eigenvectors_1: List[float]
+        Eigenvectors of the reference crystal structure in the form of a 3N x 3N matrix, where N is the number of atoms
+        in the crystal lattice.
+    eigenvectors_2: List[float]
+        Eigenvectors of the crystal structure that needs the modes reorganized in the form of a 3N x 3N matrix, where N
+        is the number of atoms in the crystal lattice.
+
+    Returns
+    -------
+    z: List[int]
+        List to match the order of the eigenvectors_2 with eigenvectors_1.
+    weight: List[float]
+        Weight describing how well the reordered eigenvectors matched. A weight of 0 indicates a perfect match.
+
+    """
+    # Using the Munkres matching package
     m = Munkres()
+
+    # Setting a matrix to save the weights to match all of the vibrational modes
     weight = np.zeros((number_of_modes - 3, number_of_modes - 3))
+
+    # Cycling through all modes to apply a weight of how well they match
     for i in range(3, number_of_modes):
+        # Using 1 - Cos(Theta) between the two eigenvectors as the weight
         diff = np.dot(eigenvectors_1[i], eigenvectors_2[i]) \
                / (np.linalg.norm(eigenvectors_1[i]) * np.linalg.norm(eigenvectors_2[i]))
+
         if np.absolute(diff) > 0.95:
+            # If Cos(Theta) is close to 1 for director order comparison of the eigenvectors than they are well matched and
+            #    all other comparisons are set with a much higher weight
             weight[i - 3] = 10000000.
             weight[i - 3, i - 3] = 1. - diff
         else:
+            # Otherwise the weight compared to all other eigenvectors are computed
             for j in range(3, number_of_modes):
+                # Here we will check to see if the match is better if the direction of the eigenvalue is flipped
+                #    (Eigenvectors are representative of vibrations and therefore the opposite director is also valid)
                 hold_weight = np.zeros(4)
                 hold_weight[0] = 1 - np.dot(-1 * eigenvectors_1[i], eigenvectors_2[j]) \
-                                     / (np.linalg.norm(-1 * eigenvectors_1[i]) * np.linalg.norm(eigenvectors_2[j]))
+                                 / (np.linalg.norm(-1 * eigenvectors_1[i]) * np.linalg.norm(eigenvectors_2[j]))
                 hold_weight[1] = 1 - np.dot(eigenvectors_1[i], -1 * eigenvectors_2[j]) \
-                                     / (np.linalg.norm(eigenvectors_1[i]) * np.linalg.norm(-1 * eigenvectors_2[j]))
+                                 / (np.linalg.norm(eigenvectors_1[i]) * np.linalg.norm(-1 * eigenvectors_2[j]))
                 hold_weight[2] = 1 - np.dot(eigenvectors_1[i], eigenvectors_2[j]) \
-                                     / (np.linalg.norm(eigenvectors_1[i]) * np.linalg.norm(eigenvectors_2[j]))
+                                 / (np.linalg.norm(eigenvectors_1[i]) * np.linalg.norm(eigenvectors_2[j]))
                 hold_weight[3] = 1 - np.dot(-1 * eigenvectors_1[i], -1 * eigenvectors_2[j]) \
-                                     / (np.linalg.norm(-1 * eigenvectors_1[i])*np.linalg.norm(-1 * eigenvectors_2[j]))
+                                 / (np.linalg.norm(-1 * eigenvectors_1[i])*np.linalg.norm(-1 * eigenvectors_2[j]))
+
+                # The weight matching the two eigenvectors is the minimum value computed
                 weight[i - 3, j - 3] = min(hold_weight)
+
     # Using the Hungarian algorithm to match wavenumbers
     Wgt = m.compute(weight)
     x, y = zip(*Wgt)
@@ -370,6 +415,28 @@ def matching_eigenvectors_of_modes(number_of_modes, eigenvectors_1, eigenvectors
     return z, weight[z[:, 0] - 3, z[:, 1] - 3]
 
 def reorder_modes(z, wavenumbers, eigenvectors):
+    r"""
+    Uses the output (z) of matching_eigenvectors_of_modes to reorganize the wavenumbers and eigenvectors of
+    eigenvectors_2
+
+    Parameters
+    ----------
+    z: List[int]
+        List to match the order of the eigenvectors_2 with eigenvectors_1 computed from matching_eigenvectors_of_modes.
+    wavenumbers: List[float]
+        Unorganized wavenumbers that need to be reordered based on z.
+    eigenvectors: List[float]
+        Eigenvectors of the crystal structure that needs the modes reorganized in the form of a 3N x 3N matrix, where N
+        is the number of atoms in the crystal lattice. This should be eigenvectors_2 from
+        matching_eigenvectors_of_modes.
+
+    Returns
+    -------
+    wavenumbers_out: List[float]
+        Organized wavenumbers.
+    eigenvectors_out: List[float]
+        Organized eigenvectors.
+    """
     wavenumbers_out = np.zeros(len(wavenumbers))
     eigenvectors_out = np.zeros((len(wavenumbers), len(wavenumbers)))
     for i in z:
@@ -377,117 +444,4 @@ def reorder_modes(z, wavenumbers, eigenvectors):
         eigenvectors_out[i[0]] = eigenvectors[i[1]]
     return wavenumbers_out, eigenvectors_out
 
-
-
-# To do: Condense the Gru_organized_wavenumbers section (tinker and CP2K can be together
-def Tinker_Gru_organized_wavenumbers(Expansion_type, Coordinate_file, Expanded_Coordinate_file, Parameter_file):
-    number_of_modes = int(3*psf.atoms_count('Tinker', Coordinate_file))
-
-    if os.path.isfile('GRU_eigen.npy') and os.path.isfile('GRU_wvn.npy'):
-        wavenumbers = np.load('GRU_wvn.npy')
-        eigenvectors = np.load('GRU_eigen.npy')
-    else:
-        if Expansion_type == 'Isotropic':
-            wavenumbers = np.zeros((2, number_of_modes))
-            eigenvectors = np.zeros((2, number_of_modes, number_of_modes))
-            Expanded_Coordinate_file = [Expanded_Coordinate_file]
-            NO.start_isoGru()
-
-        elif Expansion_type == 'Anisotropic':
-            wavenumbers = np.zeros((7, number_of_modes))
-            eigenvectors = np.zeros((7, number_of_modes, number_of_modes))
-            NO.start_anisoGru()
-
-    wavenumbers[0], eigenvectors[0] = psf.Wavenumber_and_Vectors('Tinker', Coordinate_file, Parameter_file)
-
-    for i in range(1, len(Expanded_Coordinate_file) + 1):
-        if not np.all(wavenumbers[i] == 0.):
-            pass
-        else:
-            wavenumbers_unorganized, eigenvectors_unorganized = \
-                psf.Wavenumber_and_Vectors('Tinker', Expanded_Coordinate_file[i - 1], Parameter_file)
-
-            z, weight = matching_eigenvectors_of_modes(number_of_modes, eigenvectors[0], eigenvectors_unorganized)
-            NO.GRU_weight(weight)
-
-            # Re-organizing the expanded wavenumbers
-            wavenumbers[i], eigenvectors[i] = reorder_modes(z, wavenumbers_unorganized, eigenvectors_unorganized)
-
-        np.save('GRU_eigen', eigenvectors)
-        np.save('GRU_wvn', wavenumbers)
-    return wavenumbers
-
-def CP2K_Gru_organized_wavenumbers(Expansion_type, Coordinate_file, Expanded_Coordinate_file, Parameter_file, Output):
-    from munkres import Munkres, print_matrix
-    m = Munkres()
-    number_of_modes = 3*psf.atoms_count('CP2K', Coordinate_file)
-
-    if Expansion_type == 'Isotropic':
-        wavenumbers = np.zeros((2, number_of_modes))
-        eigenvectors = np.zeros((2, number_of_modes, number_of_modes))
-        wavenumbers[0], eigenvectors[0] = psf.Wavenumber_and_Vectors('CP2K', Coordinate_file, Parameter_file)
-        wavenumbers[1], eigenvectors[1] = psf.Wavenumber_and_Vectors('CP2K', Expanded_Coordinate_file, Parameter_file)
-    elif Expansion_type == 'Anisotropic':
-        wavenumbers = np.zeros((7, number_of_modes))
-        eigenvectors = np.zeros((7, number_of_modes, number_of_modes))
-        wavenumbers[0], eigenvectors[0] = psf.Wavenumber_and_Vectors('CP2K', Coordinate_file, Parameter_file)
-        for i in range(1,7):
-            wavenumbers[i], eigenvectors[i] = psf.Wavenumber_and_Vectors('CP2K', Expanded_Coordinate_file[i-1],
-                                                                         Parameter_file)
-
-
-    # Weighting the modes matched together
-    wavenumbers_out = np.zeros((len(wavenumbers[:, 0]), number_of_modes))
-    wavenumbers_out[0] = wavenumbers[0]
-    for k in range(1, len(wavenumbers[:, 0])):
-        weight = np.zeros((number_of_modes - 3, number_of_modes - 3))
-        for i in range(3, number_of_modes):
-            diff = np.linalg.norm(np.dot(eigenvectors[0, i], eigenvectors[k, i]))/(np.linalg.norm(eigenvectors[0, i])*np.linalg.norm(eigenvectors[k, i]))
-            if diff > 0.95:
-                weight[i - 3] = 10000000.
-                weight[i - 3, i - 3] = 1. - diff
-            else:
-                for j in range(3, number_of_modes):
-                    weight[i - 3, j - 3] = 1 - np.linalg.norm(np.dot(eigenvectors[0, i], eigenvectors[k, j]))/(np.linalg.norm(eigenvectors[0, i])*np.linalg.norm(eigenvectors[k, j]))
-
-        # Using the Hungarian algorithm to match wavenumbers
-        Wgt = m.compute(weight)
-        x,y = zip(*Wgt)
-        z = np.column_stack((x,y))
-        z = z +3
-
-    # Re-organizing the expanded wavenumbers
-        for i in z:
-            wavenumbers_out[k, i[0]] = wavenumbers[k, i[1]]
-    return wavenumbers_out
-
-def QE_Gru_organized_wavenumbers(Expansion_type, Coordinate_file, Expanded_Coordinate_file, Parameter_file, Output):
-    from munkres import Munkres, print_matrix
-    m = Munkres()
-
-    number_of_modes = 3*psf.atoms_count('QE', Coordinate_file)
-    if Expansion_type == 'Isotropic':
-        wavenumbers = np.zeros((2, number_of_modes))
-        eigenvectors = np.zeros((2, number_of_modes, number_of_modes))
-        wavenumbers[0], eigenvectors[0] = psf.Wavenumber_and_Vectors('QE', Coordinate_file, Parameter_file)
-        wavenumbers[1], eigenvectors[1] = psf.Wavenumber_and_Vectors('QE', Expanded_Coordinate_file, Parameter_file)
-
-    elif Expansion_type == 'Anisotropic':
-        wavenumbers = np.zeros((7, number_of_modes))
-        eigenvectors = np.zeros((7, number_of_modes, number_of_modes))
-        wavenumbers[0], eigenvectors[0] = psf.Wavenumber_and_Vectors('QE', Coordinate_file, Parameter_file)
-        for i in range(1,7):
-            wavenumbers[i], eigenvectors[i] = psf.Wavenumber_and_Vectors('QE', Expanded_Coordinate_file[i-1],
-                                                                         Parameter_file)
-
-
-    # Weighting the modes matched together
-    wavenumbers_out = np.zeros((len(wavenumbers[:, 0]), number_of_modes))
-    wavenumbers_out[0] = wavenumbers[0]
-    for k in range(1, len(wavenumbers[:, 0])):
-        z, _ = matching_eigenvectors_of_modes(number_of_modes, eigenvectors[0], eigenvectors[k])
-        # Re-organizing the expanded wavenumbers
-        for i in z:
-            wavenumbers_out[k, i[0]] = wavenumbers[k, i[1]]
-    return wavenumbers_out
 
