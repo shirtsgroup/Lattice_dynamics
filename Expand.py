@@ -657,8 +657,8 @@ def Anisotropic_Local_Gradient_1D(inputs, coordinate_file, temperature, LocGrd_d
         temperature = 1e-5
 
     # Retrieving the wavenumbers of the initial structure
-    wavenumber_keywords = { 'Gruneisen' : keyword_parameters['Gruneisen'],
-                            'Wavenumber_Reference' : keyword_parameters['Wavenumber_Reference'],
+    wavenumber_keywords = { 'Gruneisen': keyword_parameters['Gruneisen'],
+                            'Wavenumber_Reference': keyword_parameters['Wavenumber_Reference'],
                             'ref_crystal_matrix': keyword_parameters['ref_crystal_matrix']}
     wavenumbers = Wvn.Call_Wavenumbers(inputs, Coordinate_file=coordinate_file, **wavenumber_keywords)
 

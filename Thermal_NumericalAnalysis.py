@@ -819,11 +819,11 @@ def Anisotropic_Gradient_Expansion_1D(inputs, LocGrd_dC):
     else:
         NO.gradient_output(temperature[0], inputs.program, inputs.coordinate_file)
         
-        dC_dLambda, wavenumbers[0, 1:], left_minimum = Ex.Anisotropic_Local_Gradient(inputs, inputs.coordinate_file, 0., LocGrd_dC,
-                                                                       Gruneisen=gruneisen,
-                                                                       Wavenumber_Reference=wavenumber_reference,
-                                                                       ref_crystal_matrix=ref_crystal_matrix)
-        if left_minimum == True:
+        dC_dLambda, wavenumbers[0, 1:], left_minimum = \
+            Ex.Anisotropic_Local_Gradient(inputs, inputs.coordinate_file, 0., LocGrd_dC, Gruneisen=gruneisen,
+                                          Wavenumber_Reference=wavenumber_reference,
+                                          ref_crystal_matrix=ref_crystal_matrix)
+        if left_minimum:
             print("ERROR: Starting structure is no longer at a minimum")
             sys.exit()
 

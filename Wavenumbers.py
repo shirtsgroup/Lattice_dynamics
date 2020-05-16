@@ -250,10 +250,11 @@ def Setup_Anisotropic_Gruneisen(inputs):
 
         # Setting the number of vibrational modes
         number_of_modes = int(len(wavenumbers_ref))
+        number_of_atoms = psf.atoms_count(inputs.program, inputs.coordinate_file)
 
         # Setting a place to store all the wavenumbers and eigenvalues for the Gruenisen parameters
         wavenumbers = np.zeros((7, number_of_modes))
-        eigenvectors = np.zeros((7, number_of_modes, number_of_modes))
+        eigenvectors = np.zeros((7, number_of_modes, 3 * number_of_atoms))
         wavenumbers[0] = wavenumbers_ref
         eigenvectors[0] = eigenvectors_ref
 
