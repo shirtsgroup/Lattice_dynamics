@@ -356,6 +356,7 @@ def Tinker_Wavenumber_and_Vectors(Coordinate_file: str, Parameter_file: str):
     subprocess.call(['cp', Coordinate_file, 'vector_temp.xyz'])
     output = subprocess.check_output("vibrate vector_temp.xyz -k %s  A |  grep -oP '[-+]*[0-9]*\.[0-9]{2,9}'"
                                                           % (Parameter_file), shell=True).decode("utf-8")
+    number_of_atoms = len(Return_Tinker_Coordinates('vector_temp.xyz')[:, 0])
 
     subprocess.call(['rm vector_temp.*'], shell=True)
 
@@ -365,7 +366,6 @@ def Tinker_Wavenumber_and_Vectors(Coordinate_file: str, Parameter_file: str):
     output = np.array(output).astype(float)
 
     # Finding the number modes in the system
-    number_of_atoms = len(Return_Tinker_Coordinates('vector_temp.xyz')[:, 0])
     number_of_modes = int(len(output) / (3 + 3 * number_of_atoms))
 
     # Grabbing the wavenumbers
