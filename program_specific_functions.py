@@ -243,7 +243,7 @@ def output_new_coordinate_file(program: str, coordinate_file: str, parameter_fil
         minimization cretierion for geometry optimization
     """
     if program == 'Tinker':
-        Ouput_Tinker_Coordinate_File(coordinate_file, parameter_file, coordinates, lattice_parameters, output)
+        Ouput_Tinker_Coordinate_File(coordinate_file, coordinates, lattice_parameters, output)
         Tinker_optimization(parameter_file, output + '.xyz', output, min_rms_gradient)
     elif program == 'CP2K':
         Ouput_CP2K_Coordinate_File(coordinate_file, parameter_file, coordinates, lattice_parameters, output)
@@ -372,7 +372,7 @@ def Tinker_Wavenumber_and_Vectors(Coordinate_file: str, Parameter_file: str):
     wavenumbers = np.array(output[number_of_modes: number_of_modes * 2]).astype(float)
 
     # Grabbing the eigenvectors
-    eigenvectors = np.zeros((number_of_modes, number_of_atoms))
+    eigenvectors = np.zeros((number_of_modes, 3 * number_of_atoms))
     for i in range(number_of_modes):
         start = 2 * number_of_modes + 3 * number_of_atoms * i + i + 1
         finish = start + 3 * number_of_atoms
@@ -401,23 +401,22 @@ def Return_Tinker_Coordinates(Coordinate_file):
     return coordinates
 
 
+def Ouput_Tinker_Coordinate_File(coordinate_file, coordinates, lattice_parameters, output):
+    r"""
+    Creates a new Tinker coordinate (.xyz) for the coordinates fed in.
 
-
-
-
-def Ouput_Tinker_Coordinate_File(Coordinate_file, Parameter_file, coordinates, lattice_parameters, Output):
+    Paramaeters
+    -----------
+    Coorindate_file: str
+        Tinker .xyz file
+    coordinates: List[float]
+        Cartesian coordinates [$\AA$] of the output coordinate file to be written
+    lattice_parameters: List[float]
+        Three lattice vectors [$\AA$] and lattice angles that makes up the box of the new coordinates.
+    output: str
+        name of output file without the .xyz added to it
     """
-    This function takes a new set of coordinates and utilizes a previous coordinate file as a template to produce a new
-    Tinker .xyz crystal file
-
-    **Required Inputs
-    Coordinate_file = Tinker .xyz file for a crystal
-    Parameter_file = Tinker .key file with force field parameters
-    coordinates = New coordinates in a 3x(number of atoms) matrix
-    lattice_parameters = lattice parameters as an array ([a,b,c,alpha,beta,gamma])
-    Output = file name of new .xyz file
-    """
-    with open(Coordinate_file) as f:
+    with open(coordinate_file) as f:
         # Opening xyz coordinate file to expand
         coordinates_template = np.array(list(it.zip_longest(*[lines.split() for lines in f], fillvalue=' '))).T
 
@@ -429,8 +428,9 @@ def Ouput_Tinker_Coordinate_File(Coordinate_file, Parameter_file, coordinates, l
             string_coordinates = string_coordinates + '    ' + coordinates_template[i, j]
         string_coordinates = string_coordinates + '\n'
 
-    with open(Output + '.xyz', 'w') as file_out:
+    with open(output + '.xyz', 'w') as file_out:
         file_out.write(string_coordinates)
+
 
 def Tinker_optimization(Parameter_file, Coordinate_file, Ouptu, min_RMS_gradient):
     with open('minimization.out', 'a') as myfile:

@@ -28,12 +28,12 @@ def numpy_write_out_precision(array):
         myfile.write(b'\n')
 
 
-
 def tolerance_of_wavenumbers(wavenumbers, Wavenum_Tol):
     if any(wavenumbers < Wavenum_Tol):
         with open('numerical_checks.out', 'a') as myfile:
             myfile.write('Wavenumbers [cm^-1]: ' + str(wavenumbers[0]) + ' ' + str(wavenumbers[1]) + ' ' + 
                          str(wavenumbers[2]))
+
 
 def raw_energies(U_0, Av_0, U, Av):
     write_out('U (Potential Energy) [kcal/mol] = \n')
