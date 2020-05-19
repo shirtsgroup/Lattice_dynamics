@@ -439,7 +439,7 @@ def reorder_modes(z, wavenumbers, eigenvectors):
         Organized eigenvectors.
     """
     wavenumbers_out = np.zeros(len(wavenumbers))
-    eigenvectors_out = np.zeros((len(wavenumbers), len(wavenumbers)))
+    eigenvectors_out = np.zeros(eigenvectors.shape)
     for i in z:
         wavenumbers_out[i[0]] = wavenumbers[i[1]]
         eigenvectors_out[i[0]] = eigenvectors[i[1]]
